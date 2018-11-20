@@ -15,6 +15,7 @@ QGoodWindow::QGoodWindow(QWidget *parent) : QMainWindow(parent)
     m_last_minimized = false;
     m_last_maximized = false;
     m_last_fullscreen = false;
+    m_last_visible = false;
     m_fixed_size = false;
 
     HINSTANCE hInstance = GetModuleHandle(nullptr);
@@ -301,7 +302,7 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
             QShowEvent event = QShowEvent();
             QApplication::sendEvent(window, &event);
 
-            if (window->maximumWidth() != QWIDGETSIZE_MAX || window->maximumHeight() != QWIDGETSIZE_MAX)
+            if (window->m_fixed_size)
             {
                 SetWindowLongPtr(hwnd, GWL_STYLE, GetWindowLongPtr(hwnd, GWL_STYLE) & ~WS_MAXIMIZEBOX);
             }
@@ -315,8 +316,8 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
                 InvalidateRect(hwnd, nullptr, TRUE);
             }
 
-            if (!window->isMaximized())
-                window->m_shadow->show();
+            window->m_shadow->showLater(true);
+            window->m_last_visible = true;
 
             window->m_win_widget->show();
 
@@ -324,10 +325,11 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
         }
         else if (pwp->flags & SWP_HIDEWINDOW)
         {
-            window->m_shadow->hide();
-
             QHideEvent event = QHideEvent();
             QApplication::sendEvent(window, &event);
+
+            window->m_last_visible = false;
+            window->m_shadow->hide();
 
             //SET BLACK BRUSH
             {
@@ -356,12 +358,18 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
         if (maximized || minimized)
         {
             window->m_last_shadow_state_hidden = true;
-            window->m_shadow->showLater(false);
-            window->m_shadow->hide();
+            if (window->m_last_visible)
+            {
+                window->m_shadow->showLater(false);
+                window->m_shadow->hide();
+            }
         }
         else if (m_last_shadow_state_minimized_maximized)
         {
-            window->m_shadow->showLater(true);
+            if (window->m_last_visible)
+            {
+                window->m_shadow->showLater(true);
+            }
             window->m_last_shadow_state_hidden = false;
         }
 
@@ -995,14 +1003,20 @@ LRESULT QGoodWindow::winNCHITTEST(int x, int y)
         {
             if (ptMouse.x >= rcWindow.right - rightMargin())
                 return HTNOWHERE; // title bar buttons
+            else if (ptMouse.x > rcWindow.left + iconWidth() && ptMouse.x < rcWindow.left + iconWidth() + leftMargin())
+                return HTNOWHERE; // custom title bar buttons
             else if (ptMouse.x < rcWindow.left + iconWidth())
                 return HTSYSMENU; // title bar icon
         }
         else
         {
-            if (ptMouse.x >= rcWindow.right - GetSystemMetrics(SM_CXFRAME) - GetSystemMetrics(SM_CXPADDEDBORDER) - rightMargin())
+            const int border_size = GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER);
+
+            if (ptMouse.x >= rcWindow.right - border_size - rightMargin())
                 return HTNOWHERE; // maximized title bar buttons
-            else if (ptMouse.x < rcWindow.left + GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER) + iconWidth())
+            else if (ptMouse.x > rcWindow.left + border_size + iconWidth() && ptMouse.x < rcWindow.left + border_size + iconWidth() + leftMargin())
+                return HTNOWHERE; // custom title bar buttons
+            else if (ptMouse.x < rcWindow.left + border_size + iconWidth())
                 return HTSYSMENU; // maximized title bar icon
         }
     }

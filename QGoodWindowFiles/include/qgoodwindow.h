@@ -118,6 +118,7 @@ private:
     bool m_last_minimized;
     bool m_last_maximized;
     bool m_last_fullscreen;
+    bool m_last_visible;
     bool m_fixed_size;
     QList<Qt::WidgetAttribute> m_attributes;
 
