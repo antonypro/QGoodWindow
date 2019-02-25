@@ -4,6 +4,7 @@
 #include "include/winwidget.h"
 #include "include/shadow.h"
 #include "include/modalwidget.h"
+#define BORDERWIDTH (GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER))
 #endif
 
 QGoodWindow::QGoodWindow(QWidget *parent) : QMainWindow(parent)
@@ -248,10 +249,7 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
 
         if (wParam == TRUE && window->isMaximized())
         {
-            int cx = GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER);
-            int cy = GetSystemMetrics(SM_CYFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER);
-
-            InflateRect((RECT*)lParam, -cx, -cy);
+            InflateRect((RECT*)lParam, -BORDERWIDTH, -BORDERWIDTH);
         }
 
         return TRUE;
@@ -489,9 +487,11 @@ QRect QGoodWindow::frameGeometry()
     RECT window_rect;
     GetWindowRect(m_hwnd, &window_rect);
 
-    return QRect(window_rect.left, window_rect.top,
-                 window_rect.right - window_rect.left,
-                 window_rect.bottom - window_rect.top);
+    QRect rect =  QRect(window_rect.left, window_rect.top,
+                        window_rect.right - window_rect.left,
+                        window_rect.bottom - window_rect.top);
+
+    return rect;
 #else
     return QMainWindow::frameGeometry();
 #endif
@@ -517,30 +517,37 @@ QRect QGoodWindow::rect()
 
 QPoint QGoodWindow::pos()
 {
+#ifdef Q_OS_WIN
     QPoint p = frameGeometry().topLeft();
 
-#ifdef Q_OS_WIN
     if (isMaximized())
     {
-        int cx = GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER);
-        int cy = GetSystemMetrics(SM_CYFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER);
-
-        p.setX(p.x() + cx);
-        p.setY(p.y() + cy);
+        p.setX(p.x() + BORDERWIDTH);
+        p.setY(p.y() + BORDERWIDTH);
     }
-#endif
 
     return p;
+#else
+    return QMainWindow::pos();
+#endif
 }
 
 int QGoodWindow::x()
 {
+#ifdef Q_OS_WIN
     return pos().x();
+#else
+    return QMainWindow::x();
+#endif
 }
 
 int QGoodWindow::y()
 {
+#ifdef Q_OS_WIN
     return pos().y();
+#else
+    return QMainWindow::y();
+#endif
 }
 
 int QGoodWindow::width()
@@ -861,9 +868,6 @@ void QGoodWindow::sizeMoveWindow()
     if (!m_win_widget || !m_shadow)
         return;
 
-    int cx = GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER);
-    int cy = GetSystemMetrics(SM_CYFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER);
-
     if (isFullScreen())
     {
         QScreen *screen = windowHandle()->screen();
@@ -875,7 +879,7 @@ void QGoodWindow::sizeMoveWindow()
         QRect rect = QRect(0, 0, frameGeometry().width(), frameGeometry().height());
 
         if (isMaximized() && !isFullScreen())
-            rect.adjust(cx, cy, -cx, -cy);
+            rect.adjust(BORDERWIDTH, BORDERWIDTH, -BORDERWIDTH, -BORDERWIDTH);
 
         SetWindowRgn(m_hwnd, QtWin::toHRGN(rect), TRUE);
     }
@@ -1010,13 +1014,11 @@ LRESULT QGoodWindow::winNCHITTEST(int x, int y)
         }
         else
         {
-            const int border_size = GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER);
-
-            if (ptMouse.x >= rcWindow.right - border_size - rightMargin())
+            if (ptMouse.x >= rcWindow.right - BORDERWIDTH - rightMargin())
                 return HTNOWHERE; // maximized title bar buttons
-            else if (ptMouse.x > rcWindow.left + border_size + iconWidth() && ptMouse.x < rcWindow.left + border_size + iconWidth() + leftMargin())
+            else if (ptMouse.x > rcWindow.left + BORDERWIDTH + iconWidth() && ptMouse.x < rcWindow.left + BORDERWIDTH + iconWidth() + leftMargin())
                 return HTNOWHERE; // custom title bar buttons
-            else if (ptMouse.x < rcWindow.left + border_size + iconWidth())
+            else if (ptMouse.x < rcWindow.left + BORDERWIDTH + iconWidth())
                 return HTSYSMENU; // maximized title bar icon
         }
     }
@@ -1121,9 +1123,6 @@ QWidget *QGoodWindow::parentForModal()
     if (!isMinimized() && isVisible())
     {
         windowrect = frameGeometry();
-
-        windowrect.moveTopLeft(windowrect.topLeft());
-        windowrect.setSize(windowrect.size());
     }
     else
     {
@@ -1138,10 +1137,23 @@ QWidget *QGoodWindow::parentForModal()
 
     QRect finalrect = screenrect.intersected(windowrect);
 
+#if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
+    if (QSysInfo::productVersion() == "10")
+    {
+        finalrect.adjust(BORDERWIDTH * 2, titleBarHeight() + BORDERWIDTH, BORDERWIDTH, BORDERWIDTH);
+    }
+    else if (isMaximized())
+    {
+        finalrect.adjust(BORDERWIDTH, BORDERWIDTH, -BORDERWIDTH, -BORDERWIDTH);
+    }
+#endif
+
     mw->setGeometry(finalrect);
 
     if (isMinimized())
         showNormal();
+
+    QTimer::singleShot(0, [=]{qApp->processEvents();});
 
     return mw;
 #else
