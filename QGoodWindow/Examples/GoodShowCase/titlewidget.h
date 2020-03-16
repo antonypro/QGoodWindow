@@ -1,3 +1,4 @@
+/*
 The MIT License (MIT)
 
 Copyright © 2018-2020 Antonio Dias
@@ -19,3 +20,36 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+*/
+
+#ifndef TITLEWIDGET_H
+#define TITLEWIDGET_H
+
+#include <QtCore>
+#include <QtGui>
+#include <QtWidgets>
+
+class TitleWidget : public QWidget
+{
+    Q_OBJECT
+public:
+    explicit TitleWidget(qreal pixel_ratio, QWidget *parent = nullptr);
+
+public slots:
+    void setText(const QString &text);
+    void setActive(bool active);
+    void setTitleColor(const QColor &active_color, const QColor &inactive_color);
+
+private:
+    //Functions
+    void paintEvent(QPaintEvent *event);
+
+    //Variables
+    QString m_title;
+    bool m_active;
+    QColor m_active_color;
+    QColor m_inactive_color;
+    qreal m_pixel_ratio;
+};
+
+#endif // TITLEWIDGET_H

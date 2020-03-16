@@ -1,0 +1,20 @@
+<RCC>
+    <qresource prefix="/">
+        <file>icons/close-active-dark.ico</file>
+        <file>icons/close-active-light.ico</file>
+        <file>icons/close-inactive-dark.ico</file>
+        <file>icons/close-inactive-light.ico</file>
+        <file>icons/maximize-active-dark.ico</file>
+        <file>icons/maximize-active-light.ico</file>
+        <file>icons/maximize-inactive-dark.ico</file>
+        <file>icons/maximize-inactive-light.ico</file>
+        <file>icons/minimize-active-dark.ico</file>
+        <file>icons/minimize-active-light.ico</file>
+        <file>icons/minimize-inactive-dark.ico</file>
+        <file>icons/minimize-inactive-light.ico</file>
+        <file>icons/restore-active-dark.ico</file>
+        <file>icons/restore-active-light.ico</file>
+        <file>icons/restore-inactive-dark.ico</file>
+        <file>icons/restore-inactive-light.ico</file>
+    </qresource>
+</RCC>

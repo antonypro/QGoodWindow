@@ -1,3 +1,4 @@
+/*
 The MIT License (MIT)
 
 Copyright © 2018-2020 Antonio Dias
@@ -19,3 +20,34 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+*/
+
+#ifndef ICONWIDGET_H
+#define ICONWIDGET_H
+
+#include <QtCore>
+#include <QtGui>
+#include <QtWidgets>
+
+class IconWidget : public QWidget
+{
+    Q_OBJECT
+public:
+    explicit IconWidget(qreal pixel_ratio, QWidget *parent = nullptr);
+
+public slots:
+    void setPixmap(const QPixmap &pixmap);
+    void setActive(bool active);
+
+private:
+    //Functions
+    void paintEvent(QPaintEvent *event);
+
+    //Variables
+    QPixmap m_pixmap;
+    QPixmap m_grayed_pixmap;
+    bool m_active;
+    qreal m_pixel_ratio;
+};
+
+#endif // ICONWIDGET_H

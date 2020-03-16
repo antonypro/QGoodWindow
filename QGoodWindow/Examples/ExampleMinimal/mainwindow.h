@@ -1,3 +1,4 @@
+/*
 The MIT License (MIT)
 
 Copyright © 2018-2020 Antonio Dias
@@ -19,3 +20,19 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+*/
+
+#ifndef MAINWINDOW_H
+#define MAINWINDOW_H
+
+#include <QGoodWindow>
+
+class MainWindow : public QGoodWindow
+{
+    Q_OBJECT
+public:
+    MainWindow(QWidget *parent = nullptr);
+    ~MainWindow();
+};
+
+#endif // MAINWINDOW_H

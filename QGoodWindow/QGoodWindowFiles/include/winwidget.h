@@ -1,3 +1,4 @@
+/*
 The MIT License (MIT)
 
 Copyright © 2018-2020 Antonio Dias
@@ -19,3 +20,39 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+*/
+
+#ifndef WINWIDGET_H
+#define WINWIDGET_H
+
+#include <QtCore>
+#include <QtGui>
+#include <QtWidgets>
+#include "qwinwidget.h"
+#include <windowsx.h>
+
+//\cond HIDDEN_SYMBOLS
+class WinWidget : public QWinWidget
+{
+    Q_OBJECT
+public:
+    explicit WinWidget(HWND parent_hwnd, QWidget *parent = nullptr);
+
+    //Functions
+    void setMargins(int title_bar_height, int icon_width, int left, int right);
+
+private:
+    //Functions
+    bool event(QEvent *event);
+    bool nativeEvent(const QByteArray &eventType, void *message, long *result);
+
+    //Variables
+    QWidget *m_parent;
+    int m_title_bar_height;
+    int m_icon_width;
+    int m_left;
+    int m_right;
+};
+//\endcond
+
+#endif // WINWIDGET_H
