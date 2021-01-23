@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2020 Antonio Dias
+Copyright © 2018-2021 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -27,12 +27,13 @@ SOFTWARE.
 
 int main(int argc, char *argv[])
 {
-#ifndef Q_OS_WIN
+#ifdef Q_OS_ANDROID
     QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 #endif
     QApplication a(argc, argv);
-    MainWindow w;
-    w.show();
+
+    MainWindow mw;
+    mw.show();
 
     return a.exec();
 }

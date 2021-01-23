@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2020 Antonio Dias
+Copyright © 2018-2021 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,8 @@ CaptionButton::CaptionButton(IconType type, qreal pixel_ratio, QWidget *parent) 
 {
     m_type = type;
     m_pixel_ratio = pixel_ratio;
+    m_is_active = false;
+    m_is_under_mouse = false;
     m_is_pressed = false;
     m_icon_dark = false;
 
@@ -147,8 +149,6 @@ void CaptionButton::setColors()
         }
     }
 
-    m_current_color = m_normal;
-
     repaint();
 }
 
@@ -156,75 +156,37 @@ void CaptionButton::setIconMode(bool icon_dark)
 {
     m_icon_dark = icon_dark;
 
-    setColors();
     drawIcons();
+    setColors();
 
     repaint();
 }
 
-void CaptionButton::setActive(bool active_window)
+void CaptionButton::setActive(bool is_active)
 {
-    if (active_window)
-    {
-        if (m_type == IconType::Close && m_icon_dark && m_is_pressed)
-            m_current_icon = m_close_icon_hover;
-        else
-            m_current_icon = m_active_icon;
-
-        m_last_icon = m_active_icon;
-    }
-    else
-    {
-        m_current_icon = m_inactive_icon;
-        m_last_icon = m_current_icon;
-    }
+    m_is_active = is_active;
 
     repaint();
-}
-
-void CaptionButton::paintEvent(QPaintEvent *event)
-{
-    Q_UNUSED(event)
-
-    QPainter painter(this);
-    painter.setRenderHints(QPainter::Antialiasing);
-    painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
-
-    painter.fillRect(rect(), m_current_color);
-
-    int w = qCeil(10 * m_pixel_ratio);
-
-    if (w <= 10)
-        w = 10;
-    else if (w <= 12)
-        w = 12;
-    else
-        w = 15;
-
-    int h = m_type != IconType::Minimize ? w : 1;
-
-    QRect target_rect;
-    target_rect = m_current_icon.rect();
-    target_rect.setSize(QSize(w, h));
-    target_rect = QRect(rect().center() - target_rect.center(), target_rect.size());
-
-    painter.drawPixmap(target_rect, m_current_icon);
 }
 
 bool CaptionButton::event(QEvent *event)
 {
     switch (event->type())
     {
+#ifdef Q_OS_MAC
+    case QEvent::ShowToParent:
+    {
+        QPainterPath path;
+        path.addRoundedRect(rect(), 10, 10);
+        QRegion mask = QRegion(path.toFillPolygon().toPolygon());
+        setMask(mask);
+
+        break;
+    }
+#endif
     case QEvent::HoverEnter:
     {
-        m_last_icon = m_current_icon;
-
-        if (m_type == IconType::Close && m_icon_dark)
-            m_current_icon = m_close_icon_hover;
-        else
-            m_current_icon = m_active_icon;
-
-        m_current_color = m_hover;
+        m_is_under_mouse = true;
 
         repaint();
 
@@ -232,9 +194,7 @@ bool CaptionButton::event(QEvent *event)
     }
     case QEvent::HoverLeave:
     {
-        m_current_icon = m_last_icon;
-
-        m_current_color = m_normal;
+        m_is_under_mouse = false;
 
         repaint();
 
@@ -242,37 +202,9 @@ bool CaptionButton::event(QEvent *event)
     }
     case QEvent::MouseMove:
     {
-        if (m_is_pressed && underMouse())
-        {
-            if (m_type == IconType::Close && m_icon_dark)
-                m_current_icon = m_close_icon_hover;
+        m_is_under_mouse = isUnderMouse();
 
-            m_current_color = m_pressed;
-
-            repaint();
-        }
-        else if (underMouse())
-        {
-            if (m_type == IconType::Close && m_icon_dark)
-                m_current_icon = m_close_icon_hover;
-
-            m_last_icon = m_active_icon;
-
-            m_current_color = m_hover;
-
-            repaint();
-        }
-        else
-        {
-            if (m_type == IconType::Close && m_icon_dark)
-                m_current_icon = m_active_icon;
-
-            m_last_icon = m_active_icon;
-
-            m_current_color = m_normal;
-
-            repaint();
-        }
+        repaint();
 
         break;
     }
@@ -285,10 +217,7 @@ bool CaptionButton::event(QEvent *event)
 
         m_is_pressed = true;
 
-        if (m_type == IconType::Close && m_icon_dark)
-            m_current_icon = m_close_icon_hover;
-
-        m_current_color = m_pressed;
+        m_is_under_mouse = true;
 
         repaint();
 
@@ -303,15 +232,14 @@ bool CaptionButton::event(QEvent *event)
 
         m_is_pressed = false;
 
-        if (m_type == IconType::Close && m_icon_dark)
-            m_current_icon = m_active_icon;
-
-        m_current_color = m_normal;
+        m_is_under_mouse = false;
 
         repaint();
 
-        if (underMouse())
+        if (isUnderMouse())
+        {
             emit clicked();
+        }
 
         break;
     }
@@ -322,7 +250,62 @@ bool CaptionButton::event(QEvent *event)
     return QWidget::event(event);
 }
 
-bool CaptionButton::underMouse()
+void CaptionButton::paintEvent(QPaintEvent *event)
+{
+    Q_UNUSED(event)
+
+    QPixmap current_icon = m_active_icon;
+    QColor current_color = m_normal;
+
+    //Change icon if needed
+    if (m_is_under_mouse)
+    {
+        if (m_type == IconType::Close && m_icon_dark)
+            current_icon = m_close_icon_hover;
+    }
+    else
+    {
+        if (!m_is_active)
+            current_icon = m_inactive_icon;
+    }
+
+    //Change background color if needed
+    if (m_is_pressed)
+    {
+        if (m_is_under_mouse)
+            current_color = m_pressed;
+    }
+    else
+    {
+        if (m_is_under_mouse)
+            current_color = m_hover;
+    }
+
+    QPainter painter(this);
+    painter.setRenderHints(QPainter::Antialiasing);
+    painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+
+    painter.fillRect(rect(), current_color);
+
+    int w = qCeil(10 * m_pixel_ratio);
+
+    if (w <= 10)
+        w = 10;
+    else if (w <= 12)
+        w = 12;
+    else
+        w = 15;
+
+    int h = (m_type != IconType::Minimize) ? w : 1;
+
+    QRect target_rect;
+    target_rect = current_icon.rect();
+    target_rect.setSize(QSize(w, h));
+    target_rect = QRect(rect().center() - target_rect.center(), target_rect.size());
+    painter.drawPixmap(target_rect, current_icon);
+}
+
+bool CaptionButton::isUnderMouse()
 {
     return (rect().contains(mapFromGlobal(QCursor::pos())));
 }

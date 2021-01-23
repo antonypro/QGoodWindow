@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2020 Antonio Dias
+Copyright © 2018-2021 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,7 @@ SOFTWARE.
 
 MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent)
 {
-#ifdef Q_OS_WIN
+#ifdef QGOODWINDOW
     title_bar = new TitleBar(pixelRatio(), this);
 
     frame = new QFrame(this);
@@ -35,7 +35,11 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent)
 
     m_color_str = "#FFFFFF";
 
+#ifndef Q_OS_MAC
     frame->setStyleSheet(m_frame_style.arg(m_color_str).arg("1px solid #1883D7"));
+#else
+    frame->setStyleSheet(m_frame_style.arg(m_color_str).arg("none"));
+#endif
 
     QVBoxLayout *layout = new QVBoxLayout(frame);
     layout->setMargin(0);
@@ -44,8 +48,6 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent)
     layout->addStretch(1);
 
     setCentralWidget(frame);
-
-    setMargins(qRound(30 * pixelRatio()), qRound(30 * pixelRatio()), 0, qRound(36 * 3 * pixelRatio()));
 
     connect(title_bar, &TitleBar::showMinimized, this, &MainWindow::showMinimized);
     connect(title_bar, &TitleBar::showNormal, this, &MainWindow::showNormal);
@@ -58,10 +60,10 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent)
 
     connect(this, &MainWindow::windowIconChanged, this, [=](const QIcon &icon){
         if (!icon.isNull())
-            title_bar->setIcon(icon.pixmap(GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON)));
+            title_bar->setIcon(icon.pixmap(16, 16));
     });
 #else
-    QString m_frame_style = QString("QFrame {background-color: #303030;}");
+    QString m_frame_style = QString("QFrame {background-color: #FFFFFF;}");
 
     QFrame *frame = new QFrame(this);
     frame->setStyleSheet(m_frame_style);
@@ -72,8 +74,8 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent)
 
     move(QGuiApplication::primaryScreen()->availableGeometry().center() - rect().center());
 
-#ifdef Q_OS_WIN
-    QShortcut *shortcut = new QShortcut(QKeySequence("CTRL+W"), this);
+#ifdef QGOODWINDOW
+    QShortcut *shortcut = new QShortcut(QKeySequence(Qt::Key_S), this);
 
     connect(shortcut, &QShortcut::activated, this, [=]{
         title_bar->setDarkMode(!title_bar->dark());
@@ -83,16 +85,33 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent)
         else
             m_color_str = "#000000";
 
-        frame->setStyleSheet(m_frame_style.arg(m_color_str).arg(isMaximized() ? "none" : "1px solid #1883D7"));
+#ifndef Q_OS_MAC
+        frame->setStyleSheet(m_frame_style.arg(m_color_str)
+                             .arg((isFullScreen() || isMaximized()) ? "none" : "1px solid #1883D7"));
+#else
+        frame->setStyleSheet(m_frame_style.arg(m_color_str).arg("none"));
+#endif
     });
 #endif
+    QShortcut *shortcut1 = new QShortcut(QKeySequence(Qt::Key_F), this);
+
+    connect(shortcut1, &QShortcut::activated, this, [=]{
+        if (!isFullScreen())
+            showFullScreen();
+        else
+            showNormal();
+    });
 
     QPixmap p = QPixmap(1, 1);
     p.fill(Qt::red);
 
     setWindowIcon(p);
 
-    setWindowTitle("Good Window - Press CTRL+W on Windows to switch theme!");
+#ifdef QGOODWINDOW
+    setWindowTitle("Good Window - Press S to toggle theme - Press F to toggle fullscreen!");
+#else
+    setWindowTitle("Good Window - Press F to toggle fullscreen!");
+#endif
 }
 
 MainWindow::~MainWindow()
@@ -110,34 +129,48 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 bool MainWindow::event(QEvent *event)
 {
-#ifdef Q_OS_WIN
     switch (event->type())
     {
+#ifdef QGOODWINDOW
     case QEvent::Show:
     case QEvent::WindowStateChange:
     {
-        frame->setStyleSheet(m_frame_style.arg(m_color_str).arg(isMaximized() ? "none" : "1px solid #1883D7"));
+#ifndef Q_OS_MAC
+        frame->setStyleSheet(m_frame_style.arg(m_color_str)
+                             .arg((isFullScreen() || isMaximized()) ? "none" : "1px solid #1883D7"));
+#endif
+        title_bar->setMaximized(isFullScreen() || isMaximized());
 
-        title_bar->setMaximized(isMaximized());
+        title_bar->setVisible(!isFullScreen());
+
+        if (!isFullScreen())
+            setMargins(qRound(30 * pixelRatio()), qRound(30 * pixelRatio()), 0, qRound(36 * 3 * pixelRatio()));
+        else
+            setMargins(0, 0, 0, 0);
 
         break;
     }
     case QEvent::WindowActivate:
     {
-        frame->setStyleSheet(m_frame_style.arg(m_color_str).arg(isMaximized() ? "none" : "1px solid #1883D7"));
-
+#ifndef Q_OS_MAC
+        frame->setStyleSheet(m_frame_style.arg(m_color_str)
+                             .arg((isFullScreen() || isMaximized()) ? "none" : "1px solid #1883D7"));
+#endif
         title_bar->setActive(true);
 
         break;
     }
     case QEvent::WindowDeactivate:
     {
-        frame->setStyleSheet(m_frame_style.arg(m_color_str).arg(isMaximized() ? "none" : "1px solid #AAAAAA"));
-
+#ifndef Q_OS_MAC
+        frame->setStyleSheet(m_frame_style.arg(m_color_str)
+                             .arg((isFullScreen() || isMaximized()) ? "none" : "1px solid #AAAAAA"));
+#endif
         title_bar->setActive(false);
 
         break;
     }
+#endif
     case QEvent::Resize:
     case QEvent::Hide:
     case QEvent::Move:
@@ -145,12 +178,11 @@ bool MainWindow::event(QEvent *event)
     case QEvent::KeyRelease:
     case QEvent::MouseMove:
     case QEvent::Wheel:
-//        qDebug() << __FUNCTION__ << event;
+        //Listen for Qt window events
         break;
     default:
         break;
     }
-#endif
 
     return QGoodWindow::event(event);
 }

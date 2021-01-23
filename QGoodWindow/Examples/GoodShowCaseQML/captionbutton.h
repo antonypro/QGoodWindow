@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2020 Antonio Dias
+Copyright © 2018-2021 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -41,38 +41,37 @@ public:
         Close
     };
 
-    explicit CaptionButton(IconType type, qreal pixel_ratio, QWidget *parent = nullptr);
+    explicit CaptionButton(IconType type, qreal pixelRatio, QWidget *parent = nullptr);
 
 signals:
     void clicked();
 
 public slots:
     void setIconMode(bool icon_dark);
-    void setActive(bool active_window);
+    void setActive(bool is_active);
 
 private:
     //Functions
     void setColors();
     void drawIcons();
-    void paintEvent(QPaintEvent *event);
     bool event(QEvent *event);
-    bool underMouse();
+    void paintEvent(QPaintEvent *event);
+    inline bool isUnderMouse();
 
     //Variables
     QPixmap m_inactive_icon;
     QPixmap m_active_icon;
-    QPixmap m_last_icon;
+
     QPixmap m_close_icon_hover;
 
     QColor m_normal;
     QColor m_hover;
     QColor m_pressed;
 
-    QPixmap m_current_icon;
-    QColor m_current_color;
-
     IconType m_type;
     qreal m_pixel_ratio;
+    bool m_is_active;
+    bool m_is_under_mouse;
     bool m_is_pressed;
     bool m_icon_dark;
 };

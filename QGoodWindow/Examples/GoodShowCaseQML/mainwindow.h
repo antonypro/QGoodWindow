@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2020 Antonio Dias
+Copyright © 2018-2021 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -29,9 +29,20 @@ SOFTWARE.
 #include <QtQuick>
 #include <QtQuickWidgets>
 #include <QGoodWindow>
-#ifdef Q_OS_WIN
+#ifdef QGOODWINDOW
 #include "titlebar.h"
 #endif
+
+inline qreal pixelRatio()
+{
+#ifdef Q_OS_WIN
+    QScreen *screen = QApplication::primaryScreen();
+    qreal pixel_ratio = screen->logicalDotsPerInch() / qreal(96);
+#else
+    qreal pixel_ratio = qreal(1);
+#endif
+    return pixel_ratio;
+}
 
 class MainWindow : public QGoodWindow
 {
@@ -47,7 +58,7 @@ private:
     bool event(QEvent *event);
 
     //Variables
-#ifdef Q_OS_WIN
+#ifdef QGOODWINDOW
     TitleBar *title_bar;
     QFrame *frame;
     QString m_frame_style;
