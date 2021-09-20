@@ -29,34 +29,7 @@ SOFTWARE.
 #include <QtGui>
 #include <QtWidgets>
 
-#ifdef Q_OS_WIN
-
-#define SHADOWWIDTH qCeil(10 * m_pixel_ratio)
-#define COLOR1 QColor(0, 0, 0, 75)
-#define COLOR2 QColor(0, 0, 0, 30)
-#define COLOR3 QColor(0, 0, 0, 1)
-
-#endif
-
 #ifdef Q_OS_LINUX
-
-#define BORDERWIDTH 8 //PIXELS
-
-#define MOVERESIZE_MOVE 8 //X11 Fixed Value
-
-#define NO_WHERE -1
-#define TOP_LEFT 0
-#define TOP 1
-#define TOP_RIGHT 2
-#define LEFT 7
-#define RIGHT 3
-#define BOTTOM_LEFT 6
-#define BOTTOM 5
-#define BOTTOM_RIGHT 4
-#define TITLE_BAR 8
-#endif
-
-#ifndef Q_OS_WIN
 class QGoodWindow;
 #endif
 
@@ -67,7 +40,8 @@ class Shadow : public QWidget
 public:
 #ifdef Q_OS_WIN
     explicit Shadow(qreal pixel_ratio, HWND hwnd);
-#else
+#endif
+#ifdef Q_OS_LINUX
     explicit Shadow(QWidget *parent);
 #endif
 
@@ -76,14 +50,15 @@ public slots:
     void show();
     void hide();
     void setActive(bool active);
+    int shadowWidth();
 
 private:
     //Functions
     bool nativeEvent(const QByteArray &eventType, void *message, long *result);
     void paintEvent(QPaintEvent *event);
 
-#ifdef Q_OS_WIN
     //Variables
+#ifdef Q_OS_WIN
     HWND m_hwnd;
     QTimer *m_timer;
     bool m_active;

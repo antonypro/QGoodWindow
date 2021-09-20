@@ -29,30 +29,22 @@ SOFTWARE.
 #include <QtGui>
 #include <QtWidgets>
 #include <windowsx.h>
-#include "qwinwidget.h"
-#include "qgoodwindow.h"
+
+class QGoodWindow;
 
 //\cond HIDDEN_SYMBOLS
-class WinWidget : public QWinWidget
+class WinWidget : public QWidget
 {
     Q_OBJECT
 public:
-    explicit WinWidget(HWND parent_hwnd, QGoodWindow *good_window);
-
-    //Functions
-    void setMargins(int title_bar_height, int icon_width, int left, int right);
+    explicit WinWidget(QGoodWindow *gw);
 
 private:
     //Functions
     bool event(QEvent *event);
-    bool nativeEvent(const QByteArray &eventType, void *message, long *result);
 
     //Variables
-    QGoodWindow *m_good_window;
-    int m_title_bar_height;
-    int m_icon_width;
-    int m_left;
-    int m_right;
+    QGoodWindow *m_gw;
 };
 //\endcond
 

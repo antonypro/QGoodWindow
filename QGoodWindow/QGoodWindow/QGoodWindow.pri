@@ -30,34 +30,31 @@ SOURCES += \
 HEADERS += \
     $$PWD/QGoodWindowSource/qgoodwindow.h
 
+INCLUDEPATH += $$PWD
+
 win32 {
-QT += winextras gui-private
+QT += winextras
 
 SOURCES += \
     $$PWD/QGoodWindowSource/shadow.cpp \
-    $$PWD/QGoodWindowSource/qmfcapp.cpp \
-    $$PWD/QGoodWindowSource/qwinhost.cpp \
-    $$PWD/QGoodWindowSource/qwinwidget.cpp \
     $$PWD/QGoodWindowSource/winwidget.cpp
 
 HEADERS += \
     $$PWD/QGoodWindowSource/common.h \
     $$PWD/QGoodWindowSource/shadow.h \
-    $$PWD/QGoodWindowSource/qmfcapp.h \
-    $$PWD/QGoodWindowSource/qwinhost.h \
-    $$PWD/QGoodWindowSource/qwinwidget.h \
     $$PWD/QGoodWindowSource/winwidget.h
 
 LIBS += -lUser32 -lGdi32
 
 DEFINES += QGOODWINDOW
+CONFIG += qgoodwindow
 }
 
 unix:!mac:!android {
 QT += x11extras testlib
 
 SOURCES += \
-    $$PWD/QGoodWindowSource/shadow.cpp \
+    $$PWD/QGoodWindowSource/shadow.cpp
 
 HEADERS += \
     $$PWD/QGoodWindowSource/shadow.h
@@ -65,6 +62,7 @@ HEADERS += \
 LIBS += -lX11
 
 DEFINES += QGOODWINDOW
+CONFIG += qgoodwindow
 }
 
 mac {
@@ -81,6 +79,5 @@ HEADERS += \
 LIBS += -framework Foundation -framework Cocoa -framework AppKit
 
 DEFINES += QGOODWINDOW
+CONFIG += qgoodwindow
 }
-
-INCLUDEPATH += $$PWD

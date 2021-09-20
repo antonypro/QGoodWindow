@@ -22,9 +22,9 @@
 
 QT += core gui widgets
 
-CONFIG += c++11
+include($$PWD/../../QGoodWindow/QGoodWindow.pri)
 
-TEMPLATE = app
+CONFIG += c++11
 
 SOURCES += \
     main.cpp \
@@ -32,5 +32,3 @@ SOURCES += \
 
 HEADERS += \
     mainwindow.h
-
-include($$PWD/../../QGoodWindow/QGoodWindow.pri)

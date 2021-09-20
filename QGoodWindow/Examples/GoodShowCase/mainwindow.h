@@ -26,15 +26,26 @@ SOFTWARE.
 #define MAINWINDOW_H
 
 #include <QGoodWindow>
+
+#ifdef Q_OS_WIN
+#include <QtWinExtras>
+#endif
+
 #ifdef QGOODWINDOW
 #include "titlebar.h"
 #endif
 
 inline qreal pixelRatio()
 {
-#ifdef Q_OS_WIN
+#ifdef QGOODWINDOW
     QScreen *screen = QApplication::primaryScreen();
+
+#ifdef Q_OS_MAC
+    qreal pixel_ratio = screen->devicePixelRatio();
+#else
     qreal pixel_ratio = screen->logicalDotsPerInch() / qreal(96);
+#endif
+
 #else
     qreal pixel_ratio = qreal(1);
 #endif
@@ -51,14 +62,16 @@ public:
 private:
     //Functions
     void closeEvent(QCloseEvent *event);
+    bool nativeEvent(const QByteArray &eventType, void *message, long *result);
     bool event(QEvent *event);
 
     //Variables
+    bool m_dark;
+    QFrame *frame;
+    QString m_color_str;
+    QString m_frame_style;
 #ifdef QGOODWINDOW
     TitleBar *title_bar;
-    QFrame *frame;
-    QString m_frame_style;
-    QString m_color_str;
 #endif
 };
 

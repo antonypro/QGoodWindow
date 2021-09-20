@@ -25,60 +25,50 @@ SOFTWARE.
 #ifndef COMMON_H
 #define COMMON_H
 
+#ifdef _WIN32
+
+#ifdef _WIN32_WINNT
+#undef _WIN32_WINNT
+#endif
+
+#define _WIN32_WINNT _WIN32_WINNT_VISTA
+
+#endif
+
 #include <QtCore>
 #include <QtGui>
 #include <QtWidgets>
-#include "QGoodWindowSource/qgoodwindow.h"
+
+#ifdef Q_OS_LINUX
+
+#define BORDERWIDTH 10 //PIXELS
+
+#define MOVERESIZE_MOVE 8 //X11 Fixed Value
+
+#endif
+
+#if defined Q_OS_LINUX || defined Q_OS_MAC
+//These values are mandatory on Linux and arbitrary on macOS,
+//using the same for convenience.
+
+#define NO_WHERE -1
+#define TOP_LEFT 0
+#define TOP 1
+#define TOP_RIGHT 2
+#define LEFT 7
+#define RIGHT 3
+#define BOTTOM_LEFT 6
+#define BOTTOM 5
+#define BOTTOM_RIGHT 4
+#define TITLE_BAR 8
+
+#endif
 
 #ifdef Q_OS_WIN
 
 #include <windows.h>
 
-#ifndef SM_CXPADDEDBORDER
-#define SM_CXPADDEDBORDER 92
-#endif
-
-//\cond HIDDEN_SYMBOLS
-inline void moveDialog(QDialog *dialog, QGoodWindow *good_window)
-{
-    const int title_bar_height = (GetSystemMetrics(SM_CYFRAME) + GetSystemMetrics(SM_CYCAPTION) + GetSystemMetrics(SM_CXPADDEDBORDER));
-    const int border_width = (GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER));
-
-    QScreen *screen = good_window->windowHandle()->screen();
-    QRect good_window_rect;
-
-    if (!good_window->isMinimized() && good_window->isVisible())
-    {
-        good_window_rect = good_window->frameGeometry();
-    }
-    else
-    {
-        good_window_rect = screen->availableGeometry();
-    }
-
-    QRect screen_rect = screen->availableGeometry();
-
-    QRect dialog_rect = dialog->geometry();
-
-    dialog_rect.moveCenter(good_window_rect.center());
-
-    dialog_rect.moveLeft(qMax(dialog_rect.left(), screen_rect.left() + border_width));
-    dialog_rect.moveTop(qMax(dialog_rect.top() + good_window->titleBarHeight() / 2, screen_rect.top() + title_bar_height));
-    dialog_rect.moveRight(qMin(dialog_rect.right(), screen_rect.right() - border_width));
-    dialog_rect.moveBottom(qMin(dialog_rect.bottom(), screen_rect.bottom() - border_width));
-
-    dialog->setGeometry(dialog_rect);
-
-    if (dialog->windowIcon().isNull())
-        dialog->setWindowIcon(good_window->windowIcon());
-
-    dialog->setAttribute(Qt::WA_DontShowOnScreen, true);
-    dialog->setAttribute(Qt::WA_DontShowOnScreen, false);
-
-    if (good_window->isMinimized())
-        good_window->showNormal();
-}
-//\endcond
+#define BORDERWIDTH (GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER))
 
 #endif
 

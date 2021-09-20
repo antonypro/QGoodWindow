@@ -22,10 +22,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "QGoodWindowSource/shadow.h"
+#include "shadow.h"
 
 #ifdef Q_OS_LINUX
-#include "QGoodWindowSource/qgoodwindow.h"
+#include "qgoodwindow.h"
+#endif
+
+#ifdef Q_OS_WIN
+#define SHADOWWIDTH qCeil(10 * m_pixel_ratio)
+#define COLOR1 QColor(0, 0, 0, 75)
+#define COLOR2 QColor(0, 0, 0, 30)
+#define COLOR3 QColor(0, 0, 0, 1)
 #endif
 
 #ifdef Q_OS_WIN
@@ -57,8 +64,7 @@ Shadow::Shadow(QWidget *parent) : QWidget(parent)
     setWindowFlags(Qt::Window |
                    Qt::FramelessWindowHint |
                    Qt::WindowDoesNotAcceptFocus |
-                   Qt::WindowStaysOnBottomHint |
-                   Qt::X11BypassWindowManagerHint);
+                   Qt::BypassWindowManagerHint);
 
     setAttribute(Qt::WA_NoSystemBackground);
     setAttribute(Qt::WA_TranslucentBackground);
@@ -66,6 +72,15 @@ Shadow::Shadow(QWidget *parent) : QWidget(parent)
     setMouseTracking(true);
 }
 #endif
+
+int Shadow::shadowWidth()
+{
+#ifdef Q_OS_WIN
+    return SHADOWWIDTH;
+#else
+    return 0;
+#endif
+}
 
 void Shadow::showLater()
 {
@@ -96,6 +111,8 @@ void Shadow::show()
 void Shadow::hide()
 {
 #ifdef Q_OS_WIN
+    m_timer->stop();
+
     if (!isVisible())
         return;
 
@@ -118,7 +135,7 @@ void Shadow::setActive(bool active)
 bool Shadow::nativeEvent(const QByteArray &eventType, void *message, long *result)
 {
 #ifdef Q_OS_WIN
-    MSG* msg = reinterpret_cast<MSG*>(message);
+    MSG* msg = static_cast<MSG*>(message);
 
     switch (msg->message)
     {
@@ -176,6 +193,9 @@ void Shadow::paintEvent(QPaintEvent *event)
 
 #ifdef Q_OS_WIN
     //Draw shadow
+
+    const int shadow_width = SHADOWWIDTH;
+
     QPainter painter(this);
 
     painter.setCompositionMode(QPainter::CompositionMode_Source);
@@ -184,17 +204,17 @@ void Shadow::paintEvent(QPaintEvent *event)
     {
         painter.fillRect(rect(), QColor(0, 0, 0, 1));
 
-        QRect rect1 = rect().adjusted(SHADOWWIDTH, SHADOWWIDTH, -SHADOWWIDTH, -SHADOWWIDTH);
+        QRect rect1 = rect().adjusted(shadow_width, shadow_width, -shadow_width, -shadow_width);
 
         painter.fillRect(rect1, Qt::transparent);
 
         return;
     }
 
-    QPixmap radial_gradient = QPixmap(SHADOWWIDTH * 2, SHADOWWIDTH * 2);
+    QPixmap radial_gradient = QPixmap(shadow_width * 2, shadow_width * 2);
 
     {
-        //Draw a radial gradient then split it in 4 parts and draw it to corners
+        //Draw a radial gradient then split it in 4 parts and draw it to corners and edges
 
         radial_gradient.fill(QColor(0, 0, 0, 1));
 
@@ -202,7 +222,7 @@ void Shadow::paintEvent(QPaintEvent *event)
         painter.setRenderHint(QPainter::Antialiasing);
         painter.setCompositionMode(QPainter::CompositionMode_Source);
 
-        QRadialGradient gradient(SHADOWWIDTH, SHADOWWIDTH, SHADOWWIDTH);
+        QRadialGradient gradient(shadow_width, shadow_width, shadow_width);
         gradient.setColorAt(0.0, COLOR1);
         gradient.setColorAt(0.2, COLOR2);
         gradient.setColorAt(0.5, COLOR3);
@@ -210,20 +230,20 @@ void Shadow::paintEvent(QPaintEvent *event)
         QPen pen(Qt::transparent, 0);
         painter.setPen(pen);
         painter.setBrush(gradient);
-        painter.drawEllipse(0, 0, SHADOWWIDTH * 2, SHADOWWIDTH * 2);
+        painter.drawEllipse(0, 0, shadow_width * 2, shadow_width * 2);
     }
 
-    QRect rect1 = rect().adjusted(SHADOWWIDTH, SHADOWWIDTH, -SHADOWWIDTH, -SHADOWWIDTH);
+    QRect rect1 = rect().adjusted(shadow_width, shadow_width, -shadow_width, -shadow_width);
 
-    painter.drawPixmap(0, 0, SHADOWWIDTH, SHADOWWIDTH, radial_gradient, 0, 0, SHADOWWIDTH, SHADOWWIDTH); //Top-left corner
-    painter.drawPixmap(rect().width() - SHADOWWIDTH, 0, radial_gradient, SHADOWWIDTH, 0, SHADOWWIDTH, SHADOWWIDTH); //Top-right corner
-    painter.drawPixmap(0, rect().height() - SHADOWWIDTH, radial_gradient, 0, SHADOWWIDTH, SHADOWWIDTH, SHADOWWIDTH); //Bottom-left corner
-    painter.drawPixmap(rect().width() - SHADOWWIDTH, rect().height() - SHADOWWIDTH, radial_gradient, SHADOWWIDTH, SHADOWWIDTH, SHADOWWIDTH, SHADOWWIDTH); //Bottom-right corner
+    painter.drawPixmap(0, 0, shadow_width, shadow_width, radial_gradient, 0, 0, shadow_width, shadow_width); //Top-left corner
+    painter.drawPixmap(rect().width() - shadow_width, 0, radial_gradient, shadow_width, 0, shadow_width, shadow_width); //Top-right corner
+    painter.drawPixmap(0, rect().height() - shadow_width, radial_gradient, 0, shadow_width, shadow_width, shadow_width); //Bottom-left corner
+    painter.drawPixmap(rect().width() - shadow_width, rect().height() - shadow_width, radial_gradient, shadow_width, shadow_width, shadow_width, shadow_width); //Bottom-right corner
 
-    painter.drawPixmap(SHADOWWIDTH, 0, rect1.width(), SHADOWWIDTH, radial_gradient, SHADOWWIDTH, 0, 1, SHADOWWIDTH); //Top
-    painter.drawPixmap(0, SHADOWWIDTH, SHADOWWIDTH, rect1.height(), radial_gradient, 0, SHADOWWIDTH, SHADOWWIDTH, 1); //Left
-    painter.drawPixmap(rect1.width() + SHADOWWIDTH, SHADOWWIDTH, SHADOWWIDTH, rect1.height(), radial_gradient, SHADOWWIDTH, SHADOWWIDTH, SHADOWWIDTH, 1); //Right
-    painter.drawPixmap(SHADOWWIDTH, rect1.height() + SHADOWWIDTH, rect1.width(), SHADOWWIDTH, radial_gradient, SHADOWWIDTH, SHADOWWIDTH, 1, SHADOWWIDTH); //Bottom
+    painter.drawPixmap(shadow_width, 0, rect1.width(), shadow_width, radial_gradient, shadow_width, 0, 1, shadow_width); //Top
+    painter.drawPixmap(0, shadow_width, shadow_width, rect1.height(), radial_gradient, 0, shadow_width, shadow_width, 1); //Left
+    painter.drawPixmap(rect1.width() + shadow_width, shadow_width, shadow_width, rect1.height(), radial_gradient, shadow_width, shadow_width, shadow_width, 1); //Right
+    painter.drawPixmap(shadow_width, rect1.height() + shadow_width, rect1.width(), shadow_width, radial_gradient, shadow_width, shadow_width, 1, SHADOWWIDTH); //Bottom
 #endif
 #ifdef Q_OS_LINUX
     if (!m_parent)

@@ -29,15 +29,27 @@ SOFTWARE.
 #include <QtQuick>
 #include <QtQuickWidgets>
 #include <QGoodWindow>
+
+#ifdef Q_OS_WIN
+#include <QtWinExtras>
+#endif
+
 #ifdef QGOODWINDOW
 #include "titlebar.h"
+#include "captionbutton.h"
 #endif
 
 inline qreal pixelRatio()
 {
-#ifdef Q_OS_WIN
+#ifdef QGOODWINDOW
     QScreen *screen = QApplication::primaryScreen();
+
+#ifdef Q_OS_MAC
+    qreal pixel_ratio = screen->devicePixelRatio();
+#else
     qreal pixel_ratio = screen->logicalDotsPerInch() / qreal(96);
+#endif
+
 #else
     qreal pixel_ratio = qreal(1);
 #endif
@@ -58,11 +70,12 @@ private:
     bool event(QEvent *event);
 
     //Variables
-#ifdef QGOODWINDOW
-    TitleBar *title_bar;
+    bool m_dark;
     QFrame *frame;
     QString m_frame_style;
     QString m_color_str;
+#ifdef QGOODWINDOW
+    TitleBar *title_bar;
 #endif
 };
 

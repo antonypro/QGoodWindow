@@ -27,14 +27,7 @@ SOFTWARE.
 
 int main(int argc, char *argv[])
 {
-#ifdef Q_OS_ANDROID
-    QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-#endif
     QApplication a(argc, argv);
-
-#ifdef Q_OS_WIN
-    QGoodWindow::setClearColor(QColor("#303030"));
-#endif
 
     MainWindow mw;
     mw.show();

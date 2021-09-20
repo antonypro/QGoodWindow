@@ -25,34 +25,28 @@ SOFTWARE.
 #ifndef QGOODWINDOW_H
 #define QGOODWINDOW_H
 
-#ifdef _WIN32
-
-#ifdef _WIN32_WINNT
-#undef _WIN32_WINNT
-#endif
-
-#define _WIN32_WINNT _WIN32_WINNT_VISTA
-
-#endif
-
 #include <QtCore>
 #include <QtGui>
 #include <QtWidgets>
-#ifdef Q_OS_WIN
-#include <QtWinExtras>
-#endif
+
+#ifdef QGOODWINDOW
 
 #ifdef Q_OS_WIN
 class WinWidget;
+class NativeEventFilter;
 #endif
 
+#if defined Q_OS_WIN || defined Q_OS_LINUX
 class Shadow;
+#endif
+
+#endif
 
 /** **QGoodWindow** class contains the public API's to control the behavior of the customized window.
  *
  * On Windows, **QGoodWindow** class inherits from `QMainWindow` which is used as a widget,
- * and in this case a native window is created, a `QWinWidget` fill this native window and finally the
- * *QGoodWindow* widget covers the `QWinWidget` using layouts.
+ * then a native window is created, a `WinWidget` fill this native window and finally the
+ * *QGoodWindow* widget covers the `WinWidget` using layouts.
  *
  * On Linux and macOS the **QGoodWindow** behaves like a frameless `QMainWindow`.
  */
@@ -62,29 +56,57 @@ class QGoodWindow : public QMainWindow
 public:
     /** Constructor of *QGoodWindow*.
     *
-    * On Windows creates the native window, the `QWinWidget`, turns the `QMainWindow` as
+    * On Windows creates the native window, the `WinWidget`, turns the `QMainWindow` as
     * a widget, creates the shadow, initialize default values and calls the `QMainWindow`
     * parent constructor.
     *
     * On Linux creates the frameless `QMainWindow`, use the shadow only to create resize borders,
-    * and the real shadow is draw by Linux window manager.
+    * and the real shadow is draw by current Linux window manager.
     *
     * On macOS creates a `QMainWindow` with full access to the title bar,
     * and hide native minimize, zoom and close buttons.
     */
-    explicit QGoodWindow(QWidget *parent = nullptr);
+    explicit QGoodWindow(QWidget *parent = nullptr, const QColor &clear_color = QColor(Qt::white));
 
     /** Destructor of *QGoodWindow*. */
     ~QGoodWindow();
 
     //Functions
-    /** Returns the window id of the window. */
+    /** Returns the window id of the *QGoodWindow*. */
     WId winId() const;
 
-    /** Set the clear color of the *QGoodWindow*. Valid only for Windows. */
-    static void setClearColor(const QColor &color);
-
 public slots:
+    /*** QGoodWindow functions begin ***/
+
+    /** On Windows, Linux and macOS, returns the actual title bar height, on other OSes returns 0. */
+    int titleBarHeight() const;
+
+    /** On Windows, Linux and macOS, return the actual icon width, on other OSes returns 0. */
+    int iconWidth() const;
+
+    /** On Windows, Linux and macOS, returns the left margin of the customized title bar, on other OSes returns 0. */
+    int leftMargin() const;
+
+    /** On Windows, Linux and macOS, returns the right margin of the customized title bar, on other OSes returns 0. */
+    int rightMargin() const;
+
+    /** Set the tile bar height, icon width, left and right margins of the customized title bar. */
+    void setMargins(int title_bar_height, int icon_width, int left, int right);
+
+    /** Set the mask for the left margin of the customized title bar. */
+    void setLeftMask(const QRegion &mask);
+
+    /** Set the mask for the right margin of the customized title bar. */
+    void setRightMask(const QRegion &mask);
+
+    /** Get the size that should be the size of the mask on the left margin of the customized title bar. */
+    QSize leftMaskSize() const;
+
+    /** Get the size that should be the size of the mask on the right margin of the customized title bar. */
+    QSize rightMaskSize() const;
+
+    /*** QGoodWindow functions end ***/
+
     /** Set fixed size for *QGoodWindow* to width \e w and height \e h. */
     void setFixedSize(int w, int h);
 
@@ -102,6 +124,9 @@ public slots:
 
     /** Position of the window on screen. */
     QPoint pos() const;
+
+    /** Size of the window on screen. */
+    QSize size() const;
 
     /** X position of the window on screen. */
     int x() const;
@@ -132,22 +157,6 @@ public slots:
 
     /** Set geometry to \e rect. */
     void setGeometry(const QRect &rect);
-
-    /** On Windows, Linux and macOS, returns the actual title bar height, on other OSes returns 0. */
-    int titleBarHeight() const;
-
-    /** On Windows, Linux and macOS, return the actual icon width, on other OSes returns 0. */
-    int iconWidth() const;
-
-    /** On Windows, Linux and macOS, returns the left margin of the customized title bar, on other OSes returns 0. */
-    int leftMargin() const;
-
-    /** On Windows, Linux and macOS, returns the right margin of the customized title bar, on other OSes returns 0. */
-    int rightMargin() const;
-
-    /** Set the tile bar height, icon width, left and right margins of the customized title bar. */
-    void setMargins(int title_bar_height, int icon_width, int left, int right);
-
 
     /** Activates the *QGoodWindow*. */
     void activateWindow();
@@ -191,18 +200,29 @@ public slots:
     /** Returns if the *QGoodWindow* is in full screen mode or not. */
     bool isFullScreen() const;
 
+    /** Returns the *QGoodWindow* state. */
+    Qt::WindowStates windowState() const;
+
+    /** Sets the state of the *QGoodWindow* to \e state. */
+    void setWindowState(Qt::WindowStates state);
 
     /** Returns the window handle of the *QGoodWindow*. */
     QWindow *windowHandle() const;
 
-    /** Returns the opacity the *QGoodWindow*. */
+    /** Returns the opacity of the *QGoodWindow*. */
     qreal windowOpacity() const;
 
     /** Sets the opacity of the *QGoodWindow* to \e level. Where 0.0 is fully transparent and 1.0 fully opaque. */
     void setWindowOpacity(qreal level);
 
+    /** Returns the title of the *QGoodWindow*. */
+    QString windowTitle() const;
+
     /** Sets the title of the *QGoodWindow* to \e title. */
     void setWindowTitle(const QString &title);
+
+    /** Returns the icon of the *QGoodWindow*. */
+    QIcon windowIcon() const;
 
     /** Sets the icon of the *QGoodWindow* to \e icon. */
     void setWindowIcon(const QIcon &icon);
@@ -226,35 +246,34 @@ private:
     void sizeMoveWindow();
     LRESULT ncHitTest(int x, int y);
     void showContextMenu(int x, int y);
+    void showContextMenu();
+    void moveCenterDialog(QDialog *dialog);
 
     //Variables
+    HWND m_hwnd;
     QPointer<WinWidget> m_win_widget;
     QPointer<Shadow> m_shadow;
-    HWND m_hwnd;
     QPointer<QWidget> m_helper_widget;
+    QMainWindow *m_main_window;
+    NativeEventFilter *m_native_event;
+    QWindow *m_window_handle;
+
     QPointer<QWidget> m_focus_widget;
 
     bool m_is_full_screen;
     QRect m_rect_origin;
 
-    bool m_last_shadow_state_hidden;
-    bool m_last_is_visible;
-    bool m_last_minimized;
-    bool m_last_maximized;
-    bool m_last_fullscreen;
-    bool m_window_ready;
+    bool m_active_state;
 
-    qreal m_pixel_ratio;
+    Qt::WindowState m_state;
 
-    QWindow *m_window_handle;
-    bool m_last_state_is_inactive;
+    QColor m_clear_color;
 
-    int m_dialog_visible_count;
+    friend class WinWidget;
+    friend class NativeEventFilter;
 #endif
 #ifdef Q_OS_LINUX
     //Functions
-    inline QPixmap openCursor(const QString &name);
-    inline QString convertIndexToName(int index);
     void setCursorForCurrentPos();
     void startSystemMoveResize();
     void sizeMove();
@@ -263,12 +282,11 @@ private:
     //Variables
     QList<QPointer<Shadow>> m_shadow_list;
 
-    QList<QPixmap> m_cursor_list;
-
     int m_margin;
     QPoint m_cursor_pos;
     bool m_resize_move;
     bool m_resize_move_started;
+    qreal m_pixel_ratio;
 
     friend class Shadow;
 #endif
@@ -279,11 +297,18 @@ private:
     friend class Notification;
 #endif
 #if defined Q_OS_LINUX || defined Q_OS_MAC
+    //Functions
     int ncHitTest(int x, int y);
+
+    //Variables
+    bool m_mouse_button_pressed;
 #endif
 #if defined Q_OS_WIN || defined Q_OS_LINUX
     bool m_fixed_size;
 #endif
+
+    QRegion m_left_mask;
+    QRegion m_right_mask;
 
     int m_title_bar_height;
     int m_icon_width;

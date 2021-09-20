@@ -24,9 +24,9 @@ QT += core gui widgets
 
 win32:QT += winextras
 
-CONFIG += c++11
+include($$PWD/../../QGoodWindow/QGoodWindow.pri)
 
-TEMPLATE = app
+CONFIG += c++11
 
 SOURCES += \
     main.cpp \
@@ -35,6 +35,7 @@ SOURCES += \
 HEADERS += \
     mainwindow.h
 
+qgoodwindow {
 SOURCES += \
     captionbutton.cpp \
     iconwidget.cpp \
@@ -49,5 +50,4 @@ HEADERS += \
 
 RESOURCES += \
     res.qrc
-
-include($$PWD/../../QGoodWindow/QGoodWindow.pri)
+}

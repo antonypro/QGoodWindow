@@ -22,116 +22,20 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "QGoodWindowSource/winwidget.h"
-#include "QGoodWindowSource/common.h"
+#include "winwidget.h"
+#include "common.h"
+#include "qgoodwindow.h"
 
-WinWidget::WinWidget(HWND parent_hwnd, QGoodWindow *good_window) : QWinWidget(parent_hwnd)
+WinWidget::WinWidget(QGoodWindow *gw) : QWidget()
 {
-    m_good_window = good_window;
-    m_title_bar_height = 0;
-    m_icon_width = 0;
-    m_left = 0;
-    m_right = 0;
+    HWND parent_hwnd = HWND(gw->winId());
+    m_gw = gw;
 
-    setMouseTracking(true);
-}
+    setProperty("_q_embedded_native_parent_handle", WId(parent_hwnd));
+    setWindowFlags(Qt::FramelessWindowHint);
 
-void WinWidget::setMargins(int title_bar_height, int icon_width, int left, int right)
-{
-    m_title_bar_height = title_bar_height;
-    m_icon_width = icon_width;
-    m_left = left;
-    m_right = right;
-}
-
-bool WinWidget::nativeEvent(const QByteArray &eventType, void *message, long *result)
-{
-    MSG* msg = reinterpret_cast<MSG*>(message);
-
-    switch (msg->message)
-    {
-    case WM_NCHITTEST:
-    {
-        bool maximized = m_good_window->isMaximized();
-        bool fullscreen = m_good_window->isFullScreen();
-
-        QRegion region;
-
-        QRect window = rect();
-
-        QRect title_bar = QRect(0, 0, width(), m_title_bar_height);
-
-        QRect left = QRect(m_icon_width, 0, m_left, m_title_bar_height);
-
-        QRect right = QRect(width() - m_right, 0, m_right, m_title_bar_height);
-
-        region = window;
-
-        region -= title_bar;
-
-        region += left;
-
-        region += right;
-
-        if (!maximized && !fullscreen)
-        {
-            const int adjust_size = 1;
-
-            region -= QRect(0, 0, width(), adjust_size); //Top
-            region -= QRect(0, 0, adjust_size, height()); //Left
-            region -= QRect(0, height() - 1, width(), adjust_size); //Bottom
-            region -= QRect(width() - 1, height() - 1, adjust_size, height()); //Right
-        }
-
-        QPoint pos = QPoint(GET_X_LPARAM(msg->lParam), GET_Y_LPARAM(msg->lParam));
-
-        if (region.contains(mapFromGlobal(pos)))
-            break;
-
-        //If region not contains the mouse, pass the
-        //WM_NCHITTEST event to main window.
-
-        *result = HTTRANSPARENT;
-        return true;
-    }
-    case WM_SYSKEYDOWN:
-    {
-        if (msg->wParam == VK_SPACE)
-        {
-            //Pass ALT+SPACE to main window.
-            SendMessageW(parentWindow(), msg->message, msg->wParam, msg->lParam);
-            return true;
-        }
-
-        break;
-    }
-    case WM_KEYDOWN:
-    {
-        if (GetKeyState(VK_SHIFT) & 0x8000)
-        {
-            switch (msg->wParam)
-            {
-            case VK_TAB:
-                //Prevent that SHIFT+TAB crashes the application.
-                return true;
-            default:
-                break;
-            }
-        }
-
-        break;
-    }
-    case WM_CONTEXTMENU:
-    {
-        //Pass WM_CONTEXTMENU to main window.
-        SendMessageW(parentWindow(), msg->message, msg->wParam, msg->lParam);
-        return true;
-    }
-    default:
-        break;
-    }
-
-    return QWinWidget::nativeEvent(eventType, message, result);
+    QEvent event(QEvent::EmbeddingControl);
+    QApplication::sendEvent(this, &event);
 }
 
 bool WinWidget::event(QEvent *event)
@@ -146,7 +50,7 @@ bool WinWidget::event(QEvent *event)
         {
             //Pass QDialog to main window,
             //to allow move the dialog to the center of the main window.
-            return QApplication::sendEvent(m_good_window, child_event);
+            return QApplication::sendEvent(m_gw, child_event);
         }
 
         break;
@@ -155,5 +59,5 @@ bool WinWidget::event(QEvent *event)
         break;
     }
 
-    return QWinWidget::event(event);
+    return QWidget::event(event);
 }
