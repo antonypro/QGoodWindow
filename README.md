@@ -19,7 +19,7 @@ To use  **QGoodWindow**  in your project add  `include(path_to/QGoodWindow/QGood
 - **QGoodWindow** can handle changes between Windows Aero, Windows Basic Mode and Classic themes without visual changes on the window itself, as if no change was done.
 - You can create `QDialog` and children's(`QMessageBox` for example) setting **QGoodWindow** as parent and the child will be placed in the center of your window and **QGoodWindow** will be blocked and re-enabled as original `QMainWindow`.
 - **QGoodWindow** on normal state (not maximized and not full screen) keeps a 1 pixel border around the window for resizing, and you can fully customize the color of the border by just changing it in your widget, but since 1 pixel border is a small width for allow resizing, **QGoodWindow** also includes a secondary window that acts both as a shadow and extension for resize border, all with the Windows Snap features preserved.
-- On Windows, you can pass a clear color to class constructor, which allows set a color for the window while itâ€™s opening but its contents is not fully loaded.
+- On Windows, you can pass a clear color to class constructor, which allows set a color for the window while it is opening but its contents is not fully loaded.
 
 *Linux:*
 
