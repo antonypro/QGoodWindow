@@ -36,7 +36,7 @@ On any supported OS, you can verify if **QGoodWindow** is active by checking if 
 
 **QGoodWindow** margins:
 
-- You can change the margins of the title bar at any moment as needed, with allows put a QWidget in the title bar  that needs mouse/keyboard interaction by just increasing left/right margin or change the left/right mask and return to the original margin or mask when the widget is removed from the title bar. More details below.
+- You can change the margins of the title bar at any moment as needed, which allows put a QWidget in the title bar  that needs mouse/keyboard interaction by just increasing left/right margin or change the left/right mask and return to the original margin or mask when the widget is removed from the title bar. More details below.
 
 You can change the margins used in the title bar with this function:
 
