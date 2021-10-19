@@ -79,8 +79,4 @@ Or see the zoomed version:
 
 You can contribute with suggestions, issues report on [Issues](https://github.com/antonypro/QGoodWindow/issues) or sending pull requests.
 
-Also if you fell grateful with my work you may consider making a donation:
-
-[![Donate](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/donate?hosted_button_id=T6KAEVMQ27TBU)
-
 To see what has changed between versions, please see the [CHANGELOG](https://github.com/antonypro/QGoodWindow/blob/master/CHANGELOG.md).
