@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2021 Antonio Dias
+Copyright © 2018-2022 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -53,8 +53,8 @@ TitleBar::TitleBar(qreal pixel_ratio, QWidget *parent) : QFrame(parent)
     connect(clsbtn, &CaptionButton::clicked, this, &TitleBar::closeWindow);
 
     QHBoxLayout *hlayout = new QHBoxLayout(this);
+    hlayout->setContentsMargins(0, 0, 0, 0);
     hlayout->setSpacing(0);
-    hlayout->setMargin(0);
 
     hlayout->addWidget(iconwidget);
     hlayout->addWidget(titlewidget);
@@ -146,5 +146,124 @@ void TitleBar::setDarkMode(bool dark)
         titlewidget->setTitleColor(QColor(0, 0, 0), QColor(150, 150, 150));
 
         setActive(m_active);
+    }
+}
+
+void TitleBar::captionButtonStateChanged(const QGoodWindow::CaptionButtonState &state)
+{
+    switch (state)
+    {
+        // Hover enter
+    case QGoodWindow::CaptionButtonState::MinimizeHoverEnter:
+    {
+        minbtn->setState(QEvent::HoverEnter);
+
+        break;
+    }
+    case QGoodWindow::CaptionButtonState::MaximizeHoverEnter:
+    {
+        if (!m_is_maximized)
+            maxbtn->setState(QEvent::HoverEnter);
+        else
+            restorebtn->setState(QEvent::HoverEnter);
+
+        break;
+    }
+    case QGoodWindow::CaptionButtonState::CloseHoverEnter:
+    {
+        clsbtn->setState(QEvent::HoverEnter);
+
+        break;
+    }
+        // Hover leave
+    case QGoodWindow::CaptionButtonState::MinimizeHoverLeave:
+    {
+        minbtn->setState(QEvent::HoverLeave);
+
+        break;
+    }
+    case QGoodWindow::CaptionButtonState::MaximizeHoverLeave:
+    {
+        if (!m_is_maximized)
+            maxbtn->setState(QEvent::HoverLeave);
+        else
+            restorebtn->setState(QEvent::HoverLeave);
+
+        break;
+    }
+    case QGoodWindow::CaptionButtonState::CloseHoverLeave:
+    {
+        clsbtn->setState(QEvent::HoverLeave);
+
+        break;
+    }
+        // Mouse button press
+    case QGoodWindow::CaptionButtonState::MinimizePress:
+    {
+        minbtn->setState(QEvent::MouseButtonPress);
+
+        break;
+    }
+    case QGoodWindow::CaptionButtonState::MaximizePress:
+    {
+        if (!m_is_maximized)
+            maxbtn->setState(QEvent::MouseButtonPress);
+        else
+            restorebtn->setState(QEvent::MouseButtonPress);
+
+        break;
+    }
+    case QGoodWindow::CaptionButtonState::ClosePress:
+    {
+        clsbtn->setState(QEvent::MouseButtonPress);
+
+        break;
+    }
+        // Mouse button release
+    case QGoodWindow::CaptionButtonState::MinimizeRelease:
+    {
+        minbtn->setState(QEvent::MouseButtonRelease);
+
+        break;
+    }
+    case QGoodWindow::CaptionButtonState::MaximizeRelease:
+    {
+        if (!m_is_maximized)
+            maxbtn->setState(QEvent::MouseButtonRelease);
+        else
+            restorebtn->setState(QEvent::MouseButtonRelease);
+
+        break;
+    }
+    case QGoodWindow::CaptionButtonState::CloseRelease:
+    {
+        clsbtn->setState(QEvent::MouseButtonRelease);
+
+        break;
+    }
+        // Mouse button clicked
+    case QGoodWindow::CaptionButtonState::MinimizeClicked:
+    {
+        emit minbtn->clicked();
+
+        break;
+    }
+    case QGoodWindow::CaptionButtonState::MaximizeClicked:
+    {
+        if (!m_is_maximized)
+            emit maxbtn->clicked();
+        else
+            emit restorebtn->clicked();
+
+        break;
+    }
+    case QGoodWindow::CaptionButtonState::CloseClicked:
+    {
+        emit clsbtn->clicked();
+
+        break;
+    }
+    default:
+        break;
     }
 }

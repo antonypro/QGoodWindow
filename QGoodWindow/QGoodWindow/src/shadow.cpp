@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2021 Antonio Dias
+Copyright © 2018-2022 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -68,8 +68,6 @@ Shadow::Shadow(QWidget *parent) : QWidget(parent)
 
     setAttribute(Qt::WA_NoSystemBackground);
     setAttribute(Qt::WA_TranslucentBackground);
-
-    setMouseTracking(true);
 }
 #endif
 
@@ -132,7 +130,11 @@ void Shadow::setActive(bool active)
 #endif
 }
 
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 bool Shadow::nativeEvent(const QByteArray &eventType, void *message, long *result)
+#else
+bool Shadow::nativeEvent(const QByteArray &eventType, void *message, qintptr *result)
+#endif
 {
 #ifdef Q_OS_WIN
     MSG* msg = static_cast<MSG*>(message);

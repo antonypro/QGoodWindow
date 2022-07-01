@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2021 Antonio Dias
+Copyright © 2018-2022 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,10 +24,9 @@ SOFTWARE.
 
 #include "titlewidget.h"
 
-TitleWidget::TitleWidget(qreal pixel_ratio, QWidget *parent) : QWidget(parent)
+TitleWidget::TitleWidget(QWidget *parent) : QWidget(parent)
 {
     m_active = false;
-    m_pixel_ratio = pixel_ratio;
 }
 
 void TitleWidget::setText(const QString &text)
@@ -58,8 +57,12 @@ void TitleWidget::paintEvent(QPaintEvent *event)
     painter.setRenderHints(QPainter::Antialiasing);
 
     QFont font;
-    font.setPixelSize(qRound(12 * m_pixel_ratio));
+    font.setPixelSize(12);
+#ifdef Q_OS_WIN
     font.setFamily("Segoe UI");
+#else
+    font.setFamily(qApp->font().family());
+#endif
 
     painter.setFont(font);
 

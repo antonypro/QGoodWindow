@@ -22,49 +22,72 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef TITLEBAR_H
-#define TITLEBAR_H
+#ifndef MAINWINDOW_H
+#define MAINWINDOW_H
 
 #include <QtCore>
 #include <QtGui>
 #include <QtWidgets>
 #include <QGoodWindow>
-#include "iconwidget.h"
-#include "titlewidget.h"
-#include "captionbutton.h"
 
-class TitleBar : public QFrame
+#ifdef Q_OS_WIN
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+#include <QtWinExtras>
+#endif
+#endif
+
+#ifdef QGOODWINDOW
+#include "titlebar.h"
+#endif
+
+#include "glwidget.h"
+
+inline qreal pixelRatio()
+{
+#ifdef QGOODWINDOW
+    QScreen *screen = QApplication::primaryScreen();
+
+#ifdef Q_OS_MAC
+    qreal pixel_ratio = screen->devicePixelRatio();
+#else
+    qreal pixel_ratio = screen->logicalDotsPerInch() / qreal(96);
+#endif
+
+#else
+    qreal pixel_ratio = qreal(1);
+#endif
+    return pixel_ratio;
+}
+
+class MainWindow : public QGoodWindow
 {
     Q_OBJECT
 public:
-    explicit TitleBar(qreal pixel_ratio, QWidget *parent = nullptr);
-
-signals:
-    void showMinimized();
-    void showNormal();
-    void showMaximized();
-    void closeWindow();
-
-public slots:
-    void setTitle(const QString &title);
-    void setIcon(const QPixmap &icon);
-    void setActive(bool active);
-    void setMaximized(bool maximized);
-    bool dark();
-    void setDarkMode(bool dark);
-    void captionButtonStateChanged(const QGoodWindow::CaptionButtonState &state);
+    explicit MainWindow(QWidget *parent = nullptr);
+    ~MainWindow();
 
 private:
-    IconWidget *iconwidget;
-    TitleWidget *titlewidget;
-    CaptionButton *minbtn;
-    CaptionButton *restorebtn;
-    CaptionButton *maxbtn;
-    CaptionButton *clsbtn;
-    QString style;
-    bool m_active;
-    bool m_is_maximized;
+    //Functions
+#ifdef QGOODWINDOW
+    void styleWindow();
+#endif
+    void closeEvent(QCloseEvent *event);
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    bool nativeEvent(const QByteArray &eventType, void *message, long *result);
+#else
+    bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result);
+#endif
+    bool event(QEvent *event);
+
+    //Variables
+    bool m_draw_borders;
     bool m_dark;
+    QFrame *frame;
+    QString m_color_str;
+    QString m_frame_style;
+#ifdef QGOODWINDOW
+    TitleBar *title_bar;
+#endif
 };
 
-#endif // TITLEBAR_H
+#endif // MAINWINDOW_H

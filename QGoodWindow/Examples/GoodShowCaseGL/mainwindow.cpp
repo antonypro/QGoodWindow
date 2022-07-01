@@ -24,7 +24,7 @@ SOFTWARE.
 
 #include "mainwindow.h"
 
-MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent, QColor("#303030"))
+MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent, QColor(0, 38, 64))
 {
     m_draw_borders = !QGoodWindow::shouldBordersBeDrawnBySystem();
     m_dark = QGoodWindow::isSystemThemeDark();
@@ -32,6 +32,12 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent, QColor("#303030"))
     m_frame_style = QString("QFrame {background-color: %0; border: %1;}");
 
     QString border_str = "none";
+
+    GLWidget *gl = new GLWidget(this);
+
+    QTimer *gl_timer = new QTimer(this);
+    connect(gl_timer, &QTimer::timeout, gl, &GLWidget::rotate);
+    gl_timer->setInterval(10);
 
 #ifdef QGOODWINDOW
     title_bar = new TitleBar(pixelRatio(), this);
@@ -44,6 +50,9 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent, QColor("#303030"))
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
     layout->addWidget(title_bar);
+    layout->addWidget(gl);
+
+    setCentralWidget(frame);
 
     connect(title_bar, &TitleBar::showMinimized, this, &MainWindow::showMinimized);
     connect(title_bar, &TitleBar::showNormal, this, &MainWindow::showNormal);
@@ -62,36 +71,15 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent, QColor("#303030"))
         }
     });
 
-    QQuickWidget *view_widget = new QQuickWidget(frame);
-    view_widget->setResizeMode(QQuickWidget::SizeRootObjectToView);
-    view_widget->setSource(QUrl(QStringLiteral("qrc:/qml/main.qml")));
-
-    layout->addWidget(view_widget);
-
-    setCentralWidget(frame);
-
-    connect(this, &MainWindow::windowTitleChanged, this, [=](const QString &title){
-        title_bar->setTitle(title);
-    });
-
-    connect(this, &MainWindow::windowIconChanged, this, [=](const QIcon &icon){
-        if (!icon.isNull())
-            title_bar->setIcon(icon.pixmap(qRound(16 * pixelRatio()), qRound(16 * pixelRatio())));
-    });
-
     if (m_draw_borders && windowState().testFlag(Qt::WindowNoState))
         border_str = "1px solid #1883D7";
 #else
-    QQuickWidget *view_widget = new QQuickWidget(this);
-    view_widget->setResizeMode(QQuickWidget::SizeRootObjectToView);
-    view_widget->setSource(QUrl(QStringLiteral("qrc:/qml/main.qml")));
-
     frame = new QFrame(this);
 
     QVBoxLayout *layout = new QVBoxLayout(frame);
-    layout->setMargin(0);
+    layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
-    layout->addWidget(view_widget);
+    layout->addWidget(gl);
 
     setCentralWidget(frame);
 #endif
@@ -164,6 +152,8 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent, QColor("#303030"))
     });
 #endif
 #endif
+
+    gl_timer->start();
 }
 
 MainWindow::~MainWindow()

@@ -20,10 +20,14 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
-QT += core gui widgets quickwidgets
+QT += core gui widgets
 
 win32:equals(QT_MAJOR_VERSION, 5){
 QT += winextras
+}
+
+equals(QT_MAJOR_VERSION, 6){
+QT += openglwidgets
 }
 
 include($$PWD/../../QGoodWindow/QGoodWindow.pri)
@@ -32,13 +36,12 @@ CONFIG += c++11
 
 SOURCES += \
     main.cpp \
-    mainwindow.cpp
+    mainwindow.cpp \
+    glwidget.cpp
 
 HEADERS += \
-    mainwindow.h
-
-RESOURCES += \
-    qml.qrc
+    mainwindow.h \
+    glwidget.h
 
 qgoodwindow {
 SOURCES += \
@@ -55,4 +58,8 @@ HEADERS += \
 
 RESOURCES += \
     res.qrc
+}
+
+win32{
+LIBS += -lopengl32
 }

@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2022 Antonio Dias
+Copyright © 2022 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,49 +22,32 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef TITLEBAR_H
-#define TITLEBAR_H
+#ifndef COMMON_H
+#define COMMON_H
 
 #include <QtCore>
 #include <QtGui>
 #include <QtWidgets>
-#include <QGoodWindow>
-#include "iconwidget.h"
-#include "titlewidget.h"
-#include "captionbutton.h"
 
-class TitleBar : public QFrame
+inline void fontTheme()
 {
-    Q_OBJECT
-public:
-    explicit TitleBar(qreal pixel_ratio, QWidget *parent = nullptr);
+    QFont defaultFont = qApp->font();
+    defaultFont.setPointSize(defaultFont.pointSize() + 2);
+    qApp->setFont(defaultFont);
+}
 
-signals:
-    void showMinimized();
-    void showNormal();
-    void showMaximized();
-    void closeWindow();
+inline void setThemeStyleSheet(bool dark)
+{
+    QFile file(dark ? ":/darkstyle.qss" : ":/lightstyle.qss");
 
-public slots:
-    void setTitle(const QString &title);
-    void setIcon(const QPixmap &icon);
-    void setActive(bool active);
-    void setMaximized(bool maximized);
-    bool dark();
-    void setDarkMode(bool dark);
-    void captionButtonStateChanged(const QGoodWindow::CaptionButtonState &state);
+    if (!file.open(QFile::ReadOnly))
+        return;
 
-private:
-    IconWidget *iconwidget;
-    TitleWidget *titlewidget;
-    CaptionButton *minbtn;
-    CaptionButton *restorebtn;
-    CaptionButton *maxbtn;
-    CaptionButton *clsbtn;
-    QString style;
-    bool m_active;
-    bool m_is_maximized;
-    bool m_dark;
-};
+    const QString style_sheet = QLatin1String(file.readAll());
 
-#endif // TITLEBAR_H
+    file.close();
+
+    qApp->setStyleSheet(style_sheet);
+}
+
+#endif // COMMON_H

@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2021 Antonio Dias
+Copyright © 2018-2022 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,6 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#if defined QGOODWINDOW && defined __linux__
+#include <gtk/gtk.h>
+#endif
+
 #include "common.h"
 #include "qgoodwindow.h"
 #include "shadow.h"
@@ -40,12 +44,40 @@ SOFTWARE.
 
 #ifdef Q_OS_WIN
 
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #include <QtWinExtras>
+#endif
 #include <windows.h>
 #include <windowsx.h>
 #include <dwmapi.h>
 
-#include "winwidget.h"
+namespace QGoodWindowUtils
+{
+class ParentWindow : public QWidget
+{
+public:
+    explicit ParentWindow(QWidget *parent) : QWidget(parent, Qt::Window)
+    {
+
+    }
+
+private:
+    bool event(QEvent *event)
+    {
+        switch (event->type())
+        {
+        case QEvent::ChildRemoved:
+        {
+            delete this;
+            return true;
+        }
+        default:
+            break;
+        }
+
+        return QWidget::event(event);
+    }
+};
 
 class NativeEventFilter : public QAbstractNativeEventFilter
 {
@@ -53,13 +85,16 @@ public:
     NativeEventFilter(QGoodWindow *gw)
     {
         m_gw = gw;
+        m_gw_hwnd = HWND(m_gw->winId());
     }
 
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     bool nativeEventFilter(const QByteArray &eventType, void *message, long *result) override
+#else
+    bool nativeEventFilter(const QByteArray &eventType, void *message, qintptr *result) override
+#endif
     {
         Q_UNUSED(eventType)
-
-        HWND m_gw_hwnd = HWND(m_gw->winId());
 
         MSG *msg = static_cast<MSG*>(message);
 
@@ -73,14 +108,15 @@ public:
         {
         case WM_NCHITTEST:
         {
-            HRESULT lresult = m_gw->ncHitTest(GET_X_LPARAM(msg->lParam), GET_Y_LPARAM(msg->lParam));
+            QPoint pos = QPoint(GET_X_LPARAM(msg->lParam), GET_Y_LPARAM(msg->lParam));
+
+            HRESULT lresult = m_gw->ncHitTest(pos.x(), pos.y());
 
             if (lresult == HTNOWHERE)
                 break;
 
             //If region not contains the mouse, pass the
             //WM_NCHITTEST event to main window.
-
             *result = HTTRANSPARENT;
             return true;
         }
@@ -103,18 +139,18 @@ public:
         case WM_SYSKEYDOWN:
         case WM_SYSKEYUP:
         {
-            //Pass to main window.
+            //Pass to main window...
 
             if ((GetKeyState(VK_SHIFT) & 0x8000) && msg->wParam == VK_F10)
             {
-                //When SHIFT+F10 is pressed.
+                // ...when SHIFT+F10 is pressed.
                 SendMessageW(m_gw_hwnd, msg->message, msg->wParam, msg->lParam);
                 return true;
             }
 
             if ((GetKeyState(VK_MENU) & 0x8000) && msg->wParam == VK_SPACE)
             {
-                //When ALT+SPACE is pressed.
+                // ...when ALT+SPACE is pressed.
                 SendMessageW(m_gw_hwnd, msg->message, msg->wParam, msg->lParam);
                 return true;
             }
@@ -129,20 +165,70 @@ public:
     }
 
 private:
-    QGoodWindow *m_gw;
+    QPointer<QGoodWindow> m_gw;
+    HWND m_gw_hwnd;
 };
+
+inline bool isWin11OrGreater()
+{
+    bool is_win_11_or_greater = false;
+
+    typedef NTSTATUS(WINAPI *tRtlGetVersion)(LPOSVERSIONINFOEXW);
+    tRtlGetVersion pRtlGetVersion = tRtlGetVersion(QLibrary::resolve("ntdll", "RtlGetVersion"));
+
+    if (pRtlGetVersion)
+    {
+        OSVERSIONINFOEXW os_info;
+        memset(&os_info, 0, sizeof(OSVERSIONINFOEXW));
+        os_info.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEXW);
+        NTSTATUS status = pRtlGetVersion(&os_info);
+        if (status == 0)
+            is_win_11_or_greater = (os_info.dwMajorVersion >= 10 && os_info.dwBuildNumber >= 22000);
+    }
+
+    return is_win_11_or_greater;
+}
+}
 #endif
 
 #ifdef Q_OS_LINUX
 
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #include <QtX11Extras/QX11Info>
 #include <QtTest/QtTest>
+#else
+#include <QtGui/private/qtx11extras_p.h>
+#endif
 #include <X11/Xlib.h>
 #include <X11/cursorfont.h>
 #include <xcb/xcb.h>
 
 #define SHADOW_WINDOW_COUNT 8
 
+namespace QGoodWindowUtils
+{
+QList<QGoodWindow*> m_gw_list;
+
+GtkSettings *m_settings = nullptr;
+
+void themeChangeNotification()
+{
+    for (QGoodWindow *gw : m_gw_list)
+    {
+        if (gw->m_theme_change_timer)
+            gw->m_theme_change_timer->start();
+    }
+}
+
+void registerThemeChangeNotification()
+{
+    if (!m_settings)
+    {
+        m_settings = gtk_settings_get_default();
+        g_signal_connect(m_settings, "notify::gtk-theme-name", themeChangeNotification, nullptr);
+    }
+}
+}
 #endif
 
 #ifdef Q_OS_MAC
@@ -151,12 +237,41 @@ private:
 
 Notification notification;
 
+namespace QGoodWindowUtils
+{
+bool m_theme_change_registered = false;
+}
 #endif
 
 QGoodWindow::QGoodWindow(QWidget *parent, const QColor &clear_color) : QMainWindow(parent)
 {
 #ifdef QGOODWINDOW
     setParent(nullptr);
+
+    m_dark = isSystemThemeDark();
+
+    m_caption_buttons_handled = false;
+
+    m_is_caption_button_pressed = false;
+    m_last_caption_button_hovered = -1;
+    m_caption_button_pressed = -1;
+
+    m_theme_change_timer = new QTimer(this);
+    connect(m_theme_change_timer, &QTimer::timeout, this, [=]{
+        bool dark = isSystemThemeDark();
+
+        if (m_dark != dark)
+        {
+            m_dark = dark;
+            emit systemThemeChanged();
+        }
+    });
+    m_theme_change_timer->setSingleShot(true);
+    m_theme_change_timer->setInterval(0);
+
+    m_hover_timer = new QTimer(this);
+    m_hover_timer->setSingleShot(true);
+    m_hover_timer->setInterval(300);
 #endif
 #ifdef Q_OS_WIN
     m_clear_color = clear_color;
@@ -167,9 +282,15 @@ QGoodWindow::QGoodWindow(QWidget *parent, const QColor &clear_color) : QMainWind
     m_fixed_size = false;
 #endif
 #if defined Q_OS_LINUX || defined Q_OS_MAC
+    m_last_move_button = -1;
+#endif
+#ifdef Q_OS_MAC
     m_mouse_button_pressed = false;
+    m_on_animate_event = false;
 #endif
 #ifdef Q_OS_WIN
+    m_closed = false;
+
     m_is_full_screen = false;
 
     m_active_state = false;
@@ -186,8 +307,8 @@ QGoodWindow::QGoodWindow(QWidget *parent, const QColor &clear_color) : QMainWind
     wcx.style = CS_HREDRAW | CS_VREDRAW;
     wcx.hInstance = hInstance;
     wcx.lpfnWndProc = WNDPROC(WndProc);
-    wcx.cbClsExtra	= 0;
-    wcx.cbWndExtra	= 0;
+    wcx.cbClsExtra = 0;
+    wcx.cbWndExtra = 0;
     wcx.hCursor	= LoadCursorW(nullptr, IDC_ARROW);
     wcx.hbrBackground = HBRUSH(CreateSolidBrush(RGB(m_clear_color.red(),
                                                     m_clear_color.green(),
@@ -214,60 +335,60 @@ QGoodWindow::QGoodWindow(QWidget *parent, const QColor &clear_color) : QMainWind
         SetWindowLongPtrW(m_hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(nullptr));
     });
 
+    m_win_use_native_borders = QGoodWindowUtils::isWin11OrGreater();
+
     m_window_handle = QWindow::fromWinId(WId(m_hwnd));
+
+    initGW();
 
     m_helper_widget = new QWidget();
 
     QScreen *screen = windowHandle()->screen();
     qreal pixel_ratio = screen->logicalDotsPerInch() / qreal(96);
 
-    m_win_widget = new WinWidget(this);
-
-    m_shadow = new Shadow(pixel_ratio, m_hwnd);
+    if (!m_win_use_native_borders)
+        m_shadow = new Shadow(pixel_ratio, m_hwnd);
 
     m_main_window = static_cast<QMainWindow*>(this);
-
-    m_main_window->setParent(m_win_widget);
-    m_main_window->setWindowFlags(Qt::Widget);
+    m_main_window->installEventFilter(this);
 
     if (!m_native_event)
     {
-        m_native_event = new NativeEventFilter(this);
+        m_native_event = new QGoodWindowUtils::NativeEventFilter(this);
         qApp->installNativeEventFilter(m_native_event);
     }
 
-    QGridLayout *layout = new QGridLayout(m_win_widget);
-    layout->setMargin(0);
-    layout->addWidget(this);
-
     setMargins(30, 0, 0, 0);
 
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     if (!QtWin::isCompositionEnabled())
     {
         disableCaption();
         frameChanged();
     }
 #endif
+
+#endif
 #ifdef Q_OS_LINUX
     m_resize_move = false;
     m_resize_move_started = false;
 
+    setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
+
     for (int i = 0; i < SHADOW_WINDOW_COUNT; i++)
     {
         Shadow *shadow = new Shadow(this);
-        shadow->setAttribute(Qt::WA_DeleteOnClose);
-        shadow->show();
-
-        shadow->installEventFilter(this);
-        shadow->setMouseTracking(true);
-
         m_shadow_list.append(shadow);
     }
 
     installEventFilter(this);
     setMouseTracking(true);
 
-    setWindowFlags(Qt::FramelessWindowHint);
+    createWinId();
+
+    QGoodWindowUtils::registerThemeChangeNotification();
+
+    QGoodWindowUtils::m_gw_list.append(this);
 
     QScreen *screen = windowHandle()->screen();
     m_pixel_ratio = screen->logicalDotsPerInch() / qreal(96);
@@ -278,12 +399,18 @@ QGoodWindow::QGoodWindow(QWidget *parent, const QColor &clear_color) : QMainWind
     installEventFilter(this);
     setMouseTracking(true);
 
+    createWinId();
+
     notification.addWindow(this);
 
     notification.registerNotification("NSWindowWillEnterFullScreenNotification", winId());
     notification.registerNotification("NSWindowDidExitFullScreenNotification", winId());
 
-    macOSNative::setStyle(long(winId()), isFullScreen());
+    if (!QGoodWindowUtils::m_theme_change_registered)
+    {
+        QGoodWindowUtils::m_theme_change_registered = true;
+        macOSNative::registerThemeChangeNotification();
+    }
 
     setMargins(30, 0, 0, 0);
 #endif
@@ -299,8 +426,14 @@ QGoodWindow::~QGoodWindow()
         m_native_event = nullptr;
     }
 #endif
+#ifdef Q_OS_LINUX
+    QGoodWindowUtils::m_gw_list.removeAll(this);
+#endif
 #ifdef Q_OS_MAC
     notification.removeWindow(this);
+#endif
+#if defined Q_OS_LINUX || defined Q_OS_MAC
+    removeEventFilter(this);
 #endif
 }
 
@@ -313,7 +446,47 @@ WId QGoodWindow::winId() const
 #endif
 }
 
-/*** QGoodWindow functions begin ***/
+/*** QGOODWINDOW FUNCTIONS BEGIN ***/
+
+bool QGoodWindow::isSystemThemeDark()
+{
+    bool dark = false;
+#ifdef Q_OS_WIN
+    typedef LONG(WINAPI *tRegGetValueW)(HKEY,LPCWSTR,LPCWSTR,DWORD,LPDWORD,PVOID,LPDWORD);
+    tRegGetValueW pRegGetValueW = tRegGetValueW(QLibrary::resolve("advapi32", "RegGetValueW"));
+
+    if (pRegGetValueW)
+    {
+        DWORD value;
+        DWORD size = sizeof(value);
+        if (pRegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+                          L"AppsUseLightTheme", RRF_RT_DWORD, nullptr, &value, &size) == ERROR_SUCCESS)
+            dark = (value == 0);
+    }
+#endif
+#ifdef Q_OS_LINUX
+    GtkSettings *settings = gtk_settings_get_default();
+    gchar *theme_name;
+    g_object_get(settings, "gtk-theme-name", &theme_name, nullptr);
+    dark = QString(theme_name).endsWith("Dark", Qt::CaseInsensitive);
+#endif
+#ifdef Q_OS_MAC
+    dark = QString(macOSNative::themeName()).endsWith("Dark", Qt::CaseInsensitive);
+#endif
+    return dark;
+}
+
+bool QGoodWindow::shouldBordersBeDrawnBySystem()
+{
+    bool drawn_by_system = true;
+#ifdef Q_OS_WIN
+    drawn_by_system = QGoodWindowUtils::isWin11OrGreater();
+#endif
+#ifdef Q_OS_LINUX
+    drawn_by_system = false;
+#endif
+    return drawn_by_system;
+}
 
 int QGoodWindow::titleBarHeight() const
 {
@@ -354,12 +527,6 @@ int QGoodWindow::rightMargin() const
 void QGoodWindow::setMargins(int title_bar_height, int icon_width, int left, int right)
 {
 #ifdef QGOODWINDOW
-
-#ifdef Q_OS_WIN
-    if (!m_win_widget)
-        return;
-#endif
-
     if (title_bar_height < 0)
         title_bar_height = 0;
 
@@ -382,6 +549,12 @@ void QGoodWindow::setMargins(int title_bar_height, int icon_width, int left, int
 
     m_left_mask = QRegion(0, 0, m_left_margin, m_title_bar_height);
     m_right_mask = QRegion(0, 0, m_right_margin, m_title_bar_height);
+
+    m_caption_buttons_handled = false;
+
+    m_min_mask = QRegion();
+    m_max_mask = QRegion();
+    m_cls_mask = QRegion();
 
 #else
     Q_UNUSED(title_bar_height)
@@ -409,6 +582,72 @@ void QGoodWindow::setRightMask(const QRegion &mask)
 #endif
 }
 
+void QGoodWindow::setCaptionButtonsHandled(bool handled, const Qt::Corner &corner)
+{
+#ifdef QGOODWINDOW
+    if (handled)
+    {
+        switch (corner)
+        {
+        case Qt::TopLeftCorner:
+        case Qt::TopRightCorner:
+        {
+            m_caption_buttons_corner = corner;
+            break;
+        }
+        default:
+        {
+            m_caption_buttons_corner = Qt::TopRightCorner;
+            break;
+        }
+        }
+
+        m_caption_buttons_handled = true;
+    }
+    else
+    {
+        m_caption_buttons_handled = false;
+
+        m_min_mask = QRegion();
+        m_max_mask = QRegion();
+        m_cls_mask = QRegion();
+    }
+#else
+    Q_UNUSED(handled)
+    Q_UNUSED(corner)
+#endif
+}
+
+void QGoodWindow::setMinimizeMask(const QRegion &mask)
+{
+#ifdef QGOODWINDOW
+    if (m_caption_buttons_handled)
+        m_min_mask = mask;
+#else
+    Q_UNUSED(mask)
+#endif
+}
+
+void QGoodWindow::setMaximizeMask(const QRegion &mask)
+{
+#ifdef QGOODWINDOW
+    if (m_caption_buttons_handled)
+        m_max_mask = mask;
+#else
+    Q_UNUSED(mask)
+#endif
+}
+
+void QGoodWindow::setCloseMask(const QRegion &mask)
+{
+#ifdef QGOODWINDOW
+    if (m_caption_buttons_handled)
+        m_cls_mask = mask;
+#else
+    Q_UNUSED(mask)
+#endif
+}
+
 QSize QGoodWindow::leftMaskSize() const
 {
 #ifdef QGOODWINDOW
@@ -427,7 +666,25 @@ QSize QGoodWindow::rightMaskSize() const
 #endif
 }
 
-/*** QGoodWindow functions end ***/
+QRect QGoodWindow::leftCaptionButtonsRect() const
+{
+#ifdef QGOODWINDOW
+    return QRect(0, 0, m_left_margin, m_title_bar_height);
+#else
+    return QRect();
+#endif
+}
+
+QRect QGoodWindow::rightCaptionButtonsRect() const
+{
+#ifdef QGOODWINDOW
+    return QRect(0, 0, m_right_margin, m_title_bar_height);
+#else
+    return QRect();
+#endif
+}
+
+/*** QGOODWINDOW FUNCTIONS END ***/
 
 void QGoodWindow::setFixedSize(int w, int h)
 {
@@ -457,9 +714,9 @@ QRect QGoodWindow::frameGeometry() const
     RECT window_rect;
     GetWindowRect(m_hwnd, &window_rect);
 
-    QRect rect =  QRect(window_rect.left, window_rect.top,
-                        window_rect.right - window_rect.left,
-                        window_rect.bottom - window_rect.top);
+    QRect rect = QRect(window_rect.left, window_rect.top,
+                       window_rect.right - window_rect.left,
+                       window_rect.bottom - window_rect.top);
 
     if (isMaximized())
     {
@@ -476,7 +733,17 @@ QRect QGoodWindow::frameGeometry() const
 QRect QGoodWindow::geometry() const
 {
 #ifdef Q_OS_WIN
-    return frameGeometry();
+    RECT client_rect;
+    GetClientRect(m_hwnd, &client_rect);
+
+    QPoint window_pos = pos();
+
+    QRect rect = QRect(window_pos.x() + client_rect.left,
+                       window_pos.y() + client_rect.top,
+                       client_rect.right - client_rect.left,
+                       client_rect.bottom - client_rect.top);
+
+    return rect;
 #else
     return QMainWindow::geometry();
 #endif
@@ -530,7 +797,7 @@ int QGoodWindow::y() const
 int QGoodWindow::width() const
 {
 #ifdef Q_OS_WIN
-    return frameGeometry().width();
+    return geometry().width();
 #else
     return QMainWindow::width();
 #endif
@@ -539,7 +806,7 @@ int QGoodWindow::width() const
 int QGoodWindow::height() const
 {
 #ifdef Q_OS_WIN
-    return frameGeometry().height();
+    return geometry().height();
 #else
     return QMainWindow::height();
 #endif
@@ -566,6 +833,13 @@ void QGoodWindow::move(const QPoint &pos)
 void QGoodWindow::resize(int width, int height)
 {
 #ifdef Q_OS_WIN
+    if (m_win_use_native_borders)
+    {
+        const int border_width = BORDERWIDTH;
+        width += border_width * 2;
+        height += border_width;
+    }
+
     SetWindowPos(m_hwnd, nullptr, 0, 0, width, height, SWP_NOMOVE | SWP_NOACTIVATE);
 #else
     QMainWindow::resize(width, height);
@@ -649,13 +923,6 @@ void QGoodWindow::showMaximized()
     if (m_is_full_screen)
         showNormal();
 
-    if (!isVisible())
-    {
-        disableCaption();
-        ShowWindow(m_hwnd, SW_SHOWNORMAL);
-        enableCaption();
-    }
-
     ShowWindow(m_hwnd, SW_SHOWMAXIMIZED);
 #else
     QMainWindow::showMaximized();
@@ -685,7 +952,7 @@ void QGoodWindow::showFullScreen()
     {
         ShowWindow(m_hwnd, SW_SHOWNORMAL);
 
-        m_rect_origin = frameGeometry();
+        m_rect_origin = geometry();
 
         SetWindowLongW(m_hwnd, GWL_STYLE, GetWindowLongW(m_hwnd, GWL_STYLE) & ~WS_OVERLAPPEDWINDOW);
 
@@ -835,7 +1102,7 @@ QString QGoodWindow::windowTitle() const
 void QGoodWindow::setWindowTitle(const QString &title)
 {
 #ifdef Q_OS_WIN
-    SetWindowTextW(m_hwnd, reinterpret_cast<WCHAR*>(const_cast<QChar*>(title.unicode())));
+    SetWindowTextW(m_hwnd, reinterpret_cast<const WCHAR*>(title.utf16()));
 
     QMainWindow::setWindowTitle(title);
 #else
@@ -851,9 +1118,18 @@ QIcon QGoodWindow::windowIcon() const
 void QGoodWindow::setWindowIcon(const QIcon &icon)
 {
 #ifdef Q_OS_WIN
-    HICON hicon_big = QtWin::toHICON(icon.pixmap(GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON)));
 
-    HICON hicon_small = QtWin::toHICON(icon.pixmap(GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON)));
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    HICON hicon_big = QtWin::toHICON(icon.pixmap(GetSystemMetrics(SM_CXICON),
+                                                 GetSystemMetrics(SM_CYICON)));
+    HICON hicon_small = QtWin::toHICON(icon.pixmap(GetSystemMetrics(SM_CXSMICON),
+                                                   GetSystemMetrics(SM_CYSMICON)));
+#else
+    HICON hicon_big = icon.pixmap(GetSystemMetrics(SM_CXICON),
+                                  GetSystemMetrics(SM_CYICON)).toImage().toHICON();
+    HICON hicon_small = icon.pixmap(GetSystemMetrics(SM_CXSMICON),
+                                    GetSystemMetrics(SM_CYSMICON)).toImage().toHICON();
+#endif
 
     SendMessageW(m_hwnd, WM_SETICON, ICON_BIG, LPARAM(hicon_big));
     SendMessageW(m_hwnd, WM_SETICON, ICON_SMALL, LPARAM(hicon_small));
@@ -866,6 +1142,28 @@ void QGoodWindow::setWindowIcon(const QIcon &icon)
 
 bool QGoodWindow::event(QEvent *event)
 {
+#if defined Q_OS_LINUX || defined Q_OS_MAC
+    switch (event->type())
+    {
+    case QEvent::Leave:
+    {
+        buttonLeave(m_last_caption_button_hovered);
+        m_last_move_button = -1;
+
+        break;
+    }
+    case QEvent::Hide:
+    case QEvent::HoverLeave:
+    {
+        if (QApplication::overrideCursor())
+            QApplication::restoreOverrideCursor();
+
+        break;
+    }
+    default:
+        break;
+    }
+#endif
 #ifdef Q_OS_WIN
     switch (event->type())
     {
@@ -873,12 +1171,17 @@ bool QGoodWindow::event(QEvent *event)
     {
         QChildEvent *child_event = static_cast<QChildEvent*>(event);
 
-        QDialog *dialog = qobject_cast<QDialog*>(child_event->child());
+        QWidget *widget = qobject_cast<QWidget*>(child_event->child());
 
-        if (!dialog)
+        if (!widget->isWindow())
             break;
 
-        dialog->installEventFilter(this);
+        if (!widget->isModal())
+            break;
+
+        widget->adjustSize();
+
+        widget->setParent(bestParentForModalWindow(), widget->windowFlags());
 
         break;
     }
@@ -892,6 +1195,35 @@ bool QGoodWindow::event(QEvent *event)
         EnableWindow(m_hwnd, TRUE);
         break;
     }
+    case QEvent::WindowStateChange:
+    {
+        bool window_no_state = windowState().testFlag(Qt::WindowNoState);
+
+        for (QSizeGrip *size_grip : findChildren<QSizeGrip*>())
+        {
+            if (!size_grip->window()->windowFlags().testFlag(Qt::SubWindow))
+                size_grip->setVisible(window_no_state);
+        }
+
+        break;
+    }
+    case QEvent::Resize:
+    {
+        if (isVisible() && size() != m_main_window->size())
+            resize(m_main_window->size());
+
+        break;
+    }
+    case QEvent::Close:
+    {
+        if (m_closed)
+        {
+            hide();
+            return true;
+        }
+
+        break;
+    }
     default:
         break;
     }
@@ -899,23 +1231,6 @@ bool QGoodWindow::event(QEvent *event)
 #ifdef Q_OS_LINUX
     switch (event->type())
     {
-    case QEvent::ChildAdded:
-    {
-        QChildEvent *child_event = static_cast<QChildEvent*>(event);
-
-        QWidget *widget = qobject_cast<QWidget*>(child_event->child());
-
-        if (!widget)
-            break;
-
-        if (widget->isWindow())
-            break;
-
-        widget->installEventFilter(this);
-        widget->setMouseTracking(true);
-
-        break;
-    }
     case QEvent::WindowActivate:
     {
         QTimer::singleShot(0, this, &QGoodWindow::sizeMoveBorders);
@@ -925,11 +1240,22 @@ bool QGoodWindow::event(QEvent *event)
     case QEvent::Hide:
     case QEvent::WindowDeactivate:
     {
-        for (const Shadow *shadow : m_shadow_list)
-            const_cast<Shadow*>(shadow)->hide();
+        for (Shadow *shadow : m_shadow_list)
+            shadow->hide();
 
         break;
     }
+    case QEvent::WindowStateChange:
+    {
+        if (!windowState().testFlag(Qt::WindowNoState))
+        {
+            for (Shadow *shadow : m_shadow_list)
+                shadow->hide();
+        }
+
+        break;
+    }
+    case QEvent::Show:
     case QEvent::Resize:
     {
         setMask(rect());
@@ -944,6 +1270,33 @@ bool QGoodWindow::event(QEvent *event)
 
         break;
     }
+    case QEvent::WindowBlocked:
+    {
+        setEnabled(false);
+
+        m_last_fixed_size_value = m_fixed_size;
+
+        setFixedSize(size());
+
+        if (QWidget *w = qApp->activeModalWidget())
+            w->setEnabled(true);
+
+        break;
+    }
+    case QEvent::WindowUnblocked:
+    {
+        setEnabled(true);
+
+        if (!m_last_fixed_size_value)
+        {
+            setMinimumSize(0, 0);
+            setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+
+            m_fixed_size = false;
+        }
+
+        break;
+    }
     default:
         break;
     }
@@ -951,7 +1304,80 @@ bool QGoodWindow::event(QEvent *event)
 #ifdef Q_OS_MAC
     switch (event->type())
     {
+    case QEvent::Show:
+    {
+        if (isFullScreen())
+            break;
+
+        macOSNative::setStyle(long(winId()), false);
+
+        break;
+    }
+    default:
+        break;
+    }
+#endif
+    return QMainWindow::event(event);
+}
+
+bool QGoodWindow::eventFilter(QObject *watched, QEvent *event)
+{
+#ifdef Q_OS_WIN
+    if (watched == m_main_window)
+    {
+        switch (event->type())
+        {
+        case QEvent::WindowActivate:
+        {
+            if (!m_main_window->isActiveWindow() || m_active_state)
+                return true;
+
+            m_active_state = true;
+
+            break;
+        }
+        case QEvent::WindowDeactivate:
+        {
+            if (m_main_window->isActiveWindow() || !m_active_state)
+                return true;
+
+            m_active_state = false;
+
+            break;
+        }
+        default:
+            break;
+        }
+    }
+#endif
+#if defined Q_OS_LINUX || defined Q_OS_MAC
+    if (!isEnabled())
+        return QMainWindow::eventFilter(watched, event);
+
+    QPoint cursor_pos = QCursor::pos();
+    long button = ncHitTest(cursor_pos.x(), cursor_pos.y());
+
+    switch (event->type())
+    {
+#ifdef Q_OS_MAC
     case QEvent::ChildAdded:
+    case QEvent::ChildRemoved:
+    {
+        if (qApp->activeModalWidget())
+            break;
+
+        if (isFullScreen())
+            break;
+
+        if (m_on_animate_event)
+            break;
+
+        macOSNative::setStyle(long(winId()), false);
+
+        break;
+    }
+#endif
+    case QEvent::ChildPolished:
     {
         QChildEvent *child_event = static_cast<QChildEvent*>(event);
 
@@ -960,34 +1386,75 @@ bool QGoodWindow::event(QEvent *event)
         if (!widget)
             break;
 
-        if (widget->isWindow())
+        widget->setMouseTracking(true);
+        widget->installEventFilter(this);
+
+        for (QWidget *w : widget->findChildren<QWidget*>())
+        {
+            w->setMouseTracking(true);
+            w->installEventFilter(this);
+        }
+
+        break;
+    }
+    case QEvent::MouseButtonPress:
+    {
+        QMouseEvent *mouse_event = static_cast<QMouseEvent*>(event);
+
+        if (mouse_event->button() != Qt::LeftButton)
             break;
 
-        widget->installEventFilter(this);
-        widget->setMouseTracking(true);
-
-        break;
-    }
-    default:
-        break;
-    }
-
-#endif
-    return QMainWindow::event(event);
-}
-
-bool QGoodWindow::eventFilter(QObject *watched, QEvent *event)
-{
-#ifdef Q_OS_WIN
-    switch (event->type())
-    {
-    case QEvent::Show:
-    {
-        if (QDialog *dialog = qobject_cast<QDialog*>(watched))
+        switch (button)
         {
-            //Center dialog.
-            moveCenterDialog(dialog);
+        case HTMINBUTTON:
+        case HTMAXBUTTON:
+        case HTCLOSE:
+        {
+            buttonPress(button);
+            break;
         }
+        default:
+            break;
+        }
+
+        break;
+    }
+    case QEvent::MouseMove:
+    {
+        if (m_last_move_button != button)
+        {
+            m_last_move_button = button;
+
+            buttonLeave(m_last_caption_button_hovered);
+
+            switch (button)
+            {
+            case HTMINBUTTON:
+            case HTMAXBUTTON:
+            case HTCLOSE:
+            {
+                if (!m_is_caption_button_pressed || (button == m_caption_button_pressed))
+                    buttonEnter(button);
+
+                break;
+            }
+            default:
+                break;
+            }
+        }
+
+        break;
+    }
+    case QEvent::MouseButtonRelease:
+    {
+        QMouseEvent *mouse_event = static_cast<QMouseEvent*>(event);
+
+        if (mouse_event->button() != Qt::LeftButton)
+            break;
+
+        m_last_move_button = -1;
+
+        buttonRelease(m_caption_button_pressed, (button == m_caption_button_pressed));
 
         break;
     }
@@ -996,6 +1463,9 @@ bool QGoodWindow::eventFilter(QObject *watched, QEvent *event)
     }
 #endif
 #ifdef Q_OS_LINUX
+    if (m_is_caption_button_pressed)
+        return QMainWindow::eventFilter(watched, event);
+
     switch (event->type())
     {
     case QEvent::MouseButtonDblClick:
@@ -1004,9 +1474,7 @@ bool QGoodWindow::eventFilter(QObject *watched, QEvent *event)
 
         if (mouse_event->button() == Qt::LeftButton)
         {
-            int margin = m_margin;
-
-            if (margin == TITLE_BAR)
+            if (m_margin == TITLE_BAR)
             {
                 if (!isMaximized())
                     showMaximized();
@@ -1015,8 +1483,16 @@ bool QGoodWindow::eventFilter(QObject *watched, QEvent *event)
             }
         }
 
-        if (m_margin == TITLE_BAR)
+        switch (m_margin)
+        {
+        case TITLE_BAR:
+        case HTMINBUTTON:
+        case HTMAXBUTTON:
+        case HTCLOSE:
             return true;
+        default:
+            break;
+        }
 
         break;
     }
@@ -1032,29 +1508,45 @@ bool QGoodWindow::eventFilter(QObject *watched, QEvent *event)
                 m_resize_move = true;
         }
 
-        m_mouse_button_pressed = true;
-
-        if (m_margin == TITLE_BAR)
+        switch (m_margin)
+        {
+        case TITLE_BAR:
+        case HTMINBUTTON:
+        case HTMAXBUTTON:
+        case HTCLOSE:
             return true;
+        default:
+            break;
+        }
 
         break;
     }
     case QEvent::MouseMove:
     {
+        setCursorForCurrentPos();
+
         QMouseEvent *mouse_event = static_cast<QMouseEvent*>(event);
 
         if (m_resize_move && mouse_event->buttons() == Qt::LeftButton)
             sizeMove();
-        else if (!m_mouse_button_pressed)
-            setCursorForCurrentPos();
 
-        if (m_margin == TITLE_BAR)
+        switch (m_margin)
+        {
+        case TITLE_BAR:
+        case HTMINBUTTON:
+        case HTMAXBUTTON:
+        case HTCLOSE:
             return true;
+        default:
+            break;
+        }
 
         break;
     }
     case QEvent::MouseButtonRelease:
     {
+        setCursorForCurrentPos();
+
         QMouseEvent *mouse_event = static_cast<QMouseEvent*>(event);
 
         if (m_resize_move && mouse_event->button() == Qt::LeftButton)
@@ -1063,24 +1555,46 @@ bool QGoodWindow::eventFilter(QObject *watched, QEvent *event)
                 m_resize_move = false;
         }
 
-        m_mouse_button_pressed = false;
-
-        if (m_margin == TITLE_BAR)
+        switch (m_margin)
+        {
+        case TITLE_BAR:
+        case HTMINBUTTON:
+        case HTMAXBUTTON:
+        case HTCLOSE:
             return true;
+        default:
+            break;
+        }
 
         break;
     }
     case QEvent::Wheel:
     {
-        if (m_margin == TITLE_BAR)
+        switch (m_margin)
+        {
+        case TITLE_BAR:
+        case HTMINBUTTON:
+        case HTMAXBUTTON:
+        case HTCLOSE:
             return true;
+        default:
+            break;
+        }
 
         break;
     }
     case QEvent::ContextMenu:
     {
-        if (m_margin == TITLE_BAR)
+        switch (m_margin)
+        {
+        case TITLE_BAR:
+        case HTMINBUTTON:
+        case HTMAXBUTTON:
+        case HTCLOSE:
             return true;
+        default:
+            break;
+        }
 
         break;
     }
@@ -1089,7 +1603,9 @@ bool QGoodWindow::eventFilter(QObject *watched, QEvent *event)
     }
 #endif
 #ifdef Q_OS_MAC
-    QPoint cursor_pos = QCursor::pos();
+    if (m_is_caption_button_pressed)
+        return QMainWindow::eventFilter(watched, event);
+
     int margin = ncHitTest(cursor_pos.x(), cursor_pos.y());
 
     switch (event->type())
@@ -1115,8 +1631,16 @@ bool QGoodWindow::eventFilter(QObject *watched, QEvent *event)
             }
         }
 
-        if (margin == TITLE_BAR)
+        switch (margin)
+        {
+        case TITLE_BAR:
+        case HTMINBUTTON:
+        case HTMAXBUTTON:
+        case HTCLOSE:
             return true;
+        default:
+            break;
+        }
 
         break;
     }
@@ -1137,8 +1661,16 @@ bool QGoodWindow::eventFilter(QObject *watched, QEvent *event)
 
         m_mouse_button_pressed = true;
 
-        if (margin == TITLE_BAR)
+        switch (margin)
+        {
+        case TITLE_BAR:
+        case HTMINBUTTON:
+        case HTMAXBUTTON:
+        case HTCLOSE:
             return true;
+        default:
+            break;
+        }
 
         break;
     }
@@ -1152,26 +1684,60 @@ bool QGoodWindow::eventFilter(QObject *watched, QEvent *event)
             {
                 if (mouse_event->buttons() == Qt::LeftButton)
                 {
-                    move(QCursor::pos() - m_pos);
+                    move(cursor_pos - m_pos);
                 }
             }
         }
 
         if (!m_mouse_button_pressed)
         {
-            if (margin == TITLE_BAR)
+            QWidget *widget = QApplication::widgetAt(QCursor::pos());
+
+            if (widget)
             {
-                QApplication::setOverrideCursor(Qt::ArrowCursor);
-            }
-            else
-            {
-                QCursor cursor = static_cast<QWidget*>(watched)->cursor();
-                QApplication::setOverrideCursor(cursor);
+                switch (margin)
+                {
+                case TITLE_BAR:
+                case HTMINBUTTON:
+                case HTMAXBUTTON:
+                case HTCLOSE:
+                {
+                    if (QApplication::overrideCursor() &&
+                            QApplication::overrideCursor()->shape() == Qt::ArrowCursor)
+                        break;
+
+                    QApplication::setOverrideCursor(Qt::ArrowCursor);
+
+                    break;
+                }
+                case NO_WHERE:
+                {
+                    if (!QApplication::overrideCursor())
+                        break;
+
+                    if (QApplication::overrideCursor()->shape() != Qt::ArrowCursor)
+                        break;
+
+                    QApplication::restoreOverrideCursor();
+
+                    break;
+                }
+                default:
+                    break;
+                }
             }
         }
 
-        if (margin == TITLE_BAR)
+        switch (margin)
+        {
+        case TITLE_BAR:
+        case HTMINBUTTON:
+        case HTMAXBUTTON:
+        case HTCLOSE:
             return true;
+        default:
+            break;
+        }
 
         break;
     }
@@ -1190,22 +1756,46 @@ bool QGoodWindow::eventFilter(QObject *watched, QEvent *event)
 
         m_mouse_button_pressed = false;
 
-        if (margin == TITLE_BAR)
+        switch (margin)
+        {
+        case TITLE_BAR:
+        case HTMINBUTTON:
+        case HTMAXBUTTON:
+        case HTCLOSE:
             return true;
+        default:
+            break;
+        }
 
         break;
     }
     case QEvent::Wheel:
     {
-        if (margin == TITLE_BAR)
+        switch (margin)
+        {
+        case TITLE_BAR:
+        case HTMINBUTTON:
+        case HTMAXBUTTON:
+        case HTCLOSE:
             return true;
+        default:
+            break;
+        }
 
         break;
     }
     case QEvent::ContextMenu:
     {
-        if (margin == TITLE_BAR)
+        switch (margin)
+        {
+        case TITLE_BAR:
+        case HTMINBUTTON:
+        case HTMAXBUTTON:
+        case HTCLOSE:
             return true;
+        default:
+            break;
+        }
 
         break;
     }
@@ -1216,9 +1806,14 @@ bool QGoodWindow::eventFilter(QObject *watched, QEvent *event)
     return QMainWindow::eventFilter(watched, event);
 }
 
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 bool QGoodWindow::nativeEvent(const QByteArray &eventType, void *message, long *result)
+#else
+bool QGoodWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr *result)
+#endif
 {
 #ifdef Q_OS_LINUX
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     if (eventType == "xcb_generic_event_t")
     {
         xcb_generic_event_t *event = static_cast<xcb_generic_event_t*>(message);
@@ -1241,10 +1836,26 @@ bool QGoodWindow::nativeEvent(const QByteArray &eventType, void *message, long *
         }
     }
 #endif
+#endif
     return QMainWindow::nativeEvent(eventType, message, result);
 }
 
 #ifdef Q_OS_WIN
+void QGoodWindow::initGW()
+{
+    setProperty("_q_embedded_native_parent_handle", WId(m_hwnd));
+    setWindowFlags(Qt::FramelessWindowHint);
+
+    QEvent event(QEvent::EmbeddingControl);
+    QApplication::sendEvent(this, &event);
+}
+
+void QGoodWindow::destroyGW()
+{
+    QMainWindow::close();
+    QMainWindow::destroy();
+}
+
 LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     QGoodWindow *gw = reinterpret_cast<QGoodWindow*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
@@ -1262,6 +1873,7 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
         case WA_CLICKACTIVE:
         {
             QTimer::singleShot(0, gw, [=]{
+                gw->setWidgetFocus();
                 gw->handleActivation();
             });
 
@@ -1269,18 +1881,24 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
         }
         case WA_INACTIVE:
         {
-            if (gw->window()->focusWidget())
+            if (gw->focusWidget())
             {
                 //If app going to be inactive,
                 //save current focused widget
                 //to restore focus later.
 
-                gw->m_focus_widget = gw->window()->focusWidget();
+                gw->m_focus_widget = gw->focusWidget();
             }
 
             QTimer::singleShot(0, gw, [=]{
                 gw->handleDeactivation();
             });
+
+            if (!IsWindowEnabled(hwnd))
+            {
+                if (gw->m_shadow)
+                    gw->m_shadow->hide();
+            }
 
             break;
         }
@@ -1292,12 +1910,9 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
     }
     case WM_SETFOCUS:
     {
-        QTimer::singleShot(0, gw, [=]{
-            if (gw->m_focus_widget)
-                gw->m_focus_widget->setFocus();
-            else if (gw->m_win_widget)
-                gw->m_win_widget->setFocus();
-        });
+        //Pass focus to last focused widget.
+        gw->setWidgetFocus();
+        gw->m_main_window->activateWindow();
 
         break;
     }
@@ -1311,26 +1926,30 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
     {
         gw->sizeMoveWindow();
 
-        QMoveEvent event = QMoveEvent(QPoint(gw->x(), gw->y()), QPoint());
+        QMoveEvent event(QPoint(gw->x(), gw->y()), QPoint());
         QApplication::sendEvent(gw, &event);
 
         break;
     }
     case WM_GETMINMAXINFO:
     {
-        MINMAXINFO* mmi = reinterpret_cast<MINMAXINFO*>(lParam);
+        MINMAXINFO *mmi = reinterpret_cast<MINMAXINFO*>(lParam);
 
         QSize minimum = gw->minimumSize();
 
         QSize sizeHint = gw->minimumSizeHint();
 
-        mmi->ptMinTrackSize.x = qMax(minimum.width(), sizeHint.width());
-        mmi->ptMinTrackSize.y = qMax(minimum.height(), sizeHint.height());
+        const int border_width = BORDERWIDTH;
+
+        mmi->ptMinTrackSize.x = qMax(minimum.width(), sizeHint.width()) +
+                (gw->m_win_use_native_borders ? border_width * 2 : 0);
+        mmi->ptMinTrackSize.y = qMax(minimum.height(), sizeHint.height()) +
+                (gw->m_win_use_native_borders ? border_width : 0);
 
         QSize maximum = gw->maximumSize();
 
-        mmi->ptMaxTrackSize.x = maximum.width();
-        mmi->ptMaxTrackSize.y = maximum.height();
+        mmi->ptMaxTrackSize.x = maximum.width() + (gw->m_win_use_native_borders ? border_width * 2 : 0);
+        mmi->ptMaxTrackSize.y = maximum.height() + (gw->m_win_use_native_borders ? border_width : 0);
 
         break;
     }
@@ -1338,23 +1957,17 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
     {
         //Send Qt QCloseEvent to the window,
         //which allows to accept or reject the window close.
-
         QCloseEvent event;
         QApplication::sendEvent(gw, &event);
 
         if (!event.isAccepted())
             return 0;
 
-        gw->m_shadow->hide();
-
-        gw->hide();
+        gw->m_closed = true;
 
         //Do the needed cleanup.
+        gw->destroyGW();
 
-        gw->m_main_window->setParent(nullptr);
-
-        if (gw->m_win_widget)
-            delete gw->m_win_widget;
         if (gw->m_shadow)
             delete gw->m_shadow;
         if (gw->m_helper_widget)
@@ -1373,7 +1986,9 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
     }
     case WM_NCHITTEST:
     {
-        HRESULT lresult = HRESULT(gw->ncHitTest(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
+        QPoint pos = QPoint(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+
+        LRESULT lresult = LRESULT(gw->ncHitTest(pos.x(), pos.y()));
 
         if (gw->m_is_full_screen)
         {
@@ -1396,6 +2011,110 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
         }
 
         return lresult;
+    }
+    case WM_NCMOUSELEAVE:
+    {
+        if (gw->m_is_caption_button_pressed)
+            break;
+
+        gw->buttonLeave(gw->m_last_caption_button_hovered);
+
+        break;
+    }
+    case WM_NCMOUSEMOVE:
+    {
+        QPoint pos = QPoint(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+
+        long button = gw->ncHitTest(pos.x(), pos.y());
+
+        bool valid_caption_button = gw->winButtonHover(button);
+
+        if (valid_caption_button)
+        {
+            if (gw->m_is_caption_button_pressed)
+            {
+                if (GetCapture() != hwnd)
+                {
+                    SetCapture(hwnd);
+                }
+            }
+        }
+        else
+        {
+            gw->buttonLeave(gw->m_last_caption_button_hovered);
+        }
+
+        break;
+    }
+    case WM_MOUSEMOVE:
+    {
+        QPoint pos = gw->mapToGlobal(QPoint(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
+
+        long button = gw->ncHitTest(pos.x(), pos.y());
+
+        bool valid_caption_button = gw->winButtonHover(button);
+
+        if (!valid_caption_button)
+        {
+            if (!gw->m_is_caption_button_pressed && GetCapture() == hwnd)
+            {
+                ReleaseCapture();
+            }
+
+            gw->buttonLeave(gw->m_last_caption_button_hovered);
+        }
+
+        break;
+    }
+    case WM_NCLBUTTONDOWN:
+    {
+        QPoint pos = QPoint(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+
+        long button = gw->ncHitTest(pos.x(), pos.y());
+
+        bool valid_caption_button = gw->buttonPress(button);
+
+        if (valid_caption_button)
+            return 0;
+
+        break;
+    }
+    case WM_NCLBUTTONUP:
+    {
+        QPoint pos = QPoint(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+
+        long button = gw->ncHitTest(pos.x(), pos.y());
+
+        bool valid_caption_button = gw->buttonRelease(gw->m_caption_button_pressed,
+                                                      (button == gw->m_caption_button_pressed));
+
+        if (valid_caption_button)
+            return 0;
+
+        break;
+    }
+    case WM_LBUTTONDOWN:
+    {
+        QPoint pos = gw->mapToGlobal(QPoint(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
+
+        long button = gw->ncHitTest(pos.x(), pos.y());
+
+        gw->buttonPress(button);
+
+        break;
+    }
+    case WM_LBUTTONUP:
+    {
+        QPoint pos = gw->mapToGlobal(QPoint(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
+
+        long button = gw->ncHitTest(pos.x(), pos.y());
+
+        if (button != gw->m_caption_button_pressed)
+            gw->buttonEnter(button);
+
+        gw->buttonRelease(gw->m_caption_button_pressed, (button == gw->m_caption_button_pressed));
+
+        break;
     }
     case WM_SYSKEYDOWN:
     case WM_SYSKEYUP:
@@ -1435,6 +2154,16 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
         if (gw->isFullScreen())
             break;
 
+        if (gw->m_win_use_native_borders && !gw->isMaximized())
+        {
+            const int border_width = BORDERWIDTH;
+
+            RECT *rect = reinterpret_cast<RECT*>(lParam);
+            rect->left += border_width;
+            rect->bottom -= border_width;
+            rect->right -= border_width;
+        }
+
         if (gw->isMaximized())
         {
             //Compensate window client area when maximized,
@@ -1448,6 +2177,7 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
         //Make the whole window as client area.
         return 0;
     }
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     case WM_NCPAINT:
     case WM_NCACTIVATE:
     {
@@ -1458,6 +2188,7 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
 
         break;
     }
+#endif
     case WM_WINDOWPOSCHANGING:
     {
         Qt::WindowState state;
@@ -1480,26 +2211,29 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
             QWindowStateChangeEvent event(state);
             QApplication::sendEvent(gw, &event);
 
-            if (state != Qt::WindowNoState)
+            if (gw->m_shadow)
             {
-                //Hide shadow if not on "normal" state.
-                gw->m_shadow->hide();
-            }
-            else if (gw->isVisible())
-            {
-                //Show shadow if switching to "normal" state, with delay.
-                gw->m_shadow->showLater();
+                if (state != Qt::WindowNoState)
+                {
+                    //Hide shadow if not on "normal" state.
+                    gw->m_shadow->hide();
+                }
+                else if (gw->isVisible())
+                {
+                    //Show shadow if switching to "normal" state, with delay.
+                    gw->m_shadow->showLater();
+                }
             }
 
             if (state == Qt::WindowMinimized)
             {
-                if (gw->window()->focusWidget())
+                if (gw->focusWidget())
                 {
                     //If app going to be minimized,
                     //save current focused widget
                     //to restore focus later.
 
-                    gw->m_focus_widget = gw->window()->focusWidget();
+                    gw->m_focus_widget = gw->focusWidget();
                 }
             }
         }
@@ -1522,41 +2256,53 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
                 HBRUSH brush = HBRUSH(CreateSolidBrush(RGB(gw->m_clear_color.red(),
                                                            gw->m_clear_color.green(),
                                                            gw->m_clear_color.blue())));
-                HBRUSH oldbrush = HBRUSH(SetWindowLongPtrW(hwnd, GCLP_HBRBACKGROUND, reinterpret_cast<LONG_PTR>(brush)));
+                HBRUSH oldbrush = HBRUSH(SetWindowLongPtrW(hwnd, GCLP_HBRBACKGROUND,
+                                                           reinterpret_cast<LONG_PTR>(brush)));
 
                 DeleteObject(oldbrush);
                 InvalidateRect(hwnd, nullptr, TRUE);
             }
 
-            if (state == Qt::WindowNoState)
+            if (gw->m_shadow)
             {
-                //Show shadow if on "normal" state with delay.
-                gw->m_shadow->showLater();
+                if (state == Qt::WindowNoState)
+                {
+                    //Show shadow if on "normal" state with delay.
+                    gw->m_shadow->showLater();
+                }
             }
 
             SetWindowPos(hwnd, nullptr, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_FRAMECHANGED);
 
-            QTimer::singleShot(0, gw->m_win_widget, [=]{
-                gw->m_win_widget->show();
-                gw->m_win_widget->resize(0, 0);
-                gw->m_win_widget->resize(gw->size());
+            QTimer::singleShot(0, gw->m_main_window, [=]{
+                if (gw->m_main_window->isVisible())
+                    return;
+
+                //Fix bug that make the window frozen
+                //when initializing window.
+                QWidget *central_widget = gw->centralWidget();
+                if (central_widget) central_widget->hide();
+                gw->m_main_window->show();
+                gw->m_main_window->resize(gw->size());
+                if (central_widget) central_widget->show();
             });
         }
         else if (pwp->flags & SWP_HIDEWINDOW)
         {
-            if (gw->window()->focusWidget())
+            if (gw->focusWidget())
             {
                 //If app have a valid focused widget,
                 //save them to restore focus later.
 
-                gw->m_focus_widget = gw->window()->focusWidget();
+                gw->m_focus_widget = gw->focusWidget();
             }
 
             {
                 //Set NULL brush.
 
                 HBRUSH brush = HBRUSH(GetStockObject(NULL_BRUSH));
-                HBRUSH oldbrush = HBRUSH(SetWindowLongPtrW(hwnd, GCLP_HBRBACKGROUND, reinterpret_cast<LONG_PTR>(brush)));
+                HBRUSH oldbrush = HBRUSH(SetWindowLongPtrW(hwnd, GCLP_HBRBACKGROUND,
+                                                           reinterpret_cast<LONG_PTR>(brush)));
 
                 DeleteObject(oldbrush);
                 InvalidateRect(hwnd, nullptr, TRUE);
@@ -1565,7 +2311,8 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
             QHideEvent event;
             QApplication::sendEvent(gw, &event);
 
-            gw->m_shadow->hide();
+            if (gw->m_shadow)
+                gw->m_shadow->hide();
         }
         else if (pwp->flags == (SWP_NOSIZE + SWP_NOMOVE))
         {
@@ -1573,12 +2320,15 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
             //problem when QGoodWindow isn't shown initially in
             //active state.
 
-            if (state == Qt::WindowNoState)
-                QTimer::singleShot(0, gw, &QGoodWindow::handleActivation);
+            gw->m_main_window->activateWindow();
+
+            if (gw->m_shadow)
+                gw->m_shadow->showLater();
         }
 
         break;
     }
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     case WM_WINDOWPOSCHANGED:
     {
         if (!QtWin::isCompositionEnabled() && gw->isMaximized())
@@ -1594,6 +2344,7 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
 
         break;
     }
+#endif
     case WM_SETTEXT:
     {
         emit gw->windowTitleChanged(gw->windowTitle());
@@ -1612,6 +2363,18 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
         break;
     }
     case WM_SETTINGCHANGE:
+    {
+        if (gw->m_theme_change_timer)
+        {
+            if (QString::fromWCharArray(LPCWSTR(lParam)) == "ImmersiveColorSet")
+            {
+                gw->m_theme_change_timer->start();
+            }
+        }
+
+        break;
+    }
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     case WM_THEMECHANGED:
     case WM_DWMCOMPOSITIONCHANGED:
     {
@@ -1643,6 +2406,7 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
 
         break;
     }
+#endif
     default:
         break;
     }
@@ -1653,7 +2417,11 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
     msg.lParam = lParam;
     msg.wParam = wParam;
 
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     long result = 0;
+#else
+    qintptr result = 0;
+#endif
 
     bool return_value = gw->nativeEvent(QByteArray(), &msg, &result);
 
@@ -1665,33 +2433,39 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
 
 void QGoodWindow::handleActivation()
 {
-    if (!m_win_widget || !m_shadow)
-        return;
-
-    if (m_focus_widget)
+    if (m_shadow)
     {
-        //If have a previous m_focus_widget valid,
-        //set the focus to this widget.
-        if (!m_focus_widget->hasFocus())
-            m_focus_widget->setFocus();
+        if (m_state == Qt::WindowNoState)
+        {
+            //If in "normal" state, make shadow visible.
+            m_shadow->setActive(true);
+            m_shadow->show();
+        }
     }
-    else
+}
+
+void QGoodWindow::handleDeactivation()
+{
+    if (m_shadow)
+        m_shadow->setActive(false);
+
+    if (!isEnabled())
+        buttonLeave(m_last_caption_button_hovered);
+}
+
+void QGoodWindow::setWidgetFocus()
+{
+    if (!m_focus_widget)
     {
         bool have_focusable_widget = false;
 
-        for (const QWidget *next_focus : m_win_widget->findChildren<QWidget*>())
+        for (QWidget *next_focus : findChildren<QWidget*>())
         {
             if (next_focus->focusPolicy() != Qt::NoFocus)
             {
                 //Set focus to first focusable widget.
                 have_focusable_widget = true;
-
-                m_focus_widget = const_cast<QWidget*>(next_focus);
-
-                QTimer::singleShot(0, m_focus_widget, [=]{
-                    m_focus_widget->setFocus();
-                });
-
+                m_focus_widget = next_focus;
                 break;
             }
         }
@@ -1699,41 +2473,16 @@ void QGoodWindow::handleActivation()
         if (!have_focusable_widget)
         {
             //If not have focusable widget
-            //set focus to m_win_widget.
-            if (!m_win_widget->hasFocus())
-                m_win_widget->setFocus();
+            //set focus to m_main_window.
+            m_focus_widget = m_main_window;
         }
     }
 
-    if (m_state == Qt::WindowNoState)
+    if (m_focus_widget)
     {
-        //If in "normal" state, make shadow visible.
-        m_shadow->setActive(true);
-        m_shadow->show();
-    }
-
-    if (!m_active_state)
-    {
-        m_active_state = true;
-
-        QEvent event(QEvent::WindowActivate);
-        QApplication::sendEvent(this, &event);
-    }
-}
-
-void QGoodWindow::handleDeactivation()
-{
-    if (!m_win_widget || !m_shadow)
-        return;
-
-    m_shadow->setActive(false);
-
-    if (m_active_state)
-    {
-        m_active_state = false;
-
-        QEvent event(QEvent::WindowDeactivate);
-        QApplication::sendEvent(this, &event);
+        //If have a valid m_focus_widget,
+        //set the focus to this widget
+        m_focus_widget->setFocus();
     }
 }
 
@@ -1754,15 +2503,12 @@ void QGoodWindow::frameChanged()
 
 void QGoodWindow::sizeMoveWindow()
 {
-    if (!m_win_widget || !m_shadow)
-        return;
-
-    for (const QScreen *screen : QApplication::screens())
+    for (QScreen *screen : QApplication::screens())
     {
         if (screen->geometry().contains(frameGeometry().center()))
         {
             if (windowHandle()->screen() != screen)
-                windowHandle()->setScreen(const_cast<QScreen*>(screen));
+                windowHandle()->setScreen(screen);
         }
     }
 
@@ -1772,6 +2518,7 @@ void QGoodWindow::sizeMoveWindow()
         setGeometry(screen->geometry());
     }
 
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     if (!QtWin::isCompositionEnabled())
     {
         QRect window_rect = rect();
@@ -1783,96 +2530,247 @@ void QGoodWindow::sizeMoveWindow()
 
         SetWindowRgn(m_hwnd, QtWin::toHRGN(window_rect), TRUE);
     }
+#endif
 
-    m_win_widget->setGeometry(rect());
+    m_main_window->setGeometry(rect());
 
-    if (m_state == Qt::WindowNoState)
+    if (m_shadow)
     {
-        const int shadow_width = m_shadow->shadowWidth();
+        if (m_state == Qt::WindowNoState)
+        {
+            const int shadow_width = m_shadow->shadowWidth();
 
-        m_shadow->move(frameGeometry().x() - shadow_width, frameGeometry().y() - shadow_width);
-        m_shadow->resize(frameGeometry().width() + shadow_width * 2, frameGeometry().height() + shadow_width * 2);
+            m_shadow->move(x() - shadow_width, y() - shadow_width);
+            m_shadow->resize(width() + shadow_width * 2, height() + shadow_width * 2);
 
-        m_shadow->setActive(isActiveWindow());
+            m_shadow->setActive(isActiveWindow());
+        }
     }
 }
 
 LRESULT QGoodWindow::ncHitTest(int x, int y)
 {
-    const int borderWidth = (m_state == Qt::WindowNoState ? 1 : 0); //in pixels.
-    int titleHeight = titleBarHeight(); //in pixels.
-
-    //Get the point coordinates for the hit test.
-    QPoint ptMouse = QPoint(x, y);
-
-    //Get the window rectangle.
-    QRect rcWindow = frameGeometry();
-
-    //Determine if the hit test is for resizing. Default middle (1,1).
-    int row = 1;
-    int col = 1;
-    bool onResizeBorder = false;
-
-    //Determine if the point is at the top or bottom of the window.
-    if (ptMouse.y() < rcWindow.top() + titleHeight)
+    for (QSizeGrip *size_grip : findChildren<QSizeGrip*>())
     {
-        onResizeBorder = (ptMouse.y() < (rcWindow.top() + borderWidth));
-        row = 0;
-    }
-    else if (ptMouse.y() >= rcWindow.bottom() - borderWidth)
-    {
-        row = 2;
-    }
+        QPoint pos = QPoint(x, y);
 
-    //Determine if the point is at the left or right of the window.
-    if (ptMouse.x() < rcWindow.left() + borderWidth)
-    {
-        col = 0; //left side
-    }
-    else if (ptMouse.x() >= rcWindow.right() + 1 - borderWidth)
-    {
-        col = 2; //right side
-    }
-    else if (row == 0 && !onResizeBorder)
-    {
-        const QRegion left_mask = m_left_mask.translated(iconWidth(), 0);
-        const QRegion right_mask = m_right_mask.translated(width() - rightMargin(), 0);
-
-        QPoint ptMouseMap = m_win_widget->mapFromGlobal(ptMouse);
-
-        if (ptMouse.x() >= rcWindow.right() + 1 - rightMargin())
+        if (size_grip->isEnabled() &&
+                !size_grip->window()->windowFlags().testFlag(Qt::SubWindow))
         {
-            if (right_mask.contains(ptMouseMap))
-                return HTNOWHERE; //title bar buttons right
-        }
-        else if (ptMouse.x() > rcWindow.left() + iconWidth() &&
-                 ptMouse.x() < rcWindow.left() + iconWidth() + leftMargin())
-        {
-            if (left_mask.contains(ptMouseMap))
-                return HTNOWHERE; //custom title bar buttons left
-        }
-        else if (ptMouse.x() < rcWindow.left() + iconWidth())
-        {
-            return HTSYSMENU; //title bar icon
+            if (size_grip->rect().contains(size_grip->mapFromGlobal(pos)))
+                return HTBOTTOMRIGHT;
         }
     }
 
-    //Hit test (HTTOPLEFT, ... HTBOTTOMRIGHT)
-    LRESULT hitTests[3][3] =
+    if (!m_win_use_native_borders)
     {
-        {HTTOPLEFT, onResizeBorder ? HTTOP : HTCAPTION, HTTOPRIGHT},
-        {HTLEFT, HTNOWHERE, HTRIGHT},
-        {HTBOTTOMLEFT, HTBOTTOM, HTBOTTOMRIGHT},
-    };
+        const int border_width = (m_state == Qt::WindowNoState ? 1 : 0); //in pixels.
+        int title_height = titleBarHeight(); //in pixels.
 
-    return hitTests[row][col];
+        //Get the point coordinates for the hit test.
+        QPoint mouse_pos = QPoint(x, y);
+
+        //Get the window rectangle.
+        QRect window_rect = frameGeometry();
+
+        //Determine if the hit test is for resizing. Default middle (1,1).
+        int row = 1;
+        int col = 1;
+        bool on_resize_border = false;
+
+        //Determine if the point is at the top or bottom of the window.
+        if (mouse_pos.y() < window_rect.top() + title_height)
+        {
+            on_resize_border = (mouse_pos.y() < (window_rect.top() + border_width));
+            row = 0;
+        }
+        else if (mouse_pos.y() >= window_rect.bottom() - border_width)
+        {
+            row = 2;
+        }
+
+        //Determine if the point is at the left or right of the window.
+        if (mouse_pos.x() < window_rect.left() + border_width)
+        {
+            col = 0; //left side
+        }
+        else if (mouse_pos.x() > window_rect.right())
+        {
+            col = 2; //right side
+        }
+        else if (row == 0 && !on_resize_border)
+        {
+            const QRegion left_mask = m_left_mask.translated(iconWidth(), 0);
+            const QRegion right_mask = m_right_mask.translated(width() - rightMargin(), 0);
+
+            QPoint mouse_pos_map = mapFromGlobal(mouse_pos);
+
+            if (mouse_pos.x() > window_rect.right() - rightMargin())
+            {
+                if (m_caption_buttons_handled && m_caption_buttons_corner == Qt::TopRightCorner)
+                {
+                    QPoint pos = mouse_pos_map;
+                    pos.setX(pos.x() - (window_rect.right() - window_rect.left() - rightMargin()));
+
+                    if (m_cls_mask.contains(pos))
+                        return HTCLOSE; //title bar close button
+                    else if (m_max_mask.contains(pos))
+                        return HTMAXBUTTON; //title bar maximize button
+                    else if (m_min_mask.contains(pos))
+                        return HTMINBUTTON; //title bar minimize button
+                }
+
+                if (right_mask.contains(mouse_pos_map))
+                {
+                    return HTNOWHERE; //title bar buttons right
+                }
+            }
+            else if (mouse_pos.x() > window_rect.left() + iconWidth() &&
+                     mouse_pos.x() < window_rect.left() + iconWidth() + leftMargin())
+            {
+                if (m_caption_buttons_handled && m_caption_buttons_corner == Qt::TopLeftCorner)
+                {
+                    QPoint pos = mouse_pos_map;
+                    pos.setX(pos.x() - iconWidth());
+
+                    if (m_cls_mask.contains(pos))
+                        return HTCLOSE; //title bar close button
+                    else if (m_max_mask.contains(pos))
+                        return HTMAXBUTTON; //title bar maximize button
+                    else if (m_min_mask.contains(pos))
+                        return HTMINBUTTON; //title bar minimize button
+                }
+
+                if (left_mask.contains(mouse_pos_map))
+                {
+                    return HTNOWHERE; //custom title bar buttons left
+                }
+            }
+            else if (mouse_pos.x() < window_rect.left() + iconWidth())
+            {
+                return HTSYSMENU; //title bar icon
+            }
+        }
+
+        //Hit test (HTTOPLEFT, ... HTBOTTOMRIGHT)
+        LRESULT hitTests[3][3] =
+        {
+            {HTTOPLEFT, on_resize_border ? HTTOP : HTCAPTION, HTTOPRIGHT},
+            {HTLEFT, HTNOWHERE, HTRIGHT},
+            {HTBOTTOMLEFT, HTBOTTOM, HTBOTTOMRIGHT},
+        };
+
+        return hitTests[row][col];
+    }
+    else
+    {
+        const int border_width = (m_state == Qt::WindowNoState ? BORDERWIDTH : 0); //in pixels.
+        int title_height = titleBarHeight(); //in pixels.
+
+        //Get the point coordinates for the hit test.
+        QPoint mouse_pos = QPoint(x, y);
+
+        //Get the window rectangle.
+        QRect window_rect = geometry();
+
+        //Determine if the hit test is for resizing. Default middle (1,1).
+        int row = 1;
+        int col = 1;
+        bool on_resize_border = false;
+
+        //Determine if the point is at the top or bottom of the window.
+        if (mouse_pos.y() < window_rect.top() + title_height)
+        {
+            on_resize_border = (mouse_pos.y() < (window_rect.top() + border_width) &&
+                              mouse_pos.x() > (window_rect.left() + border_width) &&
+                              mouse_pos.x() < (window_rect.right() + border_width * 2));
+            row = 0;
+        }
+        else if (mouse_pos.y() >= window_rect.bottom())
+        {
+            row = 2;
+        }
+
+        //Determine if the point is at the left or right of the window.
+        if (mouse_pos.x() < window_rect.left() + border_width)
+        {
+            col = 0; //left side
+        }
+        else if (mouse_pos.x() > window_rect.right() + border_width)
+        {
+            col = 2; //right side
+        }
+        else if (row == 0 && !on_resize_border)
+        {
+            const QRegion left_mask = m_left_mask.translated(iconWidth(), 0);
+            const QRegion right_mask = m_right_mask.translated(width() - rightMargin(), 0);
+
+            QPoint mouse_pos_map = mapFromGlobal(mouse_pos);
+
+            if (mouse_pos.x() > window_rect.right() - rightMargin() + border_width)
+            {
+                if (m_caption_buttons_handled && m_caption_buttons_corner == Qt::TopRightCorner)
+                {
+                    QPoint pos = mouse_pos_map;
+                    pos.setX(pos.x() - (window_rect.right() - window_rect.left() - rightMargin()));
+
+                    if (m_cls_mask.contains(pos))
+                        return HTCLOSE; //title bar close button
+                    else if (m_max_mask.contains(pos))
+                        return HTMAXBUTTON; //title bar maximize button
+                    else if (m_min_mask.contains(pos))
+                        return HTMINBUTTON; //title bar minimize button
+                }
+
+                if (right_mask.contains(mouse_pos_map))
+                {
+                    return HTNOWHERE; //title bar buttons right
+                }
+            }
+            else if (mouse_pos.x() > window_rect.left() + iconWidth() &&
+                     mouse_pos.x() < window_rect.left() + iconWidth() + leftMargin())
+            {
+                if (m_caption_buttons_handled && m_caption_buttons_corner == Qt::TopLeftCorner)
+                {
+                    QPoint pos = mouse_pos_map;
+                    pos.setX(pos.x() - iconWidth());
+
+                    if (m_cls_mask.contains(pos))
+                        return HTCLOSE; //title bar close button
+                    else if (m_max_mask.contains(pos))
+                        return HTMAXBUTTON; //title bar maximize button
+                    else if (m_min_mask.contains(pos))
+                        return HTMINBUTTON; //title bar minimize button
+                }
+
+                if (left_mask.contains(mouse_pos_map))
+                {
+                    return HTNOWHERE; //custom title bar buttons left
+                }
+            }
+            else if (mouse_pos.x() < window_rect.left() + iconWidth())
+            {
+                return HTSYSMENU; //title bar icon
+            }
+        }
+
+        //Hit test (HTTOPLEFT, ... HTBOTTOMRIGHT)
+        LRESULT hitTests[3][3] =
+        {
+            {HTTOPLEFT, on_resize_border ? HTTOP : HTCAPTION, HTTOPRIGHT},
+            {HTLEFT, HTNOWHERE, HTRIGHT},
+            {HTBOTTOMLEFT, HTBOTTOM, HTBOTTOMRIGHT},
+        };
+
+        return hitTests[row][col];
+    }
 }
 
 void QGoodWindow::showContextMenu(int x, int y)
 {
-    HMENU hMenu = GetSystemMenu(m_hwnd, FALSE);
+    HMENU menu = GetSystemMenu(m_hwnd, FALSE);
 
-    if (!hMenu)
+    if (!menu)
         return;
 
     MENUITEMINFOW mi;
@@ -1882,11 +2780,11 @@ void QGoodWindow::showContextMenu(int x, int y)
 
     mi.fState = MF_ENABLED;
 
-    SetMenuItemInfoW(hMenu, SC_RESTORE, FALSE, &mi);
-    SetMenuItemInfoW(hMenu, SC_SIZE, FALSE, &mi);
-    SetMenuItemInfoW(hMenu, SC_MOVE, FALSE, &mi);
-    SetMenuItemInfoW(hMenu, SC_MAXIMIZE, FALSE, &mi);
-    SetMenuItemInfoW(hMenu, SC_MINIMIZE, FALSE, &mi);
+    SetMenuItemInfoW(menu, SC_RESTORE, FALSE, &mi);
+    SetMenuItemInfoW(menu, SC_SIZE, FALSE, &mi);
+    SetMenuItemInfoW(menu, SC_MOVE, FALSE, &mi);
+    SetMenuItemInfoW(menu, SC_MAXIMIZE, FALSE, &mi);
+    SetMenuItemInfoW(menu, SC_MINIMIZE, FALSE, &mi);
 
     mi.fState = MF_GRAYED;
 
@@ -1897,22 +2795,22 @@ void QGoodWindow::showContextMenu(int x, int y)
     {
     case SW_SHOWMAXIMIZED:
     {
-        SetMenuItemInfoW(hMenu, SC_SIZE, FALSE, &mi);
-        SetMenuItemInfoW(hMenu, SC_MOVE, FALSE, &mi);
-        SetMenuItemInfoW(hMenu, SC_MAXIMIZE, FALSE, &mi);
-        SetMenuDefaultItem(hMenu, SC_CLOSE, FALSE);
+        SetMenuItemInfoW(menu, SC_SIZE, FALSE, &mi);
+        SetMenuItemInfoW(menu, SC_MOVE, FALSE, &mi);
+        SetMenuItemInfoW(menu, SC_MAXIMIZE, FALSE, &mi);
+        SetMenuDefaultItem(menu, SC_CLOSE, FALSE);
         break;
     }
     case SW_SHOWMINIMIZED:
     {
-        SetMenuItemInfoW(hMenu, SC_MINIMIZE, FALSE, &mi);
-        SetMenuDefaultItem(hMenu, SC_RESTORE, FALSE);
+        SetMenuItemInfoW(menu, SC_MINIMIZE, FALSE, &mi);
+        SetMenuDefaultItem(menu, SC_RESTORE, FALSE);
         break;
     }
     case SW_SHOWNORMAL:
     {
-        SetMenuItemInfoW(hMenu, SC_RESTORE, FALSE, &mi);
-        SetMenuDefaultItem(hMenu, SC_CLOSE, FALSE);
+        SetMenuItemInfoW(menu, SC_RESTORE, FALSE, &mi);
+        SetMenuDefaultItem(menu, SC_CLOSE, FALSE);
         break;
     }
     default:
@@ -1921,21 +2819,22 @@ void QGoodWindow::showContextMenu(int x, int y)
 
     if (!(GetWindowLongW(m_hwnd, GWL_STYLE) & WS_MAXIMIZEBOX))
     {
-        SetMenuItemInfoW(hMenu, SC_MAXIMIZE, FALSE, &mi);
-        SetMenuItemInfoW(hMenu, SC_RESTORE, FALSE, &mi);
+        SetMenuItemInfoW(menu, SC_MAXIMIZE, FALSE, &mi);
+        SetMenuItemInfoW(menu, SC_RESTORE, FALSE, &mi);
     }
 
     if (!(GetWindowLongW(m_hwnd, GWL_STYLE) & WS_MINIMIZEBOX))
     {
-        SetMenuItemInfoW(hMenu, SC_MINIMIZE, FALSE, &mi);
+        SetMenuItemInfoW(menu, SC_MINIMIZE, FALSE, &mi);
     }
 
     if (!(GetWindowLongW(m_hwnd, GWL_STYLE) & WS_SIZEBOX))
     {
-        SetMenuItemInfoW(hMenu, SC_SIZE, FALSE, &mi);
+        SetMenuItemInfoW(menu, SC_SIZE, FALSE, &mi);
     }
 
-    BOOL cmd = TrackPopupMenu(hMenu, TPM_RIGHTBUTTON | TPM_NONOTIFY | TPM_RETURNCMD, x, y, 0, m_hwnd, nullptr);
+    int cmd = int(TrackPopupMenu(menu, TPM_RIGHTBUTTON | TPM_NONOTIFY | TPM_RETURNCMD,
+                                 x, y, 0, m_hwnd, nullptr));
 
     if (cmd)
         PostMessageW(m_hwnd, WM_SYSCOMMAND, WPARAM(cmd), 0);
@@ -1951,9 +2850,18 @@ void QGoodWindow::showContextMenu()
     showContextMenu(x_pos, y_pos);
 }
 
-void QGoodWindow::moveCenterDialog(QDialog *dialog)
+QWidget *QGoodWindow::bestParentForModalWindow()
 {
-    const int title_bar_height = (GetSystemMetrics(SM_CYFRAME) + GetSystemMetrics(SM_CYCAPTION) + GetSystemMetrics(SM_CXPADDEDBORDER));
+    QGoodWindowUtils::ParentWindow *parent = new QGoodWindowUtils::ParentWindow(this);
+    moveCenterWindow(parent);
+
+    return parent;
+}
+
+void QGoodWindow::moveCenterWindow(QWidget *widget)
+{
+    const int title_bar_height = (GetSystemMetrics(SM_CYFRAME) + GetSystemMetrics(SM_CYCAPTION) +
+                                  GetSystemMetrics(SM_CXPADDEDBORDER));
     const int border_width = (GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER));
 
     QScreen *screen = windowHandle()->screen();
@@ -1966,7 +2874,7 @@ void QGoodWindow::moveCenterDialog(QDialog *dialog)
 
     QRect screen_rect = screen->availableGeometry();
 
-    QRect dialog_rect = dialog->geometry();
+    QRect dialog_rect = widget->geometry();
 
     dialog_rect.moveCenter(rect.center());
 
@@ -1975,16 +2883,51 @@ void QGoodWindow::moveCenterDialog(QDialog *dialog)
     dialog_rect.moveRight(qMin(dialog_rect.right(), screen_rect.right() - border_width));
     dialog_rect.moveBottom(qMin(dialog_rect.bottom(), screen_rect.bottom() - border_width));
 
-    dialog->setGeometry(dialog_rect);
+    widget->setGeometry(dialog_rect);
 
-    if (dialog->windowIcon().isNull())
-        dialog->setWindowIcon(windowIcon());
-
-    dialog->setAttribute(Qt::WA_DontShowOnScreen, true);
-    dialog->setAttribute(Qt::WA_DontShowOnScreen, false);
+    if (widget->windowIcon().isNull())
+        widget->setWindowIcon(windowIcon());
 
     if (isMinimized())
         showNormal();
+}
+
+bool QGoodWindow::winButtonHover(long button)
+{
+    if (button == -1)
+        return false;
+
+    switch (button)
+    {
+    case HTMINBUTTON:
+    case HTMAXBUTTON:
+    case HTCLOSE:
+    {
+        if (!m_is_caption_button_pressed)
+        {
+            if (button != m_last_caption_button_hovered)
+                buttonLeave(m_last_caption_button_hovered);
+
+            if (isEnabled())
+                buttonEnter(button);
+        }
+        else
+        {
+            if (button != m_last_caption_button_hovered)
+                buttonLeave(m_last_caption_button_hovered);
+
+            if (!m_is_caption_button_pressed || (button == m_caption_button_pressed))
+                buttonEnter(button);
+        }
+
+        return true;
+    }
+    default:
+    {
+        buttonLeave(m_last_caption_button_hovered);
+        return false;
+    }
+    }
 }
 #endif
 #ifdef Q_OS_LINUX
@@ -2137,15 +3080,27 @@ void QGoodWindow::setCursorForCurrentPos()
         break;
     }
     case TITLE_BAR:
+    case HTMINBUTTON:
+    case HTMAXBUTTON:
+    case HTCLOSE:
     {
+        if (QApplication::overrideCursor() &&
+                QApplication::overrideCursor()->shape() == Qt::ArrowCursor)
+            break;
+
         QApplication::setOverrideCursor(Qt::ArrowCursor);
 
         break;
     }
     case NO_WHERE:
     {
-        QCursor cursor = widget->cursor();
-        QApplication::setOverrideCursor(cursor);
+        if (!QApplication::overrideCursor())
+            break;
+
+        if (QApplication::overrideCursor()->shape() != Qt::ArrowCursor)
+            break;
+
+        QApplication::restoreOverrideCursor();
 
         break;
     }
@@ -2223,28 +3178,19 @@ void QGoodWindow::sizeMoveBorders()
         return;
 
     if (!windowState().testFlag(Qt::WindowNoState))
-    {
-        for (const Shadow *shadow : m_shadow_list)
-            const_cast<Shadow*>(shadow)->hide();
-
         return;
-    }
 
     const int border_width = qCeil(BORDERWIDTH * m_pixel_ratio);
 
     QRect geom = geometry();
     geom.adjust(-border_width, -border_width, border_width, border_width);
 
-    QRect available_geom;
-
-    QRegion available_rgn;
+    QRegion available_geom;
 
     for (const QScreen *screen : QApplication::screens())
     {
-        available_rgn += screen->availableGeometry();
+        available_geom += screen->availableGeometry();
     }
-
-    available_geom = available_rgn.boundingRect();
 
     {   //TOP LEFT
         Shadow *shadow = m_shadow_list.at(0);
@@ -2257,7 +3203,7 @@ void QGoodWindow::sizeMoveBorders()
         if (available_geom.intersects(geom1))
         {
             shadow->setGeometry(geom1);
-            shadow->setGeometry(available_geom.intersected(shadow->frameGeometry()));
+            shadow->setGeometry(available_geom.intersected(shadow->frameGeometry()).boundingRect());
             shadow->show();
         }
         else
@@ -2277,7 +3223,7 @@ void QGoodWindow::sizeMoveBorders()
         if (available_geom.intersects(geom1))
         {
             shadow->setGeometry(geom1);
-            shadow->setGeometry(available_geom.intersected(shadow->frameGeometry()));
+            shadow->setGeometry(available_geom.intersected(shadow->frameGeometry()).boundingRect());
             shadow->show();
         }
         else
@@ -2297,7 +3243,7 @@ void QGoodWindow::sizeMoveBorders()
         if (available_geom.intersects(geom1))
         {
             shadow->setGeometry(geom1);
-            shadow->setGeometry(available_geom.intersected(shadow->frameGeometry()));
+            shadow->setGeometry(available_geom.intersected(shadow->frameGeometry()).boundingRect());
             shadow->show();
         }
         else
@@ -2317,7 +3263,7 @@ void QGoodWindow::sizeMoveBorders()
         if (available_geom.intersects(geom1))
         {
             shadow->setGeometry(geom1);
-            shadow->setGeometry(available_geom.intersected(shadow->frameGeometry()));
+            shadow->setGeometry(available_geom.intersected(shadow->frameGeometry()).boundingRect());
             shadow->show();
         }
         else
@@ -2337,7 +3283,7 @@ void QGoodWindow::sizeMoveBorders()
         if (available_geom.intersects(geom1))
         {
             shadow->setGeometry(geom1);
-            shadow->setGeometry(available_geom.intersected(shadow->frameGeometry()));
+            shadow->setGeometry(available_geom.intersected(shadow->frameGeometry()).boundingRect());
             shadow->show();
         }
         else
@@ -2357,7 +3303,7 @@ void QGoodWindow::sizeMoveBorders()
         if (available_geom.intersects(geom1))
         {
             shadow->setGeometry(geom1);
-            shadow->setGeometry(available_geom.intersected(shadow->frameGeometry()));
+            shadow->setGeometry(available_geom.intersected(shadow->frameGeometry()).boundingRect());
             shadow->show();
         }
         else
@@ -2377,7 +3323,7 @@ void QGoodWindow::sizeMoveBorders()
         if (available_geom.intersects(geom1))
         {
             shadow->setGeometry(geom1);
-            shadow->setGeometry(available_geom.intersected(shadow->frameGeometry()));
+            shadow->setGeometry(available_geom.intersected(shadow->frameGeometry()).boundingRect());
             shadow->show();
         }
         else
@@ -2397,7 +3343,7 @@ void QGoodWindow::sizeMoveBorders()
         if (available_geom.intersects(geom1))
         {
             shadow->setGeometry(geom1);
-            shadow->setGeometry(available_geom.intersected(shadow->frameGeometry()));
+            shadow->setGeometry(available_geom.intersected(shadow->frameGeometry()).boundingRect());
             shadow->show();
         }
         else
@@ -2411,65 +3357,100 @@ void QGoodWindow::sizeMoveBorders()
 void QGoodWindow::notificationReceiver(const QByteArray &notification)
 {
     if (notification == "NSWindowWillEnterFullScreenNotification")
+    {
+        m_on_animate_event = true;
         macOSNative::setStyle(long(winId()), true);
+    }
     else if (notification == "NSWindowDidExitFullScreenNotification")
+    {
         macOSNative::setStyle(long(winId()), false);
+        m_on_animate_event = false;
+    }
+    else if (notification == "AppleInterfaceThemeChangedNotification")
+    {
+        if (m_theme_change_timer)
+            m_theme_change_timer->start();
+    }
 }
 #endif
 #if defined Q_OS_LINUX || defined Q_OS_MAC
 int QGoodWindow::ncHitTest(int x, int y)
 {
-    const int titleHeight = titleBarHeight(); //in pixels.
+    const int title_height = titleBarHeight(); //in pixels.
 
     //Get the point coordinates for the hit test.
-    QPoint ptMouse = QPoint(x, y);
+    QPoint mouse_pos = QPoint(x, y);
 
     //Get the window rectangle.
-    QRect rcWindow = geometry();
+    QRect window_rect = frameGeometry();
 
     //Determine if the hit test is for resizing. Default middle (1,1).
     int row = 1;
     int col = 1;
-    bool onResizeBorder = false;
-
-    bool maximized = isMaximized();
+    bool on_resize_border = false;
 
     //Determine if the point is at the top or bottom of the window.
-    if (ptMouse.y() < rcWindow.top() + titleHeight)
+    if (mouse_pos.y() < window_rect.top() + title_height)
     {
-        onResizeBorder = (ptMouse.y() < rcWindow.top());
+        on_resize_border = (mouse_pos.y() < window_rect.top());
         row = 0;
     }
-    else if (!maximized && ptMouse.y() > rcWindow.bottom())
+    else if (mouse_pos.y() > window_rect.bottom())
     {
         row = 2;
     }
 
     //Determine if the point is at the left or right of the window.
-    if (!maximized && ptMouse.x() < rcWindow.left())
+    if (mouse_pos.x() < window_rect.left())
     {
         col = 0; //left side
     }
-    else if (!maximized && ptMouse.x() > rcWindow.right())
+    else if (mouse_pos.x() > window_rect.right())
     {
         col = 2; //right side
     }
-    else if (row == 0 && !onResizeBorder)
+    else if (row == 0 && !on_resize_border)
     {
         const QRegion left_mask = m_left_mask.translated(iconWidth(), 0);
         const QRegion right_mask = m_right_mask.translated(width() - rightMargin(), 0);
 
-        const QPoint ptMouseMap = mapFromGlobal(ptMouse);
+        const QPoint mouse_pos_map = mapFromGlobal(mouse_pos);
 
-        if (ptMouse.x() > rcWindow.right() - rightMargin())
+        if (mouse_pos.x() > window_rect.right() - rightMargin())
         {
-            if (right_mask.contains(ptMouseMap))
+            if (m_caption_buttons_handled && m_caption_buttons_corner == Qt::TopRightCorner)
+            {
+                QPoint pos = mouse_pos_map;
+                pos.setX(pos.x() - (window_rect.right() - window_rect.left() - rightMargin()));
+
+                if (m_cls_mask.contains(pos))
+                    return HTCLOSE; //title bar close button
+                else if (m_max_mask.contains(pos))
+                    return HTMAXBUTTON; //title bar maximize button
+                else if (m_min_mask.contains(pos))
+                    return HTMINBUTTON; //title bar minimize button
+            }
+
+            if (right_mask.contains(mouse_pos_map))
                 return NO_WHERE; //custom title bar buttons right
         }
-        else if (ptMouse.x() > rcWindow.left() + iconWidth() &&
-                 ptMouse.x() < rcWindow.left() + iconWidth() + leftMargin())
+        else if (mouse_pos.x() > window_rect.left() + iconWidth() &&
+                 mouse_pos.x() < window_rect.left() + iconWidth() + leftMargin())
         {
-            if (left_mask.contains(ptMouseMap))
+            if (m_caption_buttons_handled && m_caption_buttons_corner == Qt::TopLeftCorner)
+            {
+                QPoint pos = mouse_pos_map;
+                pos.setX(pos.x() - iconWidth());
+
+                if (m_cls_mask.contains(pos))
+                    return HTCLOSE; //title bar close button
+                else if (m_max_mask.contains(pos))
+                    return HTMAXBUTTON; //title bar maximize button
+                else if (m_min_mask.contains(pos))
+                    return HTMINBUTTON; //title bar minimize button
+            }
+
+            if (left_mask.contains(mouse_pos_map))
                 return NO_WHERE; //custom title bar buttons left
         }
     }
@@ -2477,11 +3458,185 @@ int QGoodWindow::ncHitTest(int x, int y)
     //Hit test (TOP_LEFT, ... BOTTOM_RIGHT)
     int hitTests[3][3] =
     {
-        {TOP_LEFT, onResizeBorder ? TOP : TITLE_BAR, TOP_RIGHT},
+        {TOP_LEFT, on_resize_border ? TOP : TITLE_BAR, TOP_RIGHT},
         {LEFT, NO_WHERE, RIGHT},
         {BOTTOM_LEFT, BOTTOM, BOTTOM_RIGHT},
     };
 
     return hitTests[row][col];
+}
+#endif
+#ifdef QGOODWINDOW
+void QGoodWindow::buttonEnter(long button)
+{
+    if (button == -1)
+        return;
+
+    m_last_caption_button_hovered = button;
+
+    switch (button)
+    {
+    case HTMINBUTTON:
+    {
+        emit captionButtonStateChanged(CaptionButtonState::MinimizeHoverEnter);
+
+        break;
+    }
+    case HTMAXBUTTON:
+    {
+        emit captionButtonStateChanged(CaptionButtonState::MaximizeHoverEnter);
+
+        break;
+    }
+    case HTCLOSE:
+    {
+        emit captionButtonStateChanged(CaptionButtonState::CloseHoverEnter);
+
+        break;
+    }
+    default:
+        break;
+    }
+}
+
+void QGoodWindow::buttonLeave(long button)
+{
+    if (button == -1)
+        return;
+
+    if (button != m_last_caption_button_hovered)
+        return;
+
+    m_last_caption_button_hovered = -1;
+
+    switch (button)
+    {
+    case HTMINBUTTON:
+    {
+        emit captionButtonStateChanged(CaptionButtonState::MinimizeHoverLeave);
+
+        break;
+    }
+    case HTMAXBUTTON:
+    {
+        emit captionButtonStateChanged(CaptionButtonState::MaximizeHoverLeave);
+
+        break;
+    }
+    case HTCLOSE:
+    {
+        emit captionButtonStateChanged(CaptionButtonState::CloseHoverLeave);
+
+        break;
+    }
+    default:
+        break;
+    }
+}
+
+bool QGoodWindow::buttonPress(long button)
+{
+    if (button == -1)
+        return false;
+
+    switch (button)
+    {
+    case HTMINBUTTON:
+    {
+        m_is_caption_button_pressed = true;
+        m_caption_button_pressed = HTMINBUTTON;
+
+        emit captionButtonStateChanged(CaptionButtonState::MinimizePress);
+
+        activateWindow();
+
+        return true;
+    }
+    case HTMAXBUTTON:
+    {
+        m_is_caption_button_pressed = true;
+        m_caption_button_pressed = HTMAXBUTTON;
+
+        emit captionButtonStateChanged(CaptionButtonState::MaximizePress);
+
+        activateWindow();
+
+        return true;
+    }
+    case HTCLOSE:
+    {
+        m_is_caption_button_pressed = true;
+        m_caption_button_pressed = HTCLOSE;
+
+        emit captionButtonStateChanged(CaptionButtonState::ClosePress);
+
+        activateWindow();
+
+        return true;
+    }
+    default:
+        break;
+    }
+
+    return false;
+}
+
+bool QGoodWindow::buttonRelease(long button, bool valid_click)
+{
+    if (button == -1)
+        return false;
+
+    if (!m_is_caption_button_pressed)
+        return false;
+
+    if (m_hover_timer->isActive())
+        return false;
+
+    m_is_caption_button_pressed = false;
+    m_caption_button_pressed = -1;
+
+    switch (button)
+    {
+    case HTMINBUTTON:
+    {
+        emit captionButtonStateChanged(CaptionButtonState::MinimizeRelease);
+
+        if (valid_click)
+        {
+            emit captionButtonStateChanged(CaptionButtonState::MinimizeClicked);
+            m_hover_timer->start();
+        }
+
+        return true;
+    }
+    case HTMAXBUTTON:
+    {
+        emit captionButtonStateChanged(CaptionButtonState::MaximizeRelease);
+
+        if (valid_click)
+        {
+            emit captionButtonStateChanged(CaptionButtonState::MaximizeClicked);
+            m_hover_timer->start();
+        }
+
+        return true;
+    }
+    case HTCLOSE:
+    {
+        emit captionButtonStateChanged(CaptionButtonState::CloseRelease);
+
+        if (valid_click)
+        {
+            emit captionButtonStateChanged(CaptionButtonState::CloseClicked);
+            m_hover_timer->start();
+        }
+
+        return true;
+    }
+    default:
+        break;
+    }
+
+    return false;
 }
 #endif

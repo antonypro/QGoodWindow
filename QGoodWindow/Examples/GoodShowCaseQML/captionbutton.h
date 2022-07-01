@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2021 Antonio Dias
+Copyright © 2018-2022 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -49,14 +49,13 @@ signals:
 public slots:
     void setIconMode(bool icon_dark);
     void setActive(bool is_active);
+    void setState(int state);
 
 private:
     //Functions
     void setColors();
     void drawIcons();
-    bool event(QEvent *event);
     void paintEvent(QPaintEvent *event);
-    inline bool isUnderMouse();
 
     //Variables
     QPixmap m_inactive_icon;

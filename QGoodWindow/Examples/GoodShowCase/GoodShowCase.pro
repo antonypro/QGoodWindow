@@ -1,6 +1,6 @@
 #The MIT License (MIT)
 
-#Copyright © 2021 Antonio Dias
+#Copyright © 2021-2022 Antonio Dias
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy
 #of this software and associated documentation files (the "Software"), to deal
@@ -22,32 +22,38 @@
 
 QT += core gui widgets
 
-win32:QT += winextras
-
 include($$PWD/../../QGoodWindow/QGoodWindow.pri)
-
-CONFIG += c++11
 
 SOURCES += \
     main.cpp \
     mainwindow.cpp
 
 HEADERS += \
-    mainwindow.h
+    mainwindow.h \
+    common.h \
+    darkstyle.h \
+    lightstyle.h
+
+FORMS += \
+    centralwidget.ui
 
 qgoodwindow {
 SOURCES += \
     captionbutton.cpp \
     iconwidget.cpp \
-    titlebar.cpp \
     titlewidget.cpp
 
 HEADERS += \
     captionbutton.h \
     iconwidget.h \
-    titlebar.h \
     titlewidget.h
 
+FORMS += \
+    framelesswindow.ui
+
 RESOURCES += \
-    res.qrc
+    framelesswindow.qrc
 }
+
+RESOURCES += \
+    style.qrc

@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2021 Antonio Dias
+Copyright © 2022 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,119 +22,138 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#ifdef _WIN32
+
+#ifdef _WIN32_WINNT
+#undef _WIN32_WINNT
+#endif
+
+#define _WIN32_WINNT _WIN32_WINNT_VISTA
+
+#include <windows.h>
+#include <dwmapi.h>
+
+#endif
+
 #include "mainwindow.h"
+#include "lightstyle.h"
+#include "darkstyle.h"
 
 MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent)
 {
-    m_dark = false;
-
-    m_frame_style = QString("QFrame {background-color: %0; border: %1;}");
-
-    m_color_str = "#FFFFFF";
-
-    QString border_str = "none";
-
 #ifdef QGOODWINDOW
-    title_bar = new TitleBar(pixelRatio(), this);
+    // if the system will draw borders or if this application must do that
+    m_draw_borders = !QGoodWindow::shouldBordersBeDrawnBySystem();
 
-    frame = new QFrame(this);
+    m_dark = QGoodWindow::isSystemThemeDark();
 
-    QVBoxLayout *layout = new QVBoxLayout(frame);
-    layout->setMargin(0);
-    layout->setSpacing(0);
-    layout->addWidget(title_bar);
-    layout->addStretch();
+    // create frameless window
+    m_window = new FramelessWindow(this);
+    m_central_widget = new CentralWidget(m_window);
 
-    setCentralWidget(frame);
+    // add the mainwindow to our custom frameless window
+    m_window->ui->windowContent->layout()->addWidget(m_central_widget);
 
-    connect(title_bar, &TitleBar::showMinimized, this, &MainWindow::showMinimized);
-    connect(title_bar, &TitleBar::showNormal, this, &MainWindow::showNormal);
-    connect(title_bar, &TitleBar::showMaximized, this, &MainWindow::showMaximized);
-    connect(title_bar, &TitleBar::closeWindow, this, &MainWindow::close);
-
-    connect(this, &MainWindow::windowTitleChanged, this, [=](const QString &title){
-        title_bar->setTitle(title);
+    connect(this, &QGoodWindow::windowTitleChanged, this, [=](const QString &title){
+        m_window->ui->titleWidget->setText(title);
     });
 
-    connect(this, &MainWindow::windowIconChanged, this, [=](const QIcon &icon){
-        if (!icon.isNull())
-        {
-            const int pix_size = qCeil(16 * pixelRatio());
-            title_bar->setIcon(icon.pixmap(pix_size, pix_size));
-        }
+    connect(this, &QGoodWindow::windowIconChanged, this, [=](const QIcon &icon){
+        m_window->ui->icon->setPixmap(icon.pixmap(16, 16));
     });
 
-#ifndef Q_OS_MAC
-    if (windowState().testFlag(Qt::WindowNoState))
-        border_str = "1px solid #1883D7";
-#endif
+    m_window->ui->icon->setFixedSize(30, 20);
 
-#else
-    frame = new QFrame(this);
+    m_window->ui->minimizeButton->setFixedSize(27, 27);
+    m_window->ui->maximizeButton->setFixedSize(27, 27);
+    m_window->ui->restoreButton->setFixedSize(27, 27);
+    m_window->ui->closeButton->setFixedSize(27, 27);
 
-    setCentralWidget(frame);
-#endif
+    m_window->ui->minimizeButton->init(CaptionButton::IconType::Minimize);
+    m_window->ui->maximizeButton->init(CaptionButton::IconType::Maximize);
+    m_window->ui->restoreButton->init(CaptionButton::IconType::Restore);
+    m_window->ui->closeButton->init(CaptionButton::IconType::Close);
 
-    frame->setStyleSheet(m_frame_style.arg(m_color_str).arg(border_str));
+    connect(m_window->ui->minimizeButton, &CaptionButton::clicked, this, &MainWindow::showMinimized);
+    connect(m_window->ui->maximizeButton, &CaptionButton::clicked, this, &MainWindow::showMaximized);
+    connect(m_window->ui->restoreButton, &CaptionButton::clicked, this, &MainWindow::showNormal);
+    connect(m_window->ui->closeButton, &CaptionButton::clicked, this, &MainWindow::close);
 
-    QShortcut *shortcut1 = new QShortcut(QKeySequence(Qt::Key_S), this);
+    connect(this, &QGoodWindow::captionButtonStateChanged, this, &MainWindow::captionButtonStateChanged);
+
+    setMargins(30, 30, 0, 27 * 3);
+
+    setCaptionButtonsHandled(true, Qt::TopRightCorner);
+
+    // Overlap close with maximize and maximize with minimize
+    setCloseMask(QRect(27 * 2, 0, rightCaptionButtonsRect().width(), rightCaptionButtonsRect().height()));
+    setMaximizeMask(QRect(27 * 1, 0, rightCaptionButtonsRect().width(), rightCaptionButtonsRect().height()));
+    setMinimizeMask(QRect(0, 0, rightCaptionButtonsRect().width(), rightCaptionButtonsRect().height()));
+
+    auto theme_change_func = [=]{
+        if (m_dark)
+            darkTheme();
+        else
+            lightTheme();
+
+        //Icon color inverse of m_dark to contrast.
+        m_window->ui->minimizeButton->setIconMode(!m_dark);
+        m_window->ui->maximizeButton->setIconMode(!m_dark);
+        m_window->ui->restoreButton->setIconMode(!m_dark);
+        m_window->ui->closeButton->setIconMode(!m_dark);
+    };
+
+    QShortcut *shortcut1 = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_S), this);
 
     connect(shortcut1, &QShortcut::activated, this, [=]{
         m_dark = !m_dark;
+        theme_change_func();
+    });
+
+    connect(this, &QGoodWindow::systemThemeChanged, this, [=]{
+        m_dark = QGoodWindow::isSystemThemeDark();
+        theme_change_func();
+    });
+
+    theme_change_func();
+#endif
+
+    setWindowIcon(qApp->style()->standardIcon(QStyle::SP_DesktopIcon));
+    setWindowTitle("Good Window - Press CTRL+S to toggle theme!");
 
 #ifdef QGOODWINDOW
-        title_bar->setDarkMode(m_dark);
-#endif
+    resize(m_window->size());
+    setCentralWidget(m_window);
+#else
+    m_dark = QGoodWindow::isSystemThemeDark();
 
-        if (!m_dark)
-            m_color_str = "#FFFFFF";
+    auto theme_change_func = [=]{
+        if (m_dark)
+            darkTheme();
         else
-            m_color_str = "#000000";
+            lightTheme();
+    };
 
-        QString border_str = "none";
+    QShortcut *shortcut1 = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_S), this);
 
-#if defined QGOODWINDOW && !defined Q_OS_MAC
-        if (windowState().testFlag(Qt::WindowNoState))
-            border_str = "1px solid #1883D7";
-#endif
-
-        frame->setStyleSheet(m_frame_style.arg(m_color_str).arg(border_str));
+    connect(shortcut1, &QShortcut::activated, this, [=]{
+        m_dark = !m_dark;
+        theme_change_func();
     });
 
-    QShortcut *shortcut2 = new QShortcut(QKeySequence(Qt::Key_F), this);
-
-    connect(shortcut2, &QShortcut::activated, this, [=]{
-        if (!isFullScreen())
-            showFullScreen();
-        else
-            showNormal();
+    connect(this, &QGoodWindow::systemThemeChanged, this, [=]{
+        m_dark = QGoodWindow::isSystemThemeDark();
+        theme_change_func();
     });
 
-    QPixmap p = QPixmap(1, 1);
-    p.fill(Qt::red);
+    theme_change_func();
 
-    setWindowIcon(p);
-
-    setWindowTitle("Good Window - Press S to toggle theme - Press F to toggle fullscreen!");
-
-    resize(qRound(640 * pixelRatio()), qRound(480 * pixelRatio()));
-
+    m_central_widget = new CentralWidget(this);
+    m_central_widget->setWindowFlags(Qt::Widget);
+    resize(m_central_widget->size());
+    setCentralWidget(m_central_widget);
+#endif
     move(QGuiApplication::primaryScreen()->availableGeometry().center() - rect().center());
-
-#ifdef Q_OS_WIN
-    QTimer::singleShot(0, this, [=]{
-        QPixmap p = QPixmap(1, 1);
-        p.fill(Qt::yellow);
-
-        QWinTaskbarButton *button = new QWinTaskbarButton(this);
-        button->setWindow(windowHandle());
-        button->setOverlayIcon(p);
-
-        QWinTaskbarProgress *progress = button->progress();
-        progress->setVisible(true);
-        progress->setValue(50);
-    });
-#endif
 }
 
 MainWindow::~MainWindow()
@@ -142,85 +161,279 @@ MainWindow::~MainWindow()
 
 }
 
-void MainWindow::closeEvent(QCloseEvent *event)
+#ifdef QGOODWINDOW
+void MainWindow::styleWindow()
 {
-    int result = QMessageBox::question(this, "Close window", "Are you sure to close?");
+    bool window_active = isActiveWindow();
+    bool window_no_state = windowState().testFlag(Qt::WindowNoState);
+    bool draw_borders = m_draw_borders;
 
-    if (result != QMessageBox::Yes)
-        event->ignore();
+    if (window_active)
+    {
+        if (window_no_state)
+        {
+            if (draw_borders)
+            {
+                m_window->ui->windowTitlebar->setStyleSheet(
+                            QStringLiteral("#windowTitlebar{border: 0px none palette(shadow);}"));
+                m_window->ui->windowFrame->setStyleSheet(
+                            QStringLiteral("#windowFrame{border: 1px solid palette(highlight);"
+                                           "background-color: palette(Window);}"));
+            }
+            else
+            {
+                m_window->ui->windowTitlebar->setStyleSheet(
+                            QStringLiteral("#windowTitlebar{border: 0px none palette(shadow);}"));
+                m_window->ui->windowFrame->setStyleSheet(
+                            QStringLiteral("#windowFrame{border: 0px solid palette(highlight);"
+                                           "background-color: palette(Window);}"));
+            }
+        }
+        else
+        {
+            m_window->ui->windowTitlebar->setStyleSheet(
+                        QStringLiteral("#windowTitlebar{border: 0px none palette(shadow);"
+                                       "background-color :palette(shadow); height:20px;}"));
+            m_window->ui->windowFrame->setStyleSheet(
+                        QStringLiteral("#windowFrame{border: 0px none palette(dark);"
+                                       "background-color: palette(Window);}"));
+        }
+    }
+    else
+    {
+        if (window_no_state)
+        {
+            if (draw_borders)
+            {
+                m_window->ui->windowTitlebar->setStyleSheet(
+                            QStringLiteral("#windowTitlebar{border: 0px none palette(shadow);"
+                                           "background-color: palette(dark); height:20px;}"));
+                m_window->ui->windowFrame->setStyleSheet(
+                            QStringLiteral("#windowFrame{border: 1px solid #000000;"
+                                           "background-color: palette(Window);}"));
+            }
+            else
+            {
+                m_window->ui->windowTitlebar->setStyleSheet(
+                            QStringLiteral("#windowTitlebar{border: 0px none palette(shadow);"
+                                           "background-color: palette(dark); height:20px;}"));
+                m_window->ui->windowFrame->setStyleSheet(
+                            QStringLiteral("#windowFrame{border: 0px solid #000000;"
+                                           "background-color: palette(Window);}"));
+            }
+        }
+        else
+        {
+            m_window->ui->windowTitlebar->setStyleSheet(
+                        QStringLiteral("#titlebarWidget{border: 0px none palette(shadow);"
+                                       "background-color: palette(dark); height: 20px;}"));
+            m_window->ui->windowFrame->setStyleSheet(
+                        QStringLiteral("#windowFrame{border: 0px none palette(shadow);"
+                                       "background-color: palette(Window);}"));
+        }
+    }
+
+    m_window->ui->icon->setActive(window_active);
+
+    m_window->ui->titleWidget->setActive(window_active);
+
+    if (!isMinimized())
+    {
+        m_window->ui->maximizeButton->setVisible(window_no_state);
+        m_window->ui->restoreButton->setVisible(!window_no_state);
+    }
+
+    m_window->ui->minimizeButton->setActive(window_active);
+    m_window->ui->maximizeButton->setActive(window_active);
+    m_window->ui->restoreButton->setActive(window_active);
+    m_window->ui->closeButton->setActive(window_active);
 }
 
-bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, long *result)
+void MainWindow::captionButtonStateChanged(const QGoodWindow::CaptionButtonState &state)
 {
-    //Listen for native events
+    switch (state)
+    {
+        // Hover enter
+    case QGoodWindow::CaptionButtonState::MinimizeHoverEnter:
+    {
+        m_window->ui->minimizeButton->setState(QEvent::HoverEnter);
 
-    return QGoodWindow::nativeEvent(eventType, message, result);
+        break;
+    }
+    case QGoodWindow::CaptionButtonState::MaximizeHoverEnter:
+    {
+        if (!isMaximized())
+            m_window->ui->maximizeButton->setState(QEvent::HoverEnter);
+        else
+            m_window->ui->restoreButton->setState(QEvent::HoverEnter);
+
+        break;
+    }
+    case QGoodWindow::CaptionButtonState::CloseHoverEnter:
+    {
+        m_window->ui->closeButton->setState(QEvent::HoverEnter);
+
+        break;
+    }
+        // Hover leave
+    case QGoodWindow::CaptionButtonState::MinimizeHoverLeave:
+    {
+        m_window->ui->minimizeButton->setState(QEvent::HoverLeave);
+
+        break;
+    }
+    case QGoodWindow::CaptionButtonState::MaximizeHoverLeave:
+    {
+        if (!isMaximized())
+            m_window->ui->maximizeButton->setState(QEvent::HoverLeave);
+        else
+            m_window->ui->restoreButton->setState(QEvent::HoverLeave);
+
+        break;
+    }
+    case QGoodWindow::CaptionButtonState::CloseHoverLeave:
+    {
+        m_window->ui->closeButton->setState(QEvent::HoverLeave);
+
+        break;
+    }
+        // Mouse button press
+    case QGoodWindow::CaptionButtonState::MinimizePress:
+    {
+        m_window->ui->minimizeButton->setState(QEvent::MouseButtonPress);
+
+        break;
+    }
+    case QGoodWindow::CaptionButtonState::MaximizePress:
+    {
+        if (!isMaximized())
+            m_window->ui->maximizeButton->setState(QEvent::MouseButtonPress);
+        else
+            m_window->ui->restoreButton->setState(QEvent::MouseButtonPress);
+
+        break;
+    }
+    case QGoodWindow::CaptionButtonState::ClosePress:
+    {
+        m_window->ui->closeButton->setState(QEvent::MouseButtonPress);
+
+        break;
+    }
+        // Mouse button release
+    case QGoodWindow::CaptionButtonState::MinimizeRelease:
+    {
+        m_window->ui->minimizeButton->setState(QEvent::MouseButtonRelease);
+
+        break;
+    }
+    case QGoodWindow::CaptionButtonState::MaximizeRelease:
+    {
+        if (!isMaximized())
+            m_window->ui->maximizeButton->setState(QEvent::MouseButtonRelease);
+        else
+            m_window->ui->restoreButton->setState(QEvent::MouseButtonRelease);
+
+        break;
+    }
+    case QGoodWindow::CaptionButtonState::CloseRelease:
+    {
+        m_window->ui->closeButton->setState(QEvent::MouseButtonRelease);
+
+        break;
+    }
+        // Mouse button clicked
+    case QGoodWindow::CaptionButtonState::MinimizeClicked:
+    {
+        emit m_window->ui->minimizeButton->clicked();
+
+        break;
+    }
+    case QGoodWindow::CaptionButtonState::MaximizeClicked:
+    {
+        if (!isMaximized())
+            emit m_window->ui->maximizeButton->clicked();
+        else
+            emit m_window->ui->restoreButton->clicked();
+
+        break;
+    }
+    case QGoodWindow::CaptionButtonState::CloseClicked:
+    {
+        emit m_window->ui->closeButton->clicked();
+
+        break;
+    }
+    default:
+        break;
+    }
 }
 
 bool MainWindow::event(QEvent *event)
 {
     switch (event->type())
     {
-#ifdef QGOODWINDOW
     case QEvent::Show:
+    case QEvent::WindowActivate:
+    case QEvent::WindowDeactivate:
     case QEvent::WindowStateChange:
     {
-        QString border_str = "none";
-#ifndef Q_OS_MAC
-        if (windowState().testFlag(Qt::WindowNoState))
-        {
-            if (isActiveWindow())
-                border_str = "1px solid #1883D7";
-            else
-                border_str = "1px solid #AAAAAA";
-        }
-#endif
-        frame->setStyleSheet(m_frame_style.arg(m_color_str).arg(border_str));
-
-        title_bar->setMaximized(isMaximized());
-
-        title_bar->setVisible(!isFullScreen());
-
-        if (!isFullScreen())
-            setMargins(qRound(30 * pixelRatio()), qRound(30 * pixelRatio()), 0, qRound(36 * 3 * pixelRatio()));
-        else
-            setMargins(0, 0, 0, 0);
-
+        styleWindow();
         break;
     }
-    case QEvent::WindowActivate:
+    case QEvent::StyleChange:
     {
-#ifndef Q_OS_MAC
-        QString border_str = (windowState().testFlag(Qt::WindowNoState) ? "1px solid #1883D7" : "none");
-        frame->setStyleSheet(m_frame_style.arg(m_color_str).arg(border_str));
-#endif
-        title_bar->setActive(true);
+        QColor active_color = qApp->palette().color(QPalette::WindowText);
+        QColor inactive_color = qApp->palette().color(QPalette::Disabled, QPalette::WindowText);
+
+        m_window->ui->titleWidget->setTitleColor(active_color, inactive_color);
 
         break;
     }
-    case QEvent::WindowDeactivate:
-    {
-#ifndef Q_OS_MAC
-        QString border_str = (windowState().testFlag(Qt::WindowNoState) ? "1px solid #AAAAAA" : "none");
-        frame->setStyleSheet(m_frame_style.arg(m_color_str).arg(border_str));
-#endif
-        title_bar->setActive(false);
-
-        break;
-    }
-#endif
-    case QEvent::Resize:
-    case QEvent::Hide:
-    case QEvent::Move:
-    case QEvent::KeyPress:
-    case QEvent::KeyRelease:
-    case QEvent::MouseMove:
-    case QEvent::Wheel:
-        //Listen for Qt window events
-        break;
     default:
         break;
     }
 
     return QGoodWindow::event(event);
+}
+
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, long *result)
+#else
+bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr *result)
+#endif
+{
+#ifdef Q_OS_WIN
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    MSG *msg = static_cast<MSG*>(message);
+
+    switch (msg->message)
+    {
+    case WM_THEMECHANGED:
+    case WM_DWMCOMPOSITIONCHANGED:
+    {
+        //Keep window theme on Windows theme change events.
+        QTimer::singleShot(1000, this, [=]{
+            if (m_dark)
+                darkTheme();
+            else
+                lightTheme();
+        });
+
+        break;
+    }
+    default:
+        break;
+    }
+#endif
+#endif
+    return QGoodWindow::nativeEvent(eventType, message, result);
+}
+#endif
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    int result = QMessageBox::question(this, "Close window", "Are you sure to close?");
+
+    if (result != QMessageBox::Yes)
+        event->ignore();
 }

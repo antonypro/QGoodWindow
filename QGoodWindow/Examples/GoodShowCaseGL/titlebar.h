@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2021 Antonio Dias
+Copyright © 2018-2022 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,52 +22,49 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef SHADOW_H
-#define SHADOW_H
+#ifndef TITLEBAR_H
+#define TITLEBAR_H
 
 #include <QtCore>
 #include <QtGui>
 #include <QtWidgets>
+#include <QGoodWindow>
+#include "iconwidget.h"
+#include "titlewidget.h"
+#include "captionbutton.h"
 
-#ifdef Q_OS_LINUX
-class QGoodWindow;
-#endif
-
-//\cond HIDDEN_SYMBOLS
-class Shadow : public QWidget
+class TitleBar : public QFrame
 {
     Q_OBJECT
 public:
-#ifdef Q_OS_WIN
-    explicit Shadow(qreal pixel_ratio, HWND hwnd);
-#endif
-#ifdef Q_OS_LINUX
-    explicit Shadow(QWidget *parent);
-#endif
+    explicit TitleBar(qreal pixel_ratio, QWidget *parent = nullptr);
+
+signals:
+    void showMinimized();
+    void showNormal();
+    void showMaximized();
+    void closeWindow();
 
 public slots:
-    void showLater();
-    void show();
-    void hide();
+    void setTitle(const QString &title);
+    void setIcon(const QPixmap &icon);
     void setActive(bool active);
-    int shadowWidth();
+    void setMaximized(bool maximized);
+    bool dark();
+    void setDarkMode(bool dark);
+    void captionButtonStateChanged(const QGoodWindow::CaptionButtonState &state);
 
 private:
-    //Functions
-    bool nativeEvent(const QByteArray &eventType, void *message, long *result);
-    void paintEvent(QPaintEvent *event);
-
-    //Variables
-#ifdef Q_OS_WIN
-    HWND m_hwnd;
-    QTimer *m_timer;
+    IconWidget *iconwidget;
+    TitleWidget *titlewidget;
+    CaptionButton *minbtn;
+    CaptionButton *restorebtn;
+    CaptionButton *maxbtn;
+    CaptionButton *clsbtn;
+    QString style;
     bool m_active;
-    qreal m_pixel_ratio;
-#endif
-#ifdef Q_OS_LINUX
-    QPointer<QGoodWindow> m_parent;
-#endif
+    bool m_is_maximized;
+    bool m_dark;
 };
-//\endcond
 
-#endif // SHADOW_H
+#endif // TITLEBAR_H

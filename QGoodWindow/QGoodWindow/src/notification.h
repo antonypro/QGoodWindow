@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2022 Antonio Dias
+Copyright © 2021-2022 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,49 +22,26 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef TITLEBAR_H
-#define TITLEBAR_H
+#ifndef NOTIFICATION_H
+#define NOTIFICATION_H
 
 #include <QtCore>
-#include <QtGui>
 #include <QtWidgets>
-#include <QGoodWindow>
-#include "iconwidget.h"
-#include "titlewidget.h"
-#include "captionbutton.h"
 
-class TitleBar : public QFrame
+//\cond HIDDEN_SYMBOLS
+class Notification
 {
-    Q_OBJECT
 public:
-    explicit TitleBar(qreal pixel_ratio, QWidget *parent = nullptr);
+    Notification();
 
-signals:
-    void showMinimized();
-    void showNormal();
-    void showMaximized();
-    void closeWindow();
-
-public slots:
-    void setTitle(const QString &title);
-    void setIcon(const QPixmap &icon);
-    void setActive(bool active);
-    void setMaximized(bool maximized);
-    bool dark();
-    void setDarkMode(bool dark);
-    void captionButtonStateChanged(const QGoodWindow::CaptionButtonState &state);
+    void addWindow(void *ptr);
+    void removeWindow(void *ptr);
+    void notification(const char *notification_name, long wid);
+    void registerNotification(const QByteArray &name, WId wid);
 
 private:
-    IconWidget *iconwidget;
-    TitleWidget *titlewidget;
-    CaptionButton *minbtn;
-    CaptionButton *restorebtn;
-    CaptionButton *maxbtn;
-    CaptionButton *clsbtn;
-    QString style;
-    bool m_active;
-    bool m_is_maximized;
-    bool m_dark;
+    QList<void*> m_ptr_list;
 };
+//\endcond
 
-#endif // TITLEBAR_H
+#endif // NOTIFICATION_H

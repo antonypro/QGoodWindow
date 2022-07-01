@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2021 Antonio Dias
+Copyright © 2021-2022 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -103,3 +103,46 @@ void macOSNative::unregisterNotification()
 }
 @end
 //\endcond
+
+//\cond HIDDEN_SYMBOLS
+@interface ThemeChangeHandler : NSObject
+{
+}
+@end
+//\endcond
+
+ThemeChangeHandler *m_theme_change_handler;
+
+//\cond HIDDEN_SYMBOLS
+@implementation ThemeChangeHandler
++ (void)load
+{
+    m_theme_change_handler = static_cast<ThemeChangeHandler*>(self);
+}
+
++(void)ThemeChangeNotification:(NSNotification*)notification
+{
+    const NSString *str = [notification name];
+
+    const char *cstr = [str cStringUsingEncoding:NSUTF8StringEncoding];
+
+    macOSNative::handleNotification(cstr, 0);
+}
+@end
+//\endcond
+
+void macOSNative::registerThemeChangeNotification()
+{
+    [[NSDistributedNotificationCenter defaultCenter]
+    addObserver:m_theme_change_handler
+    selector:@selector(ThemeChangeNotification:)
+    name:@"AppleInterfaceThemeChangedNotification"
+    object:nil];
+}
+
+const char *macOSNative::themeName()
+{
+    NSString *str = [[NSUserDefaults standardUserDefaults] stringForKey:@"AppleInterfaceStyle"];
+    const char *cstr = [str cStringUsingEncoding:NSUTF8StringEncoding];
+    return cstr;
+}

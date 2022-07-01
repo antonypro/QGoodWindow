@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2021 Antonio Dias
+Copyright © 2018-2022 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -33,6 +33,9 @@ class CaptionButton : public QWidget
 {
     Q_OBJECT
 public:
+    explicit CaptionButton(QWidget *parent = nullptr);
+    ~CaptionButton();
+
     enum class IconType
     {
         Minimize,
@@ -41,7 +44,7 @@ public:
         Close
     };
 
-    explicit CaptionButton(IconType type, qreal pixelRatio, QWidget *parent = nullptr);
+    void init(IconType type);
 
 signals:
     void clicked();
@@ -49,14 +52,14 @@ signals:
 public slots:
     void setIconMode(bool icon_dark);
     void setActive(bool is_active);
+    void setState(int state);
 
 private:
     //Functions
+    QPixmap drawIcon(const QPixmap &icon, bool active, bool force_light = false);
     void setColors();
     void drawIcons();
-    bool event(QEvent *event);
     void paintEvent(QPaintEvent *event);
-    inline bool isUnderMouse();
 
     //Variables
     QPixmap m_inactive_icon;
@@ -69,7 +72,6 @@ private:
     QColor m_pressed;
 
     IconType m_type;
-    qreal m_pixel_ratio;
     bool m_is_active;
     bool m_is_under_mouse;
     bool m_is_pressed;

@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2021 Antonio Dias
+Copyright © 2018-2022 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,41 +22,57 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "notification.h"
-#include "mainwindow.h"
-#include "macosnative.h"
+#ifndef CAPTIONBUTTON_H
+#define CAPTIONBUTTON_H
 
-Notification::Notification()
+#include <QtCore>
+#include <QtGui>
+#include <QtWidgets>
+
+class CaptionButton : public QWidget
 {
-
-}
-
-void Notification::addWindow(void *ptr)
-{
-    m_ptr_list.append(ptr);
-}
-
-void Notification::removeWindow(void *ptr)
-{
-    m_ptr_list.removeAll(ptr);
-}
-
-void Notification::registerNotification(const QByteArray &name, WId wid)
-{
-    macOSNative::registerNotification(name.constData(), long(wid));
-}
-
-void Notification::notification(const char *notification_name, long wid)
-{
-    for (void *ptr : m_ptr_list)
+    Q_OBJECT
+public:
+    enum class IconType
     {
-        MainWindow *mw = static_cast<MainWindow*>(ptr);
+        Minimize,
+        Restore,
+        Maximize,
+        Close
+    };
 
-        if (mw->winId() == WId(wid))
-        {
-            const QByteArray notification = QByteArray(notification_name);
-            mw->notificationReceiver(notification);
-            break;
-        }
-    }
-}
+    explicit CaptionButton(IconType type, qreal pixelRatio, QWidget *parent = nullptr);
+
+signals:
+    void clicked();
+
+public slots:
+    void setIconMode(bool icon_dark);
+    void setActive(bool is_active);
+    void setState(int state);
+
+private:
+    //Functions
+    void setColors();
+    void drawIcons();
+    void paintEvent(QPaintEvent *event);
+
+    //Variables
+    QPixmap m_inactive_icon;
+    QPixmap m_active_icon;
+
+    QPixmap m_close_icon_hover;
+
+    QColor m_normal;
+    QColor m_hover;
+    QColor m_pressed;
+
+    IconType m_type;
+    qreal m_pixel_ratio;
+    bool m_is_active;
+    bool m_is_under_mouse;
+    bool m_is_pressed;
+    bool m_icon_dark;
+};
+
+#endif // CAPTIONBUTTON_H

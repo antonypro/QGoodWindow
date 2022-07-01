@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2021 Antonio Dias
+Copyright © 2018-2022 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,15 @@ SOFTWARE.
 
 int main(int argc, char *argv[])
 {
+#ifdef Q_OS_LINUX
+    QApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
+#endif
+
     QApplication a(argc, argv);
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
+#endif
 
     MainWindow mw;
     mw.show();

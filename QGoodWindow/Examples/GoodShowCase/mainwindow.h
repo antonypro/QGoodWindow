@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2021 Antonio Dias
+Copyright © 2022 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -25,32 +25,52 @@ SOFTWARE.
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include <QtCore>
+#include <QtGui>
+#include <QtWidgets>
 #include <QGoodWindow>
 
-#ifdef Q_OS_WIN
-#include <QtWinExtras>
+#include "ui_centralwidget.h"
+#ifdef QGOODWINDOW
+#include "ui_framelesswindow.h"
+#include "captionbutton.h"
 #endif
 
 #ifdef QGOODWINDOW
-#include "titlebar.h"
-#endif
-
-inline qreal pixelRatio()
+class FramelessWindow : public QWidget
 {
-#ifdef QGOODWINDOW
-    QScreen *screen = QApplication::primaryScreen();
+    Q_OBJECT
+public:
+    explicit FramelessWindow(QWidget *parent = nullptr) : QWidget(parent), ui(new Ui::FramelessWindow)
+    {
+        ui->setupUi(this);
+    }
 
-#ifdef Q_OS_MAC
-    qreal pixel_ratio = screen->devicePixelRatio();
-#else
-    qreal pixel_ratio = screen->logicalDotsPerInch() / qreal(96);
+    ~FramelessWindow()
+    {
+        delete ui;
+    }
+
+    Ui::FramelessWindow *ui;
+};
 #endif
 
-#else
-    qreal pixel_ratio = qreal(1);
-#endif
-    return pixel_ratio;
-}
+class CentralWidget : public QMainWindow
+{
+    Q_OBJECT
+public:
+    explicit CentralWidget(QWidget *parent = nullptr) : QMainWindow(parent), ui(new Ui::CentralWidget)
+    {
+        ui->setupUi(this);
+    }
+
+    ~CentralWidget()
+    {
+        delete ui;
+    }
+
+    Ui::CentralWidget *ui;
+};
 
 class MainWindow : public QGoodWindow
 {
@@ -61,18 +81,25 @@ public:
 
 private:
     //Functions
-    void closeEvent(QCloseEvent *event);
-    bool nativeEvent(const QByteArray &eventType, void *message, long *result);
+#ifdef QGOODWINDOW
+    void styleWindow();
+    void captionButtonStateChanged(const QGoodWindow::CaptionButtonState &state);
     bool event(QEvent *event);
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    bool nativeEvent(const QByteArray &eventType, void *message, long *result);
+#else
+    bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result);
+#endif
+#endif
+    void closeEvent(QCloseEvent *event);
 
     //Variables
-    bool m_dark;
-    QFrame *frame;
-    QString m_color_str;
-    QString m_frame_style;
 #ifdef QGOODWINDOW
-    TitleBar *title_bar;
+    FramelessWindow *m_window;
 #endif
+    CentralWidget *m_central_widget;
+    bool m_draw_borders;
+    bool m_dark;
 };
 
 #endif // MAINWINDOW_H

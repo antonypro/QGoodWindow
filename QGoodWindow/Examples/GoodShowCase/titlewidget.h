@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2021 Antonio Dias
+Copyright © 2018-2022 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -33,7 +33,7 @@ class TitleWidget : public QWidget
 {
     Q_OBJECT
 public:
-    explicit TitleWidget(qreal pixel_ratio, QWidget *parent = nullptr);
+    explicit TitleWidget(QWidget *parent = nullptr);
 
 public slots:
     void setText(const QString &text);
@@ -49,7 +49,6 @@ private:
     bool m_active;
     QColor m_active_color;
     QColor m_inactive_color;
-    qreal m_pixel_ratio;
 };
 
 #endif // TITLEWIDGET_H

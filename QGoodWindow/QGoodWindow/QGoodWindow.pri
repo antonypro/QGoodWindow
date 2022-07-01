@@ -1,6 +1,6 @@
 #The MIT License (MIT)
 
-#Copyright © 2021 Antonio Dias
+#Copyright © 2021-2022 Antonio Dias
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy
 #of this software and associated documentation files (the "Software"), to deal
@@ -25,24 +25,24 @@ QT += core gui widgets
 CONFIG += c++11
 
 SOURCES += \
-    $$PWD/QGoodWindowSource/qgoodwindow.cpp
+    $$PWD/src/qgoodwindow.cpp
 
 HEADERS += \
-    $$PWD/QGoodWindowSource/qgoodwindow.h
+    $$PWD/src/qgoodwindow.h
 
 INCLUDEPATH += $$PWD
 
 win32 {
+equals(QT_MAJOR_VERSION, 5){
 QT += winextras
+}
 
 SOURCES += \
-    $$PWD/QGoodWindowSource/shadow.cpp \
-    $$PWD/QGoodWindowSource/winwidget.cpp
+    $$PWD/src/shadow.cpp
 
 HEADERS += \
-    $$PWD/QGoodWindowSource/common.h \
-    $$PWD/QGoodWindowSource/shadow.h \
-    $$PWD/QGoodWindowSource/winwidget.h
+    $$PWD/src/common.h \
+    $$PWD/src/shadow.h
 
 LIBS += -lUser32 -lGdi32
 
@@ -51,15 +51,24 @@ CONFIG += qgoodwindow
 }
 
 unix:!mac:!android {
-QT += x11extras testlib
+equals(QT_MAJOR_VERSION, 5){
+QT += testlib x11extras
+}
+
+equals(QT_MAJOR_VERSION, 6){
+QT += gui-private
+}
 
 SOURCES += \
-    $$PWD/QGoodWindowSource/shadow.cpp
+    $$PWD/src/shadow.cpp
 
 HEADERS += \
-    $$PWD/QGoodWindowSource/shadow.h
+    $$PWD/src/shadow.h
 
 LIBS += -lX11
+
+CONFIG += link_pkgconfig
+PKGCONFIG += gtk+-2.0
 
 DEFINES += QGOODWINDOW
 CONFIG += qgoodwindow
@@ -67,14 +76,14 @@ CONFIG += qgoodwindow
 
 mac {
 OBJECTIVE_SOURCES += \
-    $$PWD/QGoodWindowSource/macosnative.mm
+    $$PWD/src/macosnative.mm
 
 SOURCES += \
-    $$PWD/QGoodWindowSource/notification.cpp
+    $$PWD/src/notification.cpp
 
 HEADERS += \
-    $$PWD/QGoodWindowSource/macosnative.h \
-    $$PWD/QGoodWindowSource/notification.h
+    $$PWD/src/macosnative.h \
+    $$PWD/src/notification.h
 
 LIBS += -framework Foundation -framework Cocoa -framework AppKit
 

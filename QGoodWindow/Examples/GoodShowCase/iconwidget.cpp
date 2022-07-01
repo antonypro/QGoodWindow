@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2021 Antonio Dias
+Copyright © 2018-2022 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -27,10 +27,9 @@ SOFTWARE.
 #define ICONWIDTH 16
 #define ICONHEIGHT 16
 
-IconWidget::IconWidget(qreal pixel_ratio, QWidget *parent) : QWidget(parent)
+IconWidget::IconWidget(QWidget *parent) : QWidget(parent)
 {
     m_active = true;
-    m_pixel_ratio = pixel_ratio;
 }
 
 void IconWidget::setPixmap(const QPixmap &pixmap)
@@ -69,9 +68,8 @@ void IconWidget::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
 
-    painter.drawPixmap(qRound(width() - ICONWIDTH * m_pixel_ratio) / 2,
-                       qRound(height() - ICONHEIGHT * m_pixel_ratio) / 2,
-                       qRound(ICONWIDTH * m_pixel_ratio),
-                       qRound(ICONHEIGHT * m_pixel_ratio),
+    painter.drawPixmap((width() - ICONWIDTH)/ 2,
+                       (height() - ICONHEIGHT) / 2,
+                       ICONWIDTH, ICONHEIGHT,
                        m_active ? m_pixmap : m_grayed_pixmap);
 }

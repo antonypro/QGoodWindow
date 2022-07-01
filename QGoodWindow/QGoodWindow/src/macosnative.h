@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2021 Antonio Dias
+Copyright © 2021-2022 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,30 +22,29 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef WINWIDGET_H
-#define WINWIDGET_H
+#ifndef MACOSNATIVE_H
+#define MACOSNATIVE_H
 
-#include <QtCore>
-#include <QtGui>
-#include <QtWidgets>
-#include <windowsx.h>
+#include "notification.h"
 
-class QGoodWindow;
+extern Notification notification;
 
 //\cond HIDDEN_SYMBOLS
-class WinWidget : public QWidget
+namespace macOSNative
 {
-    Q_OBJECT
-public:
-    explicit WinWidget(QGoodWindow *gw);
+    void registerThemeChangeNotification();
+    void registerNotification(const char *notification_name, long wid);
+    void unregisterNotification();
 
-private:
-    //Functions
-    bool event(QEvent *event);
+    inline void handleNotification(const char *notification_name, long wid)
+    {
+        notification.notification(notification_name, wid);
+    }
 
-    //Variables
-    QGoodWindow *m_gw;
-};
+    void setStyle(long winid, bool fullscreen);
+
+    const char *themeName();
+}
 //\endcond
 
-#endif // WINWIDGET_H
+#endif // MACOSNATIVE_H

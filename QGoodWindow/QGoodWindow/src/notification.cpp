@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2021 Antonio Dias
+Copyright © 2021-2022 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,42 +22,46 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "winwidget.h"
-#include "common.h"
+#include "notification.h"
 #include "qgoodwindow.h"
+#include "macosnative.h"
 
-WinWidget::WinWidget(QGoodWindow *gw) : QWidget()
+Notification::Notification()
 {
-    HWND parent_hwnd = HWND(gw->winId());
-    m_gw = gw;
 
-    setProperty("_q_embedded_native_parent_handle", WId(parent_hwnd));
-    setWindowFlags(Qt::FramelessWindowHint);
-
-    QEvent event(QEvent::EmbeddingControl);
-    QApplication::sendEvent(this, &event);
 }
 
-bool WinWidget::event(QEvent *event)
+void Notification::addWindow(void *ptr)
 {
-    switch (event->type())
-    {
-    case QEvent::ChildPolished:
-    {
-        QChildEvent *child_event = static_cast<QChildEvent*>(event);
+    m_ptr_list.append(ptr);
+}
 
-        if (qobject_cast<QDialog*>(child_event->child()))
+void Notification::removeWindow(void *ptr)
+{
+    m_ptr_list.removeAll(ptr);
+}
+
+void Notification::registerNotification(const QByteArray &name, WId wid)
+{
+    macOSNative::registerNotification(name.constData(), long(wid));
+}
+
+void Notification::notification(const char *notification_name, long wid)
+{
+    const QByteArray notification = QByteArray(notification_name);
+
+    for (void *ptr : m_ptr_list)
+    {
+        QGoodWindow *gw = static_cast<QGoodWindow*>(ptr);
+
+        if (wid == 0)
         {
-            //Pass QDialog to main window,
-            //to allow move the dialog to the center of the main window.
-            return QApplication::sendEvent(m_gw, child_event);
+            gw->notificationReceiver(notification);
         }
-
-        break;
+        else if (gw->winId() == WId(wid))
+        {
+            gw->notificationReceiver(notification);
+            break;
+        }
     }
-    default:
-        break;
-    }
-
-    return QWidget::event(event);
 }

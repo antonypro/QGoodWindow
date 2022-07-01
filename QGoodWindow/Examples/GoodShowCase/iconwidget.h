@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2021 Antonio Dias
+Copyright © 2018-2022 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -33,7 +33,7 @@ class IconWidget : public QWidget
 {
     Q_OBJECT
 public:
-    explicit IconWidget(qreal pixel_ratio, QWidget *parent = nullptr);
+    explicit IconWidget(QWidget *parent = nullptr);
 
 public slots:
     void setPixmap(const QPixmap &pixmap);
@@ -47,7 +47,6 @@ private:
     QPixmap m_pixmap;
     QPixmap m_grayed_pixmap;
     bool m_active;
-    qreal m_pixel_ratio;
 };
 
 #endif // ICONWIDGET_H

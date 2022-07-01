@@ -22,49 +22,58 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef TITLEBAR_H
-#define TITLEBAR_H
+#ifndef COMMON_H
+#define COMMON_H
+
+#ifdef _WIN32
+
+#ifdef _WIN32_WINNT
+#undef _WIN32_WINNT
+#endif
+
+#define _WIN32_WINNT _WIN32_WINNT_VISTA
+
+#endif
 
 #include <QtCore>
 #include <QtGui>
 #include <QtWidgets>
-#include <QGoodWindow>
-#include "iconwidget.h"
-#include "titlewidget.h"
-#include "captionbutton.h"
 
-class TitleBar : public QFrame
-{
-    Q_OBJECT
-public:
-    explicit TitleBar(qreal pixel_ratio, QWidget *parent = nullptr);
+#ifdef Q_OS_LINUX
 
-signals:
-    void showMinimized();
-    void showNormal();
-    void showMaximized();
-    void closeWindow();
+#define BORDERWIDTH 10 //PIXELS
 
-public slots:
-    void setTitle(const QString &title);
-    void setIcon(const QPixmap &icon);
-    void setActive(bool active);
-    void setMaximized(bool maximized);
-    bool dark();
-    void setDarkMode(bool dark);
-    void captionButtonStateChanged(const QGoodWindow::CaptionButtonState &state);
+#define MOVERESIZE_MOVE 8 //X11 Fixed Value
 
-private:
-    IconWidget *iconwidget;
-    TitleWidget *titlewidget;
-    CaptionButton *minbtn;
-    CaptionButton *restorebtn;
-    CaptionButton *maxbtn;
-    CaptionButton *clsbtn;
-    QString style;
-    bool m_active;
-    bool m_is_maximized;
-    bool m_dark;
-};
+#endif
 
-#endif // TITLEBAR_H
+#if defined Q_OS_LINUX || defined Q_OS_MAC
+//The positive values are mandatory on Linux and arbitrary on macOS,
+//using the same for convenience.
+//The negative value are arbitrary on both platforms.
+
+#define NO_WHERE -1
+#define HTMINBUTTON -2
+#define HTMAXBUTTON -3
+#define HTCLOSE -4
+#define TOP_LEFT 0
+#define TOP 1
+#define TOP_RIGHT 2
+#define LEFT 7
+#define RIGHT 3
+#define BOTTOM_LEFT 6
+#define BOTTOM 5
+#define BOTTOM_RIGHT 4
+#define TITLE_BAR 8
+
+#endif
+
+#ifdef Q_OS_WIN
+
+#include <windows.h>
+
+#define BORDERWIDTH (GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER))
+
+#endif
+
+#endif // COMMON_H

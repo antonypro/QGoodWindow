@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2021 Antonio Dias
+Copyright © 2018-2022 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -36,8 +36,8 @@ Rectangle
     {
         x: (parent.width - width) / 2
         y: (parent.height - height) / 2
-        width: 100;
-        height: 100;
+        width: 100
+        height: 100
         color: "green"
         RotationAnimation on rotation
         {

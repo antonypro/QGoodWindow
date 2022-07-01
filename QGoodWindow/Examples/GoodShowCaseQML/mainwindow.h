@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2021 Antonio Dias
+Copyright © 2018-2022 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -25,13 +25,18 @@ SOFTWARE.
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include <QtCore>
+#include <QtGui>
+#include <QtWidgets>
 #include <QtQml>
 #include <QtQuick>
 #include <QtQuickWidgets>
 #include <QGoodWindow>
 
 #ifdef Q_OS_WIN
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #include <QtWinExtras>
+#endif
 #endif
 
 #ifdef QGOODWINDOW
@@ -65,11 +70,19 @@ public:
 
 private:
     //Functions
+#ifdef QGOODWINDOW
+    void styleWindow();
+#endif
     void closeEvent(QCloseEvent *event);
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     bool nativeEvent(const QByteArray &eventType, void *message, long *result);
+#else
+    bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result);
+#endif
     bool event(QEvent *event);
 
     //Variables
+    bool m_draw_borders;
     bool m_dark;
     QFrame *frame;
     QString m_frame_style;

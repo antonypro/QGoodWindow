@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2021 Antonio Dias
+Copyright © 2018-2022 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,26 +22,34 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef MACOSNATIVE_H
-#define MACOSNATIVE_H
+#ifndef TITLEWIDGET_H
+#define TITLEWIDGET_H
 
-#include "notification.h"
+#include <QtCore>
+#include <QtGui>
+#include <QtWidgets>
 
-extern Notification notification;
-
-//\cond HIDDEN_SYMBOLS
-namespace macOSNative
+class TitleWidget : public QWidget
 {
-    void registerNotification(const char *notification_name, long wid);
-    void unregisterNotification();
+    Q_OBJECT
+public:
+    explicit TitleWidget(qreal pixel_ratio, QWidget *parent = nullptr);
 
-    inline void handleNotification(const char *notification_name, long wid)
-    {
-        notification.notification(notification_name, wid);
-    }
+public slots:
+    void setText(const QString &text);
+    void setActive(bool active);
+    void setTitleColor(const QColor &active_color, const QColor &inactive_color);
 
-    void setStyle(long winid, bool fullscreen);
-}
-//\endcond
+private:
+    //Functions
+    void paintEvent(QPaintEvent *event);
 
-#endif // MACOSNATIVE_H
+    //Variables
+    QString m_title;
+    bool m_active;
+    QColor m_active_color;
+    QColor m_inactive_color;
+    qreal m_pixel_ratio;
+};
+
+#endif // TITLEWIDGET_H

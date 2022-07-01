@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2021 Antonio Dias
+Copyright © 2018-2022 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,54 +22,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef COMMON_H
-#define COMMON_H
+#include "mainwindow.h"
+#include <QApplication>
 
-#ifdef _WIN32
-
-#ifdef _WIN32_WINNT
-#undef _WIN32_WINNT
-#endif
-
-#define _WIN32_WINNT _WIN32_WINNT_VISTA
-
-#endif
-
-#include <QtCore>
-#include <QtGui>
-#include <QtWidgets>
-
+int main(int argc, char *argv[])
+{
 #ifdef Q_OS_LINUX
-
-#define BORDERWIDTH 10 //PIXELS
-
-#define MOVERESIZE_MOVE 8 //X11 Fixed Value
-
+    QApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
 #endif
 
-#if defined Q_OS_LINUX || defined Q_OS_MAC
-//These values are mandatory on Linux and arbitrary on macOS,
-//using the same for convenience.
+    QApplication a(argc, argv);
 
-#define NO_WHERE -1
-#define TOP_LEFT 0
-#define TOP 1
-#define TOP_RIGHT 2
-#define LEFT 7
-#define RIGHT 3
-#define BOTTOM_LEFT 6
-#define BOTTOM 5
-#define BOTTOM_RIGHT 4
-#define TITLE_BAR 8
+    MainWindow mw;
+    mw.show();
 
-#endif
-
-#ifdef Q_OS_WIN
-
-#include <windows.h>
-
-#define BORDERWIDTH (GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER))
-
-#endif
-
-#endif // COMMON_H
+    return a.exec();
+}

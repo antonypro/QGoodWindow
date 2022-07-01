@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2021 Antonio Dias
+Copyright © 2018-2022 Antonio Dias
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,47 +22,32 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef TITLEBAR_H
-#define TITLEBAR_H
+#ifndef ICONWIDGET_H
+#define ICONWIDGET_H
 
 #include <QtCore>
 #include <QtGui>
 #include <QtWidgets>
-#include "iconwidget.h"
-#include "titlewidget.h"
-#include "captionbutton.h"
 
-class TitleBar : public QFrame
+class IconWidget : public QWidget
 {
     Q_OBJECT
 public:
-    explicit TitleBar(qreal pixel_ratio, QWidget *parent = nullptr);
-
-signals:
-    void showMinimized();
-    void showNormal();
-    void showMaximized();
-    void closeWindow();
+    explicit IconWidget(qreal pixel_ratio, QWidget *parent = nullptr);
 
 public slots:
-    void setTitle(const QString &title);
-    void setIcon(const QPixmap &icon);
+    void setPixmap(const QPixmap &pixmap);
     void setActive(bool active);
-    void setMaximized(bool maximized);
-    bool dark();
-    void setDarkMode(bool dark);
 
 private:
-    IconWidget *iconwidget;
-    TitleWidget *titlewidget;
-    CaptionButton *minbtn;
-    CaptionButton *restorebtn;
-    CaptionButton *maxbtn;
-    CaptionButton *clsbtn;
-    QString style;
+    //Functions
+    void paintEvent(QPaintEvent *event);
+
+    //Variables
+    QPixmap m_pixmap;
+    QPixmap m_grayed_pixmap;
     bool m_active;
-    bool m_is_maximized;
-    bool m_dark;
+    qreal m_pixel_ratio;
 };
 
-#endif // TITLEBAR_H
+#endif // ICONWIDGET_H
