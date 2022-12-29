@@ -44,12 +44,12 @@
 #include <QtCore>
 #include <QtGui>
 #include <QtWidgets>
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#ifdef QT_VERSION_QT6
 #include <QtOpenGLWidgets>
 #endif
 
 class GLWidget : public QOpenGLWidget
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+#ifdef QT_VERSION_QT5
         , protected QOpenGLFunctions
 #endif
 {

@@ -1,3 +1,23 @@
+## *Version 2.1:*
+
+- Added CMake build system support. [#18](https://github.com/antonypro/QGoodWindow/issues/18)
+- Added QGoodCentralWidget as a separate module to make easier manage QGoodWindow.
+- Added qGoodStateHolder macro to QGoodWindow module to handle dark and light modes application wide.
+- Added Light and Dark fusion themes to QGoodWindow module.
+- Added possibility to modal QDialog also have customized title bar and borders.
+- Fixed problems when window receives focus back from modal QDialog.
+- isActiveWindow() returns true also if active window is a children of the window.
+- Prevent from resize widgets while the window is not is visible.
+- Improved resize border on Linux, that respects the current window stack.
+- Implemented functions to save and restore window state as is in QMainWindow. [#15](https://github.com/antonypro/QGoodWindow/issues/15)
+- Fixed bug that prevents process to exit on last window close on Windows.
+- API windowFlags() returns correct flags for the QGoodWindow.
+- QMessageBox uses the up-to-date icons on Windows.
+- Fixed warning while building on Linux related to GTK.
+- Fixed bug that prevents interact with the window after moving on Qt 6.
+- Fixed bug with high DPI scaling in Qt 6. [#19](https://github.com/antonypro/QGoodWindow/issues/19)
+- Other bug fixes.
+
 ## *Version 2.0:*
 
 - Added support for Qt 6. [#3](https://github.com/antonypro/QGoodWindow/issues/3)

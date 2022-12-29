@@ -27,6 +27,8 @@ SOFTWARE.
 
 int main(int argc, char *argv[])
 {
+    QGoodWindow::setup();
+
 #ifdef Q_OS_LINUX
     QApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
 #endif

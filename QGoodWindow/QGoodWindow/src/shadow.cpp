@@ -23,8 +23,9 @@ SOFTWARE.
 */
 
 #include "shadow.h"
+#include "common.h"
 
-#ifdef Q_OS_LINUX
+#if defined Q_OS_WIN || defined Q_OS_LINUX
 #include "qgoodwindow.h"
 #endif
 
@@ -35,41 +36,48 @@ SOFTWARE.
 #define COLOR3 QColor(0, 0, 0, 1)
 #endif
 
-#ifdef Q_OS_WIN
-Shadow::Shadow(qreal pixel_ratio, HWND hwnd) : QWidget()
+Shadow::Shadow(qreal pixel_ratio, qintptr hwnd, QWidget *parent) : QWidget(parent)
 {
+#ifdef Q_OS_WIN
+    setParent(nullptr);
+
     m_pixel_ratio = pixel_ratio;
 
-    m_hwnd = hwnd;
+    m_hwnd = HWND(hwnd);
     m_active = true;
+    m_parent = qobject_cast<QGoodWindow*>(parent);
 
-    setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::Tool);
+    setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::Tool |
+                   (m_parent ? Qt::WindowStaysOnTopHint : Qt::WindowType(0)));
 
     setAttribute(Qt::WA_NoSystemBackground);
     setAttribute(Qt::WA_TranslucentBackground);
 
     setAttribute(Qt::WA_TransparentForMouseEvents);
-
-    m_timer = new QTimer(this);
-    connect(m_timer, &QTimer::timeout, this, &Shadow::show);
-    m_timer->setInterval(500/*Time to wait before showing shadow when showLater() is callled.*/);
-    m_timer->setSingleShot(true);
-}
 #endif
 #ifdef Q_OS_LINUX
-Shadow::Shadow(QWidget *parent) : QWidget(parent)
-{
+    Q_UNUSED(hwnd)
+
+    m_pixel_ratio = pixel_ratio;
+
     m_parent = qobject_cast<QGoodWindow*>(parent);
 
-    setWindowFlags(Qt::Window |
-                   Qt::FramelessWindowHint |
-                   Qt::WindowDoesNotAcceptFocus |
-                   Qt::BypassWindowManagerHint);
+    setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::Tool |
+                   Qt::WindowDoesNotAcceptFocus | Qt::NoDropShadowWindowHint);
 
     setAttribute(Qt::WA_NoSystemBackground);
     setAttribute(Qt::WA_TranslucentBackground);
-}
 #endif
+#if defined Q_OS_WIN || defined Q_OS_LINUX
+    m_timer = new QTimer(this);
+    connect(m_timer, &QTimer::timeout, this, &Shadow::show);
+    //Time to wait before showing shadow when showLater() is callled.
+    m_timer->setInterval(500);
+    m_timer->setSingleShot(true);
+
+    setWindowTitle("Shadow");
+#endif
+}
 
 int Shadow::shadowWidth()
 {
@@ -82,7 +90,7 @@ int Shadow::shadowWidth()
 
 void Shadow::showLater()
 {
-#ifdef Q_OS_WIN
+#if defined Q_OS_WIN || defined Q_OS_LINUX
     m_timer->stop();
     m_timer->start();
 #endif
@@ -100,9 +108,24 @@ void Shadow::show()
     QWidget::show();
     QWidget::raise();
 
-    SetWindowPos(m_hwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
-#else
-    QWidget::show();
+    SetWindowPos(m_hwnd, !parentWidget() ? HWND_TOP : HWND_TOPMOST,
+                 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
+#endif
+#ifdef Q_OS_LINUX
+    if (m_timer->isActive())
+        return;
+
+    QWidget *modal_widget = qApp->activeModalWidget();
+
+    if (!modal_widget || (modal_widget && modal_widget->window() == m_parent))
+    {
+        if (!m_parent->isMinimized() && m_parent->isVisible())
+        {
+            QWidget::show();
+            QWidget::raise();
+            m_parent->sizeMoveBorders();
+        }
+    }
 #endif
 }
 
@@ -115,7 +138,13 @@ void Shadow::hide()
         return;
 
     QWidget::hide();
-#else
+#endif
+#ifdef Q_OS_LINUX
+    m_timer->stop();
+
+    if (m_parent->isMinimized() || !m_parent->isVisible())
+        return;
+
     QWidget::hide();
 #endif
 }
@@ -123,6 +152,9 @@ void Shadow::hide()
 void Shadow::setActive(bool active)
 {
 #ifdef Q_OS_WIN
+    if (isVisible() && m_parent && !active)
+        hide();
+
     m_active = active;
     repaint();
 #else
@@ -130,9 +162,10 @@ void Shadow::setActive(bool active)
 #endif
 }
 
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+#ifdef QT_VERSION_QT5
 bool Shadow::nativeEvent(const QByteArray &eventType, void *message, long *result)
-#else
+#endif
+#ifdef QT_VERSION_QT6
 bool Shadow::nativeEvent(const QByteArray &eventType, void *message, qintptr *result)
 #endif
 {
@@ -185,8 +218,25 @@ bool Shadow::nativeEvent(const QByteArray &eventType, void *message, qintptr *re
         break;
     }
 #endif
-
     return QWidget::nativeEvent(eventType, message, result);
+}
+
+bool Shadow::event(QEvent *event)
+{
+    switch (event->type())
+    {
+    case QEvent::MouseButtonPress:
+    {
+#ifdef Q_OS_LINUX
+        m_parent->activateWindow();
+#endif
+        break;
+    }
+    default:
+        break;
+    }
+
+    return QWidget::event(event);
 }
 
 void Shadow::paintEvent(QPaintEvent *event)

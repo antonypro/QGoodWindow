@@ -24,6 +24,7 @@ TEMPLATE = subdirs
 
 SUBDIRS += \
     ExampleMinimal \
+    ExampleMinimalWindow \
     GoodShowCase \
     GoodShowCaseGL \
     GoodShowCaseQML

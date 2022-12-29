@@ -29,31 +29,9 @@ SOFTWARE.
 #include <QtGui>
 #include <QtWidgets>
 #include <QGoodWindow>
+#include <QGoodCentralWidget>
 
 #include "ui_centralwidget.h"
-#ifdef QGOODWINDOW
-#include "ui_framelesswindow.h"
-#include "captionbutton.h"
-#endif
-
-#ifdef QGOODWINDOW
-class FramelessWindow : public QWidget
-{
-    Q_OBJECT
-public:
-    explicit FramelessWindow(QWidget *parent = nullptr) : QWidget(parent), ui(new Ui::FramelessWindow)
-    {
-        ui->setupUi(this);
-    }
-
-    ~FramelessWindow()
-    {
-        delete ui;
-    }
-
-    Ui::FramelessWindow *ui;
-};
-#endif
 
 class CentralWidget : public QMainWindow
 {
@@ -79,27 +57,22 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+private slots:
+    void themeChange();
+
 private:
     //Functions
-#ifdef QGOODWINDOW
-    void styleWindow();
-    void captionButtonStateChanged(const QGoodWindow::CaptionButtonState &state);
-    bool event(QEvent *event);
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+#ifdef QT_VERSION_QT5
     bool nativeEvent(const QByteArray &eventType, void *message, long *result);
-#else
-    bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result);
 #endif
+#ifdef QT_VERSION_QT6
+    bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result);
 #endif
     void closeEvent(QCloseEvent *event);
 
     //Variables
-#ifdef QGOODWINDOW
-    FramelessWindow *m_window;
-#endif
+    QGoodCentralWidget *m_good_central_widget;
     CentralWidget *m_central_widget;
-    bool m_draw_borders;
-    bool m_dark;
 };
 
 #endif // MAINWINDOW_H

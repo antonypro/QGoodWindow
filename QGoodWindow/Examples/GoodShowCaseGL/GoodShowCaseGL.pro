@@ -22,17 +22,22 @@
 
 QT += core gui widgets
 
+CONFIG += c++11
+
 win32:equals(QT_MAJOR_VERSION, 5){
 QT += winextras
 }
 
 equals(QT_MAJOR_VERSION, 6){
 QT += openglwidgets
+win32:LIBS += -lopengl32
 }
+
+#CONFIG += no_qgoodwindow #This flag disable QGoodWindow
 
 include($$PWD/../../QGoodWindow/QGoodWindow.pri)
 
-CONFIG += c++11
+include($$PWD/../../QGoodCentralWidget/QGoodCentralWidget.pri)
 
 SOURCES += \
     main.cpp \
@@ -42,24 +47,3 @@ SOURCES += \
 HEADERS += \
     mainwindow.h \
     glwidget.h
-
-qgoodwindow {
-SOURCES += \
-    captionbutton.cpp \
-    iconwidget.cpp \
-    titlebar.cpp \
-    titlewidget.cpp
-
-HEADERS += \
-    captionbutton.h \
-    iconwidget.h \
-    titlebar.h \
-    titlewidget.h
-
-RESOURCES += \
-    res.qrc
-}
-
-win32{
-LIBS += -lopengl32
-}

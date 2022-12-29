@@ -22,38 +22,20 @@
 
 QT += core gui widgets
 
+CONFIG += c++11
+
+#CONFIG += no_qgoodwindow #This flag disable QGoodWindow
+
 include($$PWD/../../QGoodWindow/QGoodWindow.pri)
+
+include($$PWD/../../QGoodCentralWidget/QGoodCentralWidget.pri)
 
 SOURCES += \
     main.cpp \
     mainwindow.cpp
 
 HEADERS += \
-    mainwindow.h \
-    common.h \
-    darkstyle.h \
-    lightstyle.h
+    mainwindow.h
 
 FORMS += \
     centralwidget.ui
-
-qgoodwindow {
-SOURCES += \
-    captionbutton.cpp \
-    iconwidget.cpp \
-    titlewidget.cpp
-
-HEADERS += \
-    captionbutton.h \
-    iconwidget.h \
-    titlewidget.h
-
-FORMS += \
-    framelesswindow.ui
-
-RESOURCES += \
-    framelesswindow.qrc
-}
-
-RESOURCES += \
-    style.qrc

@@ -22,9 +22,11 @@
 
 QT += core gui widgets
 
-include($$PWD/../../QGoodWindow/QGoodWindow.pri)
-
 CONFIG += c++11
+
+#CONFIG += no_qgoodwindow #This flag disable QGoodWindow
+
+include($$PWD/../../QGoodWindow/QGoodWindow.pri)
 
 SOURCES += \
     main.cpp \

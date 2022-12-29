@@ -27,13 +27,15 @@ SOFTWARE.
 
 int main(int argc, char *argv[])
 {
+    QGoodWindow::setup();
+
 #ifdef Q_OS_LINUX
     QApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
 #endif
 
     QApplication a(argc, argv);
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#ifdef QT_VERSION_QT6
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
 #endif
 

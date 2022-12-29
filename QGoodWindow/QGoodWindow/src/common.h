@@ -43,6 +43,8 @@ SOFTWARE.
 
 #define BORDERWIDTH 10 //PIXELS
 
+#define BORDERWIDTHDPI qCeil(BORDERWIDTH * m_pixel_ratio)
+
 #define MOVERESIZE_MOVE 8 //X11 Fixed Value
 
 #endif

@@ -68,7 +68,7 @@ void GLWidget::rotate()
 
 void GLWidget::initializeGL()
 {
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+#ifdef QT_VERSION_QT5
     initializeOpenGLFunctions();
 #endif
 
@@ -229,5 +229,5 @@ void GLWidget::makeObject()
 
     m_vbo.create();
     m_vbo.bind();
-    m_vbo.allocate(vertData.constData(), vertData.count() * sizeof(GLfloat));
+    m_vbo.allocate(vertData.constData(), int(vertData.count() * sizeof(GLfloat)));
 }

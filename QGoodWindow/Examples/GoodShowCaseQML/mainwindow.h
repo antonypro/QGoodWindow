@@ -32,16 +32,12 @@ SOFTWARE.
 #include <QtQuick>
 #include <QtQuickWidgets>
 #include <QGoodWindow>
+#include <QGoodCentralWidget>
 
 #ifdef Q_OS_WIN
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+#ifdef QT_VERSION_QT5
 #include <QtWinExtras>
 #endif
-#endif
-
-#ifdef QGOODWINDOW
-#include "titlebar.h"
-#include "captionbutton.h"
 #endif
 
 inline qreal pixelRatio()
@@ -70,26 +66,10 @@ public:
 
 private:
     //Functions
-#ifdef QGOODWINDOW
-    void styleWindow();
-#endif
     void closeEvent(QCloseEvent *event);
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    bool nativeEvent(const QByteArray &eventType, void *message, long *result);
-#else
-    bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result);
-#endif
-    bool event(QEvent *event);
 
     //Variables
-    bool m_draw_borders;
-    bool m_dark;
-    QFrame *frame;
-    QString m_frame_style;
-    QString m_color_str;
-#ifdef QGOODWINDOW
-    TitleBar *title_bar;
-#endif
+    QGoodCentralWidget *m_central_widget;
 };
 
 #endif // MAINWINDOW_H
