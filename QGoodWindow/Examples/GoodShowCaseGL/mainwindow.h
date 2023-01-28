@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2022 Antonio Dias
+Copyright © 2018-2023 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -68,7 +68,7 @@ private:
     void closeEvent(QCloseEvent *event);
 
     //Variables
-    QGoodCentralWidget *m_central_widget;
+    QGoodCentralWidget *m_good_central_widget;
 };
 
 #endif // MAINWINDOW_H

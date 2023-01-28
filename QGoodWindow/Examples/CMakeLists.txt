@@ -1,6 +1,6 @@
 #The MIT License (MIT)
 
-#Copyright © 2022 Antonio Dias
+#Copyright © 2022-2023 Antonio Dias
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy
 #of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.14)
 project(Examples)
 
 #set(no_qgoodwindow TRUE) #This flag disable QGoodWindow
@@ -31,6 +31,7 @@ endif()
 
 add_subdirectory(ExampleMinimal)
 add_subdirectory(ExampleMinimalWindow)
+add_subdirectory(GoodPlayground)
 add_subdirectory(GoodShowCase)
 add_subdirectory(GoodShowCaseGL)
 add_subdirectory(GoodShowCaseQML)

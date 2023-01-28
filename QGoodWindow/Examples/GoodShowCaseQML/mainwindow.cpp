@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2022 Antonio Dias
+Copyright © 2018-2023 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,13 +26,15 @@ SOFTWARE.
 
 MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent, QColor("#303030"))
 {
-    m_central_widget = new QGoodCentralWidget(this);
+    m_good_central_widget = new QGoodCentralWidget(this);
 
     QQuickWidget *view_widget = new QQuickWidget(this);
     view_widget->setResizeMode(QQuickWidget::SizeRootObjectToView);
     view_widget->setSource(QUrl(QStringLiteral("qrc:/qml/main.qml")));
 
 #ifdef QGOODWINDOW
+    m_good_central_widget->setUnifiedTitleBarAndCentralWidget(true);
+
     connect(this, &QGoodWindow::systemThemeChanged, this, [=]{
         qGoodStateHolder->setCurrentThemeDark(QGoodWindow::isSystemThemeDark());
     });
@@ -55,8 +57,8 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent, QColor("#303030"))
 
     qGoodStateHolder->setCurrentThemeDark(QGoodWindow::isSystemThemeDark());
 
-    m_central_widget->setCentralWidget(view_widget);
-    setCentralWidget(m_central_widget);
+    m_good_central_widget->setCentralWidget(view_widget);
+    setCentralWidget(m_good_central_widget);
 
     QPixmap p = QPixmap(1, 1);
     p.fill(Qt::red);
@@ -83,6 +85,10 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent, QColor("#303030"))
     });
 #endif
 #endif
+
+#ifdef QGOODWINDOW
+    m_good_central_widget->setTitleAlignment(Qt::AlignCenter);
+#endif
 }
 
 MainWindow::~MainWindow()
@@ -98,7 +104,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
     msgbox.setDefaultButton(QMessageBox::No);
     msgbox.setText("Are you sure to close?");
 
-    int result = QGoodCentralWidget::execDialogWithWindow(&msgbox, this);
+    int result = QGoodCentralWidget::execDialogWithWindow(&msgbox, this, m_good_central_widget);
 
     if (result != QMessageBox::Yes)
         event->ignore();

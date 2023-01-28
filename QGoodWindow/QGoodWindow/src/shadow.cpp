@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2022 Antonio Dias
+Copyright © 2018-2023 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,10 +24,7 @@ SOFTWARE.
 
 #include "shadow.h"
 #include "common.h"
-
-#if defined Q_OS_WIN || defined Q_OS_LINUX
 #include "qgoodwindow.h"
-#endif
 
 #ifdef Q_OS_WIN
 #define SHADOWWIDTH qCeil(10 * m_pixel_ratio)
@@ -52,8 +49,6 @@ Shadow::Shadow(qreal pixel_ratio, qintptr hwnd, QWidget *parent) : QWidget(paren
 
     setAttribute(Qt::WA_NoSystemBackground);
     setAttribute(Qt::WA_TranslucentBackground);
-
-    setAttribute(Qt::WA_TransparentForMouseEvents);
 #endif
 #ifdef Q_OS_LINUX
     Q_UNUSED(hwnd)

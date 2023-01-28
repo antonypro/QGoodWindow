@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2022 Antonio Dias
+Copyright © 2018-2023 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,10 +23,14 @@ SOFTWARE.
 */
 
 #include "titlewidget.h"
+#include "titlebar.h"
 
-TitleWidget::TitleWidget(qreal pixel_ratio, QWidget *parent) : QWidget(parent)
+TitleWidget::TitleWidget(qreal pixel_ratio, TitleBar *title_bar, QWidget *parent) : QWidget(parent)
 {
+    m_title_bar = title_bar;
+
     m_active = false;
+    m_alignment = Qt::AlignLeft;
     m_pixel_ratio = pixel_ratio;
 }
 
@@ -42,6 +46,16 @@ void TitleWidget::setActive(bool active)
     update();
 }
 
+void TitleWidget::setTitleAlignment(const Qt::Alignment &alignment)
+{
+    if (alignment == Qt::AlignLeft || alignment == Qt::AlignCenter || alignment == Qt::AlignRight)
+        m_alignment = alignment;
+    else
+        m_alignment = Qt::AlignLeft;
+
+    update();
+}
+
 void TitleWidget::setTitleColor(const QColor &active_color, const QColor &inactive_color)
 {
     m_active_color = active_color;
@@ -50,9 +64,33 @@ void TitleWidget::setTitleColor(const QColor &active_color, const QColor &inacti
     update();
 }
 
+Qt::Alignment TitleWidget::titleAlignment()
+{
+    return m_alignment;
+}
+
 void TitleWidget::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event)
+
+    const int spacing = m_title_bar->layoutSpacing();
+
+    QRect left_rect;
+    QRect right_rect;
+    QRect center_rect;
+
+    if (m_title_bar->m_icon_widget->isVisible())
+        left_rect = left_rect.united(m_title_bar->m_icon_widget->geometry());
+    if (m_title_bar->m_left_widget_place_holder->isVisible())
+        left_rect = left_rect.united(m_title_bar->m_left_widget_place_holder->geometry());
+
+    if (m_title_bar->m_right_widget_place_holder->isVisible())
+        right_rect = right_rect.united(m_title_bar->m_right_widget_place_holder->geometry());
+    if (m_title_bar->m_caption_buttons->isVisible())
+        right_rect = right_rect.united(m_title_bar->m_caption_buttons->geometry());
+
+    if (m_title_bar->m_center_widget_place_holder->isVisible())
+        center_rect = center_rect.united(m_title_bar->m_center_widget_place_holder->geometry());
 
     QPainter painter(this);
     painter.setRenderHints(QPainter::Antialiasing);
@@ -72,10 +110,88 @@ void TitleWidget::paintEvent(QPaintEvent *event)
 
     painter.setPen(pen);
 
+    bool center_widget_visible = m_title_bar->m_center_widget_place_holder->isVisible();
+
+    Qt::Alignment alignment = m_alignment;
+
+    if (center_widget_visible && alignment == Qt::AlignCenter)
+        alignment = Qt::AlignLeft;
+
     QFontMetrics metrics(painter.font());
-    QSize title_size = metrics.size(0, m_title);
 
-    QString title = metrics.elidedText(m_title, Qt::ElideRight, width());
+    int title_space_width;
 
-    painter.drawText(0, (height() - title_size.height()) / 2, title_size.width(), title_size.height(), 0, title);
+    if (center_widget_visible)
+    {
+        if (alignment == Qt::AlignLeft)
+            title_space_width = center_rect.left() - left_rect.right();
+        else
+            title_space_width = right_rect.left() - center_rect.right();
+    }
+    else
+    {
+        title_space_width = right_rect.left() - left_rect.right();
+    }
+
+    QString title_elided = metrics.elidedText(m_title, Qt::ElideRight, title_space_width - spacing);
+
+    QSize title_size = metrics.size(0, title_elided);
+
+    int title_width = title_size.width();
+    int title_height = title_size.height();
+
+    QRect title_rect = QRect(0, 0, title_width, title_height);
+
+    switch (alignment)
+    {
+    case Qt::AlignLeft:
+    {
+        title_rect.setTop((height() - title_height) / 2);
+
+        title_rect.setHeight(title_height);
+
+        title_rect.setLeft(left_rect.right());
+        title_rect.setRight(left_rect.right() + title_width);
+
+        break;
+    }
+    case Qt::AlignRight:
+    {
+        title_rect.setTop((height() - title_height) / 2);
+
+        title_rect.setHeight(title_height);
+
+        title_rect.setLeft(right_rect.left() - title_width - spacing);
+        title_rect.setRight(right_rect.left());
+
+        break;
+    }
+    case Qt::AlignCenter:
+    {
+        title_rect.setWidth(title_width + spacing);
+        title_rect.setHeight(title_height);
+
+        title_rect.moveTop((height() - title_height) / 2);
+        title_rect.moveLeft((width() - title_width) / 2);
+
+        bool left_collide = (title_rect.left() < left_rect.right());
+
+        bool right_collide = (title_rect.right() > right_rect.left());
+
+        if (left_collide || (m_title != title_elided))
+        {
+            title_rect.moveLeft(left_rect.right());
+        }
+        else if (right_collide)
+        {
+            title_rect.moveRight(right_rect.left());
+        }
+
+        break;
+    }
+    default:
+        break;
+    }
+
+    painter.drawText(title_rect, title_elided);
 }

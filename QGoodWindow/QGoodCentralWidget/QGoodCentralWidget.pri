@@ -1,6 +1,6 @@
 #The MIT License (MIT)
 
-#Copyright © 2022 Antonio Dias
+#Copyright © 2022-2023 Antonio Dias (https://github.com/antonypro)
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy
 #of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,8 @@ SOURCES += \
     $$PWD/src/qgoodcentralwidget.cpp
 
 HEADERS += \
-    $$PWD/src/qgoodcentralwidget.h
+    $$PWD/src/qgoodcentralwidget.h \
+    $$PWD/src/qgoodcentralwidget_global.h
 
 INCLUDEPATH += $$PWD #include <QGoodCentralWidget>
 
@@ -47,6 +48,8 @@ HEADERS += \
     $$PWD/src/titlebar.h \
     $$PWD/src/titlewidget.h
 
-RESOURCES += \
-    $$PWD/src/res.qrc
+RESOURCES +=
 }
+
+RESOURCES += \
+    $$PWD/src/icons.qrc

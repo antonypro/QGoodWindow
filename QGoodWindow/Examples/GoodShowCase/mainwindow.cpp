@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2022 Antonio Dias
+Copyright © 2022-2023 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -60,6 +60,8 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent)
     m_good_central_widget = new QGoodCentralWidget(this);
 
 #ifdef QGOODWINDOW
+
+    //macOS uses global menu bar
 #ifndef Q_OS_MAC
     QMenuBar *menu_bar = m_central_widget->menuBar();
 
@@ -133,6 +135,10 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent)
 
     resize(m_central_widget->size());
     move(QGuiApplication::primaryScreen()->availableGeometry().center() - rect().center());
+
+#ifdef QGOODWINDOW
+    m_good_central_widget->setTitleAlignment(Qt::AlignCenter);
+#endif
 }
 
 MainWindow::~MainWindow()

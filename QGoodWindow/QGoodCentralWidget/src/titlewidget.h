@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2022 Antonio Dias
+Copyright © 2018-2023 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -29,25 +29,31 @@ SOFTWARE.
 #include <QtGui>
 #include <QtWidgets>
 
+class TitleBar;
+
 //\cond HIDDEN_SYMBOLS
 class TitleWidget : public QWidget
 {
     Q_OBJECT
 public:
-    explicit TitleWidget(qreal pixel_ratio, QWidget *parent = nullptr);
+    explicit TitleWidget(qreal pixel_ratio, TitleBar *title_bar, QWidget *parent = nullptr);
 
 public slots:
     void setText(const QString &text);
     void setActive(bool active);
+    void setTitleAlignment(const Qt::Alignment &alignment);
     void setTitleColor(const QColor &active_color, const QColor &inactive_color);
+    Qt::Alignment titleAlignment();
 
 private:
     //Functions
     void paintEvent(QPaintEvent *event);
 
     //Variables
+    QPointer<TitleBar> m_title_bar;
     QString m_title;
     bool m_active;
+    Qt::Alignment m_alignment;
     QColor m_active_color;
     QColor m_inactive_color;
     qreal m_pixel_ratio;

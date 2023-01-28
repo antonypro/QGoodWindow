@@ -1,6 +1,6 @@
 #The MIT License (MIT)
 
-#Copyright © 2021-2022 Antonio Dias
+#Copyright © 2021-2023 Antonio Dias (https://github.com/antonypro)
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy
 #of this software and associated documentation files (the "Software"), to deal
@@ -39,7 +39,8 @@ HEADERS += \
     $$PWD/src/darkstyle.h \
     $$PWD/src/lightstyle.h \
     $$PWD/src/stylecommon.h \
-    $$PWD/src/qgoodstateholder.h
+    $$PWD/src/qgoodstateholder.h \
+    $$PWD/src/qgoodwindow_global.h
 
 RESOURCES += \
     $$PWD/src/style.qrc
@@ -53,6 +54,10 @@ equals(QT_MAJOR_VERSION, 6) {
 DEFINES += QT_VERSION_QT6
 }
 
+win32 {
+LIBS += -lUser32 -lGdi32
+}
+
 !no_qgoodwindow{
 
 win32 { #Windows
@@ -64,8 +69,6 @@ HEADERS += \
     $$PWD/src/common.h \
     $$PWD/src/shadow.h \
     $$PWD/src/qgooddialog.h
-
-LIBS += -lUser32 -lGdi32
 
 DEFINES += QGOODWINDOW
 CONFIG += qgoodwindow

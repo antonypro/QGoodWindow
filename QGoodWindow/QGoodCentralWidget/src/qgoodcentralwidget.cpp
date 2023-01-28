@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2022 Antonio Dias
+Copyright © 2022-2023 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,6 +23,10 @@ SOFTWARE.
 */
 
 #include "qgoodcentralwidget.h"
+
+#ifdef QGOODWINDOW
+#include "titlebar.h"
+#endif
 
 #ifdef QGOODWINDOW
 inline qreal pixelRatio()
@@ -52,6 +56,7 @@ QGoodCentralWidget::QGoodCentralWidget(QGoodWindow *gw) : QWidget(gw)
 #ifdef QGOODWINDOW
     m_left_widget_transparent_for_mouse = false;
     m_right_widget_transparent_for_mouse = false;
+    m_center_widget_transparent_for_mouse = false;
 
     m_frame_style = QString("QFrame#GoodFrame {border: %0;}");
 
@@ -92,14 +97,11 @@ QGoodCentralWidget::QGoodCentralWidget(QGoodWindow *gw) : QWidget(gw)
     m_frame = new QFrame(this);
     m_frame->setObjectName("GoodFrame");
 
-    QVBoxLayout *main_layout = new QVBoxLayout(m_frame);
-    main_layout->setContentsMargins(0, 0, 0, 0);
-    main_layout->setSpacing(0);
-    main_layout->addWidget(m_title_bar);
-    main_layout->addWidget(m_central_widget_place_holder);
+    setUnifiedTitleBarAndCentralWidget(false);
 
     QVBoxLayout *central_layout = new QVBoxLayout(this);
     central_layout->setContentsMargins(0, 0, 0, 0);
+    central_layout->setSpacing(0);
     central_layout->addWidget(m_frame);
 #else
     QVBoxLayout *main_layout = new QVBoxLayout(this);
@@ -132,8 +134,10 @@ int QGoodCentralWidget::execDialogWithWindow(QDialog *dialog, QGoodWindow *paren
 
     if (base_gcw)
     {
-        gcw.setTitleBarColor(base_gcw->titleBarColor());
+        if (base_gcw->titleBarColor() != QColor(Qt::transparent))
+            gcw.setTitleBarColor(base_gcw->titleBarColor());
         gcw.setActiveBorderColor(base_gcw->activeBorderColor());
+        gcw.setTitleAlignment(base_gcw->titleAlignment());
     }
 
     gcw.setTitleVisible(title_visible);
@@ -153,13 +157,54 @@ int QGoodCentralWidget::execDialogWithWindow(QDialog *dialog, QGoodWindow *paren
 #endif
 }
 
+void QGoodCentralWidget::setUnifiedTitleBarAndCentralWidget(bool unified)
+{
+#ifdef QGOODWINDOW
+    if (m_frame->layout())
+        delete m_frame->layout();
+
+    if (!unified)
+    {
+        m_unified_title_bar_and_central_widget = false;
+        setTitleBarColor(QColor());
+
+        QVBoxLayout *main_layout = new QVBoxLayout(m_frame);
+        main_layout->setContentsMargins(0, 0, 0, 0);
+        main_layout->setSpacing(0);
+        main_layout->addWidget(m_title_bar);
+        main_layout->addWidget(m_central_widget_place_holder);
+    }
+    else
+    {
+        setTitleBarColor(QColor(Qt::transparent));
+        m_unified_title_bar_and_central_widget = true;
+
+        QStackedLayout *main_layout = new QStackedLayout(m_frame);
+        main_layout->setStackingMode(QStackedLayout::StackAll);
+        main_layout->setContentsMargins(0, 0, 0, 0);
+        main_layout->setSpacing(0);
+        main_layout->addWidget(m_title_bar);
+        main_layout->addWidget(m_central_widget_place_holder);
+    }
+#else
+    Q_UNUSED(unified)
+#endif
+}
+
+void QGoodCentralWidget::setTitleBarMask(const QRegion &mask)
+{
+#ifdef QGOODWINDOW
+    m_title_bar_mask = mask;
+    updateWindow();
+#else
+    Q_UNUSED(mask)
+#endif
+}
+
 QWidget *QGoodCentralWidget::setLeftTitleBarWidget(QWidget *widget, bool transparent_for_mouse)
 {
 #ifdef QGOODWINDOW
     QWidget *return_widget = m_title_bar_left_widget;
-
-    if (widget)
-        widget->setFocusPolicy(Qt::NoFocus);
 
     m_title_bar_left_widget = widget;
 
@@ -182,14 +227,32 @@ QWidget *QGoodCentralWidget::setRightTitleBarWidget(QWidget *widget, bool transp
 #ifdef QGOODWINDOW
     QWidget *return_widget = m_title_bar_right_widget;
 
-    if (widget)
-        widget->setFocusPolicy(Qt::NoFocus);
-
     m_title_bar_right_widget = widget;
 
     m_right_widget_transparent_for_mouse = transparent_for_mouse;
 
     m_title_bar->setRightTitleBarWidget(m_title_bar_right_widget);
+
+    updateWindow();
+
+    return return_widget;
+#else
+    Q_UNUSED(widget)
+    Q_UNUSED(transparent_for_mouse)
+    return nullptr;
+#endif
+}
+
+QWidget *QGoodCentralWidget::setCenterTitleBarWidget(QWidget *widget, bool transparent_for_mouse)
+{
+#ifdef QGOODWINDOW
+    QWidget *return_widget = m_title_bar_center_widget;
+
+    m_title_bar_center_widget = widget;
+
+    m_center_widget_transparent_for_mouse = transparent_for_mouse;
+
+    m_title_bar->setCenterTitleBarWidget(m_title_bar_center_widget);
 
     updateWindow();
 
@@ -217,9 +280,21 @@ void QGoodCentralWidget::setCentralWidget(QWidget *widget)
     layout->addWidget(m_central_widget);
 }
 
+void QGoodCentralWidget::setTitleAlignment(const Qt::Alignment &alignment)
+{
+#ifdef QGOODWINDOW
+    m_title_bar->setTitleAlignment(alignment);
+#else
+    Q_UNUSED(alignment)
+#endif
+}
+
 void QGoodCentralWidget::setTitleBarColor(const QColor &color)
 {
 #ifdef QGOODWINDOW
+    if (m_unified_title_bar_and_central_widget)
+        return;
+
     m_title_bar_color = color;
     m_title_bar->m_title_bar_color = m_title_bar_color;
     m_title_bar->setTheme();
@@ -260,8 +335,6 @@ void QGoodCentralWidget::setTitleVisible(bool visible)
     m_title_visible = visible;
     m_title_bar->m_title_widget->setVisible(m_title_visible);
     m_title_bar->m_title_widget->setEnabled(m_title_visible);
-    m_title_bar->m_title_empty_widget->setVisible(!m_title_visible);
-    m_title_bar->m_title_empty_widget->setEnabled(!m_title_visible);
     updateWindow();
 #else
     Q_UNUSED(visible)
@@ -304,6 +377,24 @@ void QGoodCentralWidget::setCaptionButtonWidth(int width)
 #endif
 }
 
+bool QGoodCentralWidget::isUnifiedTitleBarAndCentralWidget() const
+{
+#ifdef QGOODWINDOW
+    return m_unified_title_bar_and_central_widget;
+#else
+    return false;
+#endif
+}
+
+QRect QGoodCentralWidget::titleBarRect() const
+{
+#ifdef QGOODWINDOW
+    return QRect(0, 0, m_frame->width(), titleBarHeight());
+#else
+    return QRect();
+#endif
+}
+
 QWidget *QGoodCentralWidget::leftTitleBarWidget() const
 {
 #ifdef QGOODWINDOW
@@ -322,9 +413,27 @@ QWidget *QGoodCentralWidget::rightTitleBarWidget() const
 #endif
 }
 
+QWidget *QGoodCentralWidget::centerTitleBarWidget() const
+{
+#ifdef QGOODWINDOW
+    return m_title_bar_center_widget;
+#else
+    return nullptr;
+#endif
+}
+
 QWidget *QGoodCentralWidget::centralWidget() const
 {
     return m_central_widget;
+}
+
+Qt::Alignment QGoodCentralWidget::titleAlignment() const
+{
+#ifdef QGOODWINDOW
+    return m_title_bar->titleAlignment();
+#else
+    return 0;
+#endif
 }
 
 QColor QGoodCentralWidget::titleBarColor() const
@@ -437,11 +546,13 @@ void QGoodCentralWidget::updateWindow()
 
         QRegion left_mask = left_rect;
         QRegion right_mask = right_rect;
+        QRegion center_mask;
 
         if (m_title_bar_left_widget)
         {
-            left_mask -= QRect(m_title_bar_right_widget->x(), 0,
-                               m_title_bar_left_widget->width(),
+            //Remove the widget rect from mask and put it again later
+            left_mask -= QRect(m_title_bar_left_widget->x(), 0,
+                               m_title_bar_left_widget->width() + spacing,
                                title_bar_height);
 
             QWidgetList list;
@@ -471,8 +582,9 @@ void QGoodCentralWidget::updateWindow()
 
         if (m_title_bar_right_widget)
         {
+            //Remove the widget rect from mask and put it again later
             right_mask -= QRect(m_title_bar_right_widget->x(), 0,
-                                m_title_bar_right_widget->width(),
+                                m_title_bar_right_widget->width() + spacing,
                                 title_bar_height);
 
             QWidgetList list;
@@ -500,8 +612,37 @@ void QGoodCentralWidget::updateWindow()
             }
         }
 
+        if (m_title_bar_center_widget)
+        {
+            QWidgetList list;
+
+            if (!m_center_widget_transparent_for_mouse)
+                list.append(m_title_bar_center_widget);
+
+            list.append(m_title_bar_center_widget->findChildren<QWidget*>());
+
+            for (QWidget *widget : list)
+            {
+                if (!widget->mask().isNull() ||
+                        widget->testAttribute(Qt::WA_TransparentForMouseEvents))
+                {
+                    if (!widget->mask().isNull() &&
+                            !widget->testAttribute(Qt::WA_TransparentForMouseEvents))
+                    {
+                        center_mask += widget->mask().translated(m_title_bar->m_center_widget_place_holder->pos());
+                    }
+                }
+                else
+                {
+                    center_mask += widget->geometry().translated(m_title_bar->m_center_widget_place_holder->pos());
+                }
+            }
+        }
+
         m_gw->setLeftMask(left_mask);
         m_gw->setRightMask(right_mask);
+        m_gw->setCenterMask(center_mask);
+        m_gw->setTitleBarMask(m_title_bar_mask);
 
         m_gw->setCaptionButtonsHandled(true, Qt::TopRightCorner);
 
@@ -523,6 +664,8 @@ void QGoodCentralWidget::updateWindow()
     }
 
     m_title_bar->setActive(window_active);
+
+    m_title_bar->updateWindow();
 #endif
 }
 
@@ -534,6 +677,7 @@ bool QGoodCentralWidget::eventFilter(QObject *watched, QEvent *event)
         switch (event->type())
         {
         case QEvent::Show:
+        case QEvent::Resize:
         {
             QTimer::singleShot(0, this, &QGoodCentralWidget::updateWindow);
             break;

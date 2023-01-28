@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2022 Antonio Dias
+Copyright © 2018-2023 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,8 @@ SOFTWARE.
 #include "lightstyle.h"
 #include "darkstyle.h"
 
+#include "qgoodwindow_global.h"
+
 #ifdef QGOODWINDOW
 
 #ifdef Q_OS_WIN
@@ -48,7 +50,7 @@ class Shadow;
 #endif
 
 /** **QGoodWindow** class contains the public API's to control the behavior of the customized window. */
-class QGoodWindow : public QMainWindow
+class SHAREDLIBSHARED_EXPORT QGoodWindow : public QMainWindow
 {
     Q_OBJECT
 public:
@@ -148,6 +150,15 @@ public:
     /** Show modal frame less *QDialog*, inside window \e child_gw, with parent \e parent_gw. */
     static int execDialog(QDialog *dialog, QGoodWindow *child_gw, QGoodWindow *parent_gw);
 
+    /** Set the app theme to the dark theme. */
+    static void setAppDarkTheme();
+
+    /** Set the app theme to the light theme. */
+    static void setAppLightTheme();
+
+    /** Get the global state holder. */
+    static QGoodStateHolder *getGoodStateHolder();
+
     /*** QGOODWINDOW FUNCTIONS END ***/
 
 signals:
@@ -194,6 +205,12 @@ public slots:
     /** Set the mask for the right margin of the customized title bar. */
     void setRightMask(const QRegion &mask);
 
+    /** Set the mask for the center of the customized title bar. */
+    void setCenterMask(const QRegion &mask);
+
+    /** Set the mask for the customized title bar, used in combination with others masks. */
+    void setTitleBarMask(const QRegion &mask);
+
     /** Set if the caption buttons should be handled by *QGoodWindow* and on which \e corner,
      *valid only top left and top right corners. */
     void setCaptionButtonsHandled(bool handled, const Qt::Corner &corner = Qt::TopRightCorner);
@@ -212,6 +229,12 @@ public slots:
 
     /** Get the mask for the right margin of the customized title bar. */
     QRegion rightMask() const;
+
+    /** Get the mask for the center of the customized title bar. */
+    QRegion centerMask() const;
+
+    /** Get the mask for the customized title bar. */
+    QRegion titleBarMask() const;
 
     /** Get the location and shape of handled minimize button, relative to handled corner. */
     QRegion minimizeMask() const;
@@ -429,12 +452,11 @@ private:
     void disableCaption();
     void frameChanged();
     void sizeMoveWindow();
-    LRESULT ncHitTest(int x, int y);
     void showContextMenu(int x, int y);
     void showContextMenu();
-    QWidget *bestParentForModalWindow(bool is_file_dialog);
+    QWidget *bestParentForModalWindow();
     void moveCenterWindow(QWidget *widget);
-    bool winButtonHover(long button);
+    bool winButtonHover(qintptr button);
     void iconClicked();
 
     //Variables
@@ -498,10 +520,6 @@ private:
     friend class Notification;
 #endif
 #if defined Q_OS_LINUX || defined Q_OS_MAC
-    //Functions
-    int ncHitTest(int x, int y);
-
-    //Variables
     int m_last_move_button;
 #endif
 #ifdef Q_OS_WIN
@@ -511,10 +529,12 @@ private:
     int m_maximum_height;
 #endif
     //Functions
-    void buttonEnter(long button);
-    void buttonLeave(long button);
-    bool buttonPress(long button);
-    bool buttonRelease(long button, bool valid_click);
+    qintptr ncHitTest(int x, int y);
+
+    void buttonEnter(qintptr button);
+    void buttonLeave(qintptr button);
+    bool buttonPress(qintptr button);
+    bool buttonRelease(qintptr button, bool valid_click);
 
     //Variables
     QPointer<QWidget> m_parent;
@@ -523,6 +543,8 @@ private:
 
     QRegion m_left_mask;
     QRegion m_right_mask;
+    QRegion m_center_mask;
+    QRegion m_title_bar_mask;
 
     QRegion m_min_mask;
     QRegion m_max_mask;
@@ -539,8 +561,8 @@ private:
     int m_right_margin;
 
     bool m_is_caption_button_pressed;
-    long m_last_caption_button_hovered;
-    long m_caption_button_pressed;
+    qintptr m_last_caption_button_hovered;
+    qintptr m_caption_button_pressed;
 #endif
     //\endcond
 };

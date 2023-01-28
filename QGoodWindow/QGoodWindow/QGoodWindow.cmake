@@ -1,6 +1,6 @@
 #The MIT License (MIT)
 
-#Copyright © 2022 Antonio Dias
+#Copyright © 2022-2023 Antonio Dias (https://github.com/antonypro)
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy
 #of this software and associated documentation files (the "Software"), to deal
@@ -37,6 +37,16 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     UNICODE
 )
 
+if(WIN32 AND ${QT_VERSION_MAJOR} EQUAL 5)
+    find_package(Qt5 REQUIRED
+        WinExtras
+    )
+
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        Qt5::WinExtras
+    )
+endif()
+
 if(${QT_VERSION_MAJOR} EQUAL 5)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
         QT_VERSION_QT5
@@ -46,6 +56,13 @@ endif()
 if(${QT_VERSION_MAJOR} EQUAL 6)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
         QT_VERSION_QT6
+    )
+endif()
+
+if (WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        Gdi32
+        User32
     )
 endif()
 
@@ -73,11 +90,6 @@ if(NOT no_qgoodwindow)
             Qt${QT_VERSION_MAJOR}::Core
             Qt${QT_VERSION_MAJOR}::Gui
             Qt${QT_VERSION_MAJOR}::Widgets
-        )
-
-        target_link_libraries(${PROJECT_NAME} PRIVATE
-            Gdi32
-            User32
         )
     endif() #Windows
 
@@ -178,4 +190,4 @@ if(NOT no_qgoodwindow)
             "-framework Foundation"
         )
     endif() #macOS
-endif()
+endif() #NOT no_qgoodwindow

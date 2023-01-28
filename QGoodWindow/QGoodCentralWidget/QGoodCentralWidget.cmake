@@ -1,6 +1,6 @@
 #The MIT License (MIT)
 
-#Copyright © 2022 Antonio Dias
+#Copyright © 2022-2023 Antonio Dias (https://github.com/antonypro)
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy
 #of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +31,7 @@ if(qgoodwindow)
         ${CMAKE_CURRENT_LIST_DIR}/src/titlebar.cpp ${CMAKE_CURRENT_LIST_DIR}/src/titlebar.h
         ${CMAKE_CURRENT_LIST_DIR}/src/titlewidget.cpp ${CMAKE_CURRENT_LIST_DIR}/src/titlewidget.h
 
-        ${CMAKE_CURRENT_LIST_DIR}/src/res.qrc
+        ${CMAKE_CURRENT_LIST_DIR}/src/icons.qrc
     )
 endif()
 

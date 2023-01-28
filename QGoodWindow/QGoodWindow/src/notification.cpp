@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2021-2022 Antonio Dias
+Copyright © 2021-2023 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,11 @@ Notification::Notification()
 
 }
 
+Notification::~Notification()
+{
+    unregisterNotification();
+}
+
 void Notification::addWindow(void *ptr)
 {
     m_ptr_list.append(ptr);
@@ -44,6 +49,11 @@ void Notification::removeWindow(void *ptr)
 void Notification::registerNotification(const QByteArray &name, WId wid)
 {
     macOSNative::registerNotification(name.constData(), long(wid));
+}
+
+void Notification::unregisterNotification()
+{
+    macOSNative::unregisterNotification();
 }
 
 void Notification::notification(const char *notification_name, long wid)

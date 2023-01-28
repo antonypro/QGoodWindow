@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2022 Antonio Dias
+Copyright © 2022-2023 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -25,14 +25,16 @@ SOFTWARE.
 #ifndef QGOODCENTRALWIDGET_H
 #define QGOODCENTRALWIDGET_H
 
+#include "qgoodcentralwidget_global.h"
+
 #include <QGoodWindow>
 
 #ifdef QGOODWINDOW
-#include "titlebar.h"
+class TitleBar;
 #endif
 
 /** **QGoodCentralWidget** class contains the public API's to control the behavior of **QGoodWindow**. */
-class QGoodCentralWidget : public QWidget
+class SHAREDLIBSHARED_EXPORT QGoodCentralWidget : public QWidget
 {
     Q_OBJECT
 public:
@@ -40,7 +42,6 @@ public:
     explicit QGoodCentralWidget(QGoodWindow *gw);
     /** Destructor of *QGoodCentralWidget*. */
     ~QGoodCentralWidget();
-
 
     /** Utility for showing a modal *QDialog* with customized title bar and borders.
         Pass the *QDialog* and the parent *QGoodWindow* and optionally a *QGoodCentralWidget* for mimic
@@ -54,6 +55,12 @@ public:
                                     bool title_visible = true, bool icon_visible = true);
 
 public slots:
+    /** Set the title bar and the central widget unified. */
+    void setUnifiedTitleBarAndCentralWidget(bool unified);
+
+    /** Set the title bar mask, the title bar widgets masks united with this mask. */
+    void setTitleBarMask(const QRegion &mask);
+
     /** Set the left title bar widget and returns the previous widget or nullptr if none, delete this widget as needed.
         If the widget is transparent for mouse, but not it's children's set \e transparent_for_mouse to true. */
     QWidget *setLeftTitleBarWidget(QWidget *widget, bool transparent_for_mouse = false);
@@ -62,8 +69,17 @@ public slots:
         If the widget is transparent for mouse, but not it's children's set \e transparent_for_mouse to true. */
     QWidget *setRightTitleBarWidget(QWidget *widget, bool transparent_for_mouse = false);
 
+    /** Set the center title bar widget and returns the previous widget or nullptr if none, delete this widget as needed.
+        If the widget is transparent for mouse, but not it's children's set \e transparent_for_mouse to true. */
+    QWidget *setCenterTitleBarWidget(QWidget *widget, bool transparent_for_mouse = false);
+
     /** Set the central widget of *QGoodCentralWidget*. */
     void setCentralWidget(QWidget *widget);
+
+    /** Set the alignment of *QGoodCentralWidget* title on the title bar.
+        Note: If align to center and also set a central title bar widget
+        the title will be aligned to the left.*/
+    void setTitleAlignment(const Qt::Alignment &alignment);
 
     /** Set the color of *QGoodCentralWidget* title bar. */
     void setTitleBarColor(const QColor &color);
@@ -86,14 +102,26 @@ public slots:
     /** Change the caption button width to \e width multiplied to current pixel ratio. */
     void setCaptionButtonWidth(int width);
 
+    /** Returns if the title bar and the central widget are unified. */
+    bool isUnifiedTitleBarAndCentralWidget() const;
+
+    /** Returns the title bar bounding rect. */
+    QRect titleBarRect() const;
+
     /** Returns the left *QGoodCentralWidget* title bar widget or nullptr if none is set. */
     QWidget *leftTitleBarWidget() const;
 
     /** Returns the right *QGoodCentralWidget* title bar widget or nullptr if none is set. */
     QWidget *rightTitleBarWidget() const;
 
+    /** Returns the center *QGoodCentralWidget* title bar widget or nullptr if none is set. */
+    QWidget *centerTitleBarWidget() const;
+
     /** Returns the *QGoodCentralWidget* central widget or nullptr if none is set. */
     QWidget *centralWidget() const;
+
+    /** Returns the alignment of *QGoodCentralWidget* title on the title bar. */
+    Qt::Alignment titleAlignment() const;
 
     /** Returns the *QGoodCentralWidget* title bar color. */
     QColor titleBarColor() const;
@@ -121,18 +149,24 @@ public slots:
         like hide or show a title bar widget. */
     void updateWindow();
 
-private:
+protected:
     //\cond HIDDEN_SYMBOLS
     //Functions
     bool eventFilter(QObject *watched, QEvent *event);
+    //\endcond
 
+private:
+    //\cond HIDDEN_SYMBOLS
     //Variables
     QPointer<QGoodWindow> m_gw;
     QPointer<QWidget> m_central_widget_place_holder;
     QPointer<QWidget> m_central_widget;
 #ifdef QGOODWINDOW
+    bool m_unified_title_bar_and_central_widget;
+    QRegion m_title_bar_mask;
     bool m_left_widget_transparent_for_mouse;
     bool m_right_widget_transparent_for_mouse;
+    bool m_center_widget_transparent_for_mouse;
     int m_caption_button_width;
     bool m_draw_borders;
     QFrame *m_frame;
@@ -140,6 +174,7 @@ private:
     TitleBar *m_title_bar;
     QPointer<QWidget> m_title_bar_left_widget;
     QPointer<QWidget> m_title_bar_right_widget;
+    QPointer<QWidget> m_title_bar_center_widget;
     QColor m_title_bar_color;
     QColor m_active_border_color;
     bool m_title_bar_visible;

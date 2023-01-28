@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2022 Antonio Dias
+Copyright © 2022-2023 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -29,8 +29,10 @@ SOFTWARE.
 #include <QtGui>
 #include <QtWidgets>
 
+#include "qgoodwindow_global.h"
+
 //\cond HIDDEN_SYMBOLS
-class QGoodStateHolder : public QObject
+class SHAREDLIBSHARED_EXPORT QGoodStateHolder : public QObject
 {
     Q_OBJECT
 public:

@@ -17,6 +17,14 @@ Constructor of *QGoodCentralWidget*, is mandatory pass a valid instance of the p
 
 Destructor of *QGoodCentralWidget*.
 
+#### `{slot} public void setUnifiedTitleBarAndCentralWidget(bool unified)` 
+
+Set the title bar and the central widget unified.
+
+#### `{slot} public void setTitleBarMask(const QRegion & mask)` 
+
+Set the title bar mask, the title bar widgets masks united with this mask.
+
 #### `{slot} public QWidget * setLeftTitleBarWidget(QWidget * widget, bool transparent_for_mouse)` 
 
 Set the left title bar widget and returns the previous widget or nullptr if none, delete this widget as needed. If the widget is transparent for mouse, but not it's children's set *transparent_for_mouse* to true.
@@ -25,9 +33,17 @@ Set the left title bar widget and returns the previous widget or nullptr if none
 
 Set the right title bar widget and returns the previous widget or nullptr if none, delete this widget as needed. If the widget is transparent for mouse, but not it's children's set *transparent_for_mouse* to true.
 
+#### `{slot} public QWidget * setCenterTitleBarWidget(QWidget * widget, bool transparent_for_mouse)` 
+
+Set the center title bar widget and returns the previous widget or nullptr if none, delete this widget as needed. If the widget is transparent for mouse, but not it's children's set *transparent_for_mouse* to true.
+
 #### `{slot} public void setCentralWidget(QWidget * widget)` 
 
 Set the central widget of *QGoodCentralWidget*.
+
+#### `{slot} public void setTitleAlignment(const Qt::Alignment & alignment)` 
+
+Set the alignment of *QGoodCentralWidget* title on the title bar. Note: If align to center and also set a central title bar widget the title will be aligned to the left.
 
 #### `{slot} public void setTitleBarColor(const QColor & color)` 
 
@@ -57,6 +73,14 @@ Change the title bar height to *height* multiplied to current pixel ratio.
 
 Change the caption button width to *width* multiplied to current pixel ratio.
 
+#### `{slot} public bool isUnifiedTitleBarAndCentralWidget() const` 
+
+Returns if the title bar and the central widget are unified.
+
+#### `{slot} public QRect titleBarRect() const` 
+
+Returns the title bar bounding rect.
+
 #### `{slot} public QWidget * leftTitleBarWidget() const` 
 
 Returns the left *QGoodCentralWidget* title bar widget or nullptr if none is set.
@@ -65,9 +89,17 @@ Returns the left *QGoodCentralWidget* title bar widget or nullptr if none is set
 
 Returns the right *QGoodCentralWidget* title bar widget or nullptr if none is set.
 
+#### `{slot} public QWidget * centerTitleBarWidget() const` 
+
+Returns the center *QGoodCentralWidget* title bar widget or nullptr if none is set.
+
 #### `{slot} public QWidget * centralWidget() const` 
 
 Returns the *QGoodCentralWidget* central widget or nullptr if none is set.
+
+#### `{slot} public Qt::Alignment titleAlignment() const` 
+
+Returns the alignment of *QGoodCentralWidget* title on the title bar.
 
 #### `{slot} public QColor titleBarColor() const` 
 

@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2022 Antonio Dias
+Copyright © 2022-2023 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -29,11 +29,12 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent)
     m_good_central_widget = new QGoodCentralWidget(this);
 
     //Contents of the window
-    QLabel *label = new QLabel("Hello world!", this);
-    QFont font = label->font();
+    m_label = new QLabel("Hello world!", this);
+    QFont font = m_label->font();
     font.setPointSize(72);
-    label->setFont(font);
-    label->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+    m_label->setFont(font);
+    m_label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+    m_label->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 
     //Function that sets the state holder theme
     auto func_theme = [=]{
@@ -52,7 +53,7 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent)
     connect(this, &QGoodWindow::systemThemeChanged, this, func_theme);
 
     //Set the central widget of QGoodCentralWidget
-    m_good_central_widget->setCentralWidget(label);
+    m_good_central_widget->setCentralWidget(m_label);
 
     //Set the central widget of QGoodWindow which is QGoodCentralWidget
     setCentralWidget(m_good_central_widget);

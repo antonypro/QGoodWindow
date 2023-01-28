@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2022 Antonio Dias
+Copyright © 2018-2023 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,29 @@ SOFTWARE.
 
 TitleBar::TitleBar(qreal pixel_ratio, QGoodWindow *gw, QWidget *parent) : QFrame(parent)
 {
+    m_layout_spacing = 0;
+
+    {
+        QString old_style;
+
+        if (QString::compare(qApp->style()->objectName(), "fusion", Qt::CaseInsensitive) != 0)
+        {
+            old_style = qApp->style()->objectName();
+            qApp->setStyle(QStyleFactory::create("fusion"));
+        }
+
+        QWidget widget;
+
+        QHBoxLayout *layout = new QHBoxLayout(&widget);
+
+        m_layout_spacing = layout->spacing();
+
+        if (!old_style.isEmpty())
+        {
+            qApp->setStyle(QStyleFactory::create(old_style));
+        }
+    }
+
     m_gw = gw;
 
     style = QString("TitleBar {background-color: %0; border: none;}");
@@ -37,11 +60,7 @@ TitleBar::TitleBar(qreal pixel_ratio, QGoodWindow *gw, QWidget *parent) : QFrame
     m_icon_widget = new IconWidget(pixel_ratio, this);
     m_icon_widget->setFixedWidth(qRound(29 * pixel_ratio));
 
-    m_title_widget = new TitleWidget(pixel_ratio, this);
-    m_title_empty_widget = new QWidget(this);
-    m_title_empty_widget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    m_title_empty_widget->setVisible(false);
-    m_title_empty_widget->setEnabled(false);
+    m_title_widget = new TitleWidget(pixel_ratio, this, this);
 
     m_caption_buttons = new QWidget(this);
     m_caption_buttons->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
@@ -70,10 +89,17 @@ TitleBar::TitleBar(qreal pixel_ratio, QGoodWindow *gw, QWidget *parent) : QFrame
 
     m_caption_buttons->adjustSize();
 
-    QHBoxLayout *layout = new QHBoxLayout(this);
-    m_layout_spacing = layout->spacing();
+    QStackedLayout *stacked_layout = new QStackedLayout(this);
+    stacked_layout->setStackingMode(QStackedLayout::StackAll);
+
+    QWidget *widget = new QWidget(this);
+
+    QHBoxLayout *layout = new QHBoxLayout(widget);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
+
+    stacked_layout->addWidget(widget);
+    stacked_layout->addWidget(m_title_widget);
 
     m_left_widget_place_holder = new QWidget(this);
     m_left_widget_place_holder->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
@@ -85,10 +111,21 @@ TitleBar::TitleBar(qreal pixel_ratio, QGoodWindow *gw, QWidget *parent) : QFrame
     m_right_widget_place_holder->setVisible(false);
     m_right_widget_place_holder->setEnabled(false);
 
+    m_center_widget_place_holder = new QWidget(this);
+    m_center_widget_place_holder->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+    m_center_widget_place_holder->setVisible(false);
+    m_center_widget_place_holder->setEnabled(false);
+
+    m_center_spacer_item_left = new QSpacerItem(0, 0);
+    m_center_spacer_item_right = new QSpacerItem(0, 0);
+
     layout->addWidget(m_icon_widget);
     layout->addWidget(m_left_widget_place_holder);
-    layout->addWidget(m_title_widget);
-    layout->addWidget(m_title_empty_widget);
+    layout->addStretch();
+    layout->addSpacerItem(m_center_spacer_item_left);
+    layout->addWidget(m_center_widget_place_holder);
+    layout->addSpacerItem(m_center_spacer_item_right);
+    layout->addStretch();
     layout->addWidget(m_right_widget_place_holder);
     layout->addWidget(m_caption_buttons);
 
@@ -143,6 +180,11 @@ void TitleBar::setActive(bool active)
     m_cls_btn->setActive(active);
 }
 
+void TitleBar::setTitleAlignment(const Qt::Alignment &alignment)
+{
+    m_title_widget->setTitleAlignment(alignment);
+}
+
 void TitleBar::setMaximized(bool maximized)
 {
     m_is_maximized = maximized;
@@ -168,10 +210,14 @@ void TitleBar::setTheme()
 {
     bool dark = qGoodStateHolder->isCurrentThemeDark();
 
+    setAttribute(Qt::WA_TranslucentBackground, false);
+
     if (dark)
     {
         QTimer::singleShot(0, this, [=]{
-            if (m_title_bar_color.isValid())
+            if (m_title_bar_color == QColor(Qt::transparent))
+                setAttribute(Qt::WA_TranslucentBackground, true);
+            else if (m_title_bar_color.isValid())
                 setStyleSheet(style.arg(m_title_bar_color.name()));
             else if (qApp->style()->objectName() == "fusion")
                 setStyleSheet(style.arg(qApp->palette().base().color().name()));
@@ -192,7 +238,9 @@ void TitleBar::setTheme()
     else
     {
         QTimer::singleShot(0, this, [=]{
-            if (m_title_bar_color.isValid())
+            if (m_title_bar_color == QColor(Qt::transparent))
+                setAttribute(Qt::WA_TranslucentBackground, true);
+            else if (m_title_bar_color.isValid())
                 setStyleSheet(style.arg(m_title_bar_color.name()));
             else if (qApp->style()->objectName() == "fusion")
                 setStyleSheet(style.arg(qApp->palette().base().color().name()));
@@ -260,6 +308,30 @@ void TitleBar::setRightTitleBarWidget(QWidget *widget)
     }
 }
 
+void TitleBar::setCenterTitleBarWidget(QWidget *widget)
+{
+    if (m_center_widget_place_holder->layout())
+        delete m_center_widget_place_holder->layout();
+
+    m_center_widget = widget;
+
+    if (m_center_widget)
+    {
+        QGridLayout *layout = new QGridLayout(m_center_widget_place_holder);
+        layout->setContentsMargins(0, 0, m_layout_spacing, 0);
+        layout->setSpacing(0);
+        layout->addWidget(m_center_widget);
+
+        m_center_widget_place_holder->setVisible(true);
+        m_center_widget_place_holder->setEnabled(true);
+    }
+    else
+    {
+        m_center_widget_place_holder->setVisible(false);
+        m_center_widget_place_holder->setEnabled(false);
+    }
+}
+
 void TitleBar::setCaptionButtonWidth(int width)
 {
     m_min_btn->setFixedSize(width, height());
@@ -270,9 +342,38 @@ void TitleBar::setCaptionButtonWidth(int width)
     m_caption_buttons->adjustSize();
 }
 
+Qt::Alignment TitleBar::titleAlignment()
+{
+    return m_title_widget->titleAlignment();
+}
+
 int TitleBar::captionButtonsWidth()
 {
     return m_caption_buttons->width();
+}
+
+int TitleBar::leftWidth()
+{
+    QRect rect;
+
+    rect = rect.united(m_icon_widget->geometry());
+
+    rect = rect.united(m_left_widget_place_holder->geometry());
+
+    return rect.width();
+}
+
+int TitleBar::rightWidth()
+{
+    QRect rect;
+
+    rect = rect.united(m_caption_buttons->geometry());
+
+    rect = rect.united(m_right_widget_place_holder->geometry());
+
+    int width = rect.width() + layoutSpacing();
+
+    return width;
 }
 
 int TitleBar::layoutSpacing()
@@ -328,6 +429,28 @@ QRect TitleBar::closeButtonRect()
         return m_cls_btn->geometry();
 
     return QRect();
+}
+
+void TitleBar::updateWindow()
+{
+    int left_width = leftWidth();
+
+    int right_width = rightWidth();
+
+    int distance = right_width - left_width;
+
+    int left_distance = 0;
+
+    int right_distance = 0;
+
+    if (distance > 0)
+        left_distance = qAbs(distance);
+    else
+        right_distance = qAbs(distance);
+
+    m_center_spacer_item_left->changeSize(left_distance, 0, QSizePolicy::Preferred, QSizePolicy::Expanding);
+
+    m_center_spacer_item_right->changeSize(right_distance, 0, QSizePolicy::Preferred, QSizePolicy::Expanding);
 }
 
 void TitleBar::captionButtonStateChanged(const QGoodWindow::CaptionButtonState &state)

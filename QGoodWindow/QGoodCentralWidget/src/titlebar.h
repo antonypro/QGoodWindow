@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2022 Antonio Dias
+Copyright © 2018-2023 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -50,12 +50,17 @@ public slots:
     void setTitle(const QString &title);
     void setIcon(const QPixmap &icon);
     void setActive(bool active);
+    void setTitleAlignment(const Qt::Alignment &alignment);
     void setMaximized(bool maximized);
     void setTheme();
     void setLeftTitleBarWidget(QWidget *widget);
     void setRightTitleBarWidget(QWidget *widget);
+    void setCenterTitleBarWidget(QWidget *widget);
     void setCaptionButtonWidth(int width);
+    Qt::Alignment titleAlignment();
     int captionButtonsWidth();
+    int leftWidth();
+    int rightWidth();
     int layoutSpacing();
     bool isMinimizedButtonEnabled();
     bool isMaximizeButtonEnabled();
@@ -63,15 +68,13 @@ public slots:
     QRect minimizeButtonRect();
     QRect maximizeButtonRect();
     QRect closeButtonRect();
+    void updateWindow();
     void captionButtonStateChanged(const QGoodWindow::CaptionButtonState &state);
 
 private:
-    friend class QGoodCentralWidget;
-
     QPointer<QGoodWindow> m_gw;
     IconWidget *m_icon_widget;
     TitleWidget *m_title_widget;
-    QWidget *m_title_empty_widget;
     QWidget *m_caption_buttons;
     CaptionButton *m_min_btn;
     CaptionButton *m_restore_btn;
@@ -79,13 +82,20 @@ private:
     CaptionButton *m_cls_btn;
     QPointer<QWidget> m_left_widget;
     QPointer<QWidget> m_right_widget;
+    QPointer<QWidget> m_center_widget;
     QPointer<QWidget> m_left_widget_place_holder;
     QPointer<QWidget> m_right_widget_place_holder;
+    QPointer<QWidget> m_center_widget_place_holder;
+    QSpacerItem *m_center_spacer_item_left;
+    QSpacerItem *m_center_spacer_item_right;
     int m_layout_spacing;
     QString style;
     bool m_active;
     bool m_is_maximized;
     QColor m_title_bar_color;
+
+    friend class QGoodCentralWidget;
+    friend class TitleWidget;
 };
 //\endcond
 

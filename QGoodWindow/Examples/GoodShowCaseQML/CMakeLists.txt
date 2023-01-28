@@ -1,6 +1,6 @@
 #The MIT License (MIT)
 
-#Copyright © 2022 Antonio Dias
+#Copyright © 2022-2023 Antonio Dias (https://github.com/antonypro)
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy
 #of this software and associated documentation files (the "Software"), to deal
@@ -20,11 +20,9 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
-cmake_minimum_required(VERSION 3.12)
-project(GoodShowCaseQML LANGUAGES CXX)
-
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+cmake_minimum_required(VERSION 3.14)
+project(GoodShowCaseQML)
+enable_language(CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
@@ -32,6 +30,15 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 find_package(QT NAMES Qt5 Qt6 REQUIRED)
+
+if (${QT_VERSION_MAJOR} EQUAL 5)
+    set(CMAKE_CXX_STANDARD 11)
+endif()
+if (${QT_VERSION_MAJOR} EQUAL 6)
+    set(CMAKE_CXX_STANDARD 17)
+endif()
+
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 #set(no_qgoodwindow TRUE) #This flag disable QGoodWindow
 
@@ -49,13 +56,6 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/../../QGoodWindow/QGoodWindow.cmake)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../../QGoodCentralWidget/QGoodCentralWidget.cmake)
 
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED
-    Core
-    Gui
-    Widgets
-    QuickWidgets
-)
-
 if(WIN32 AND ${QT_VERSION_MAJOR} EQUAL 5)
     find_package(Qt5 REQUIRED
         WinExtras
@@ -65,6 +65,13 @@ if(WIN32 AND ${QT_VERSION_MAJOR} EQUAL 5)
         Qt5::WinExtras
     )
 endif()
+
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED
+    Core
+    Gui
+    Widgets
+    QuickWidgets
+)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt${QT_VERSION_MAJOR}::Core
