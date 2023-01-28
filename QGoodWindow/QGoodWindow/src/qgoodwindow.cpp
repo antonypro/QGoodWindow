@@ -279,19 +279,11 @@ QGoodWindow::QGoodWindow(QWidget *parent, const QColor &clear_color) : QMainWind
     m_hover_timer->setSingleShot(true);
     m_hover_timer->setInterval(300);
 
-    bool icon_null = false;
-
-    if (windowIcon().isNull())
-    {
-        icon_null = true;
-        setWindowIcon(qApp->style()->standardIcon(QStyle::SP_DesktopIcon));
-    }
-
     QTimer::singleShot(0, this, [=]{
         if (windowTitle().isNull())
             setWindowTitle(qApp->applicationName());
 
-        if (icon_null)
+        if (windowIcon().isNull())
             setWindowIcon(qApp->style()->standardIcon(QStyle::SP_DesktopIcon));
     });
 #endif

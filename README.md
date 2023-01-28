@@ -1,7 +1,7 @@
 # QGoodWindow
 *Border less window implementation for Qt 5 and Qt 6 on Windows, Linux and macOS.*
 
-Version 2.2
+Version 2.2.1
 
 **QGoodWindow** in dark mode on Windows 11:
 ![](img/qgoodwindow.png)

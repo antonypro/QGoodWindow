@@ -1,3 +1,7 @@
+## *Version 2.2.1:*
+
+- Fixed bug that not shows the window icon set by the application.
+
 ## *Version 2.2:*
 
 - Added possibility to place title also on center or right side of the title bar on QGoodCentralWidget.
