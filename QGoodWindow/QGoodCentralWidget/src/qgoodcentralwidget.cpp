@@ -26,22 +26,6 @@ SOFTWARE.
 
 #ifdef QGOODWINDOW
 #include "titlebar.h"
-#endif
-
-#ifdef QGOODWINDOW
-inline qreal pixelRatio()
-{
-    QScreen *screen = QApplication::primaryScreen();
-
-#ifdef Q_OS_MAC
-    qreal pixel_ratio = screen->devicePixelRatio();
-#else
-    qreal pixel_ratio = screen->logicalDotsPerInch() / qreal(96);
-#endif
-
-    return pixel_ratio;
-}
-
 #define BORDERCOLOR QColor(24, 131, 215)
 #endif
 
@@ -62,9 +46,9 @@ QGoodCentralWidget::QGoodCentralWidget(QGoodWindow *gw) : QWidget(gw)
 
     m_active_border_color = BORDERCOLOR;
 
-    m_caption_button_width = qRound(36 * pixelRatio());
+    m_caption_button_width = 36;
 
-    m_title_bar = new TitleBar(pixelRatio(), m_gw, this);
+    m_title_bar = new TitleBar(m_gw, this);
     m_title_bar->setCaptionButtonWidth(m_caption_button_width);
 
     m_title_bar->installEventFilter(this);
@@ -83,7 +67,7 @@ QGoodCentralWidget::QGoodCentralWidget(QGoodWindow *gw) : QWidget(gw)
     connect(m_gw, &QGoodWindow::windowIconChanged, m_title_bar, [=](const QIcon &icon){
         if (!icon.isNull())
         {
-            const int pix_size = qCeil(16 * pixelRatio());
+            const int pix_size = 16;
             m_title_bar->setIcon(icon.pixmap(pix_size, pix_size));
         }
     });
@@ -356,8 +340,7 @@ void QGoodCentralWidget::setIconVisible(bool visible)
 void QGoodCentralWidget::setTitleBarHeight(int height)
 {
 #ifdef QGOODWINDOW
-    qreal pixel_ratio = pixelRatio();
-    m_title_bar->setFixedHeight(qRound(height * pixel_ratio));
+    m_title_bar->setFixedHeight(height);
     m_title_bar->setCaptionButtonWidth(m_caption_button_width);
     updateWindow();
 #else
@@ -368,8 +351,7 @@ void QGoodCentralWidget::setTitleBarHeight(int height)
 void QGoodCentralWidget::setCaptionButtonWidth(int width)
 {
 #ifdef QGOODWINDOW
-    qreal pixel_ratio = pixelRatio();
-    m_caption_button_width = qRound(width * pixel_ratio);
+    m_caption_button_width = width;
     m_title_bar->setCaptionButtonWidth(m_caption_button_width);
     updateWindow();
 #else
@@ -432,7 +414,7 @@ Qt::Alignment QGoodCentralWidget::titleAlignment() const
 #ifdef QGOODWINDOW
     return m_title_bar->titleAlignment();
 #else
-    return 0;
+    return Qt::Alignment(0);
 #endif
 }
 
@@ -511,7 +493,7 @@ void QGoodCentralWidget::updateWindow()
     bool is_maximized = m_gw->isMaximized();
     bool is_full_screen = m_gw->isFullScreen();
     int title_bar_height = m_title_bar->height();
-    int icon_width = qRound(30 * pixelRatio());
+    int icon_width = m_title_bar->m_icon_widget->width();
 
     QString border_str = "none";
 
@@ -550,7 +532,7 @@ void QGoodCentralWidget::updateWindow()
 
         if (m_title_bar_left_widget)
         {
-            //Remove the widget rect from mask and put it again later
+            //Remove the widget rect from mask and put it again later.
             left_mask -= QRect(m_title_bar_left_widget->x(), 0,
                                m_title_bar_left_widget->width() + spacing,
                                title_bar_height);
@@ -564,25 +546,23 @@ void QGoodCentralWidget::updateWindow()
 
             for (QWidget *widget : list)
             {
-                if (!widget->mask().isNull() ||
-                        widget->testAttribute(Qt::WA_TransparentForMouseEvents))
+                if (!widget->testAttribute(Qt::WA_TransparentForMouseEvents))
                 {
-                    if (!widget->mask().isNull() &&
-                            !widget->testAttribute(Qt::WA_TransparentForMouseEvents))
+                    if (!widget->mask().isNull())
                     {
                         left_mask += widget->mask().translated(widget->pos());
                     }
-                }
-                else
-                {
-                    left_mask += widget->geometry();
+                    else
+                    {
+                        left_mask += widget->geometry();
+                    }
                 }
             }
         }
 
         if (m_title_bar_right_widget)
         {
-            //Remove the widget rect from mask and put it again later
+            //Remove the widget rect from mask and put it again later.
             right_mask -= QRect(m_title_bar_right_widget->x(), 0,
                                 m_title_bar_right_widget->width() + spacing,
                                 title_bar_height);
@@ -596,18 +576,16 @@ void QGoodCentralWidget::updateWindow()
 
             for (QWidget *widget : list)
             {
-                if (!widget->mask().isNull() ||
-                        widget->testAttribute(Qt::WA_TransparentForMouseEvents))
+                if (!widget->testAttribute(Qt::WA_TransparentForMouseEvents))
                 {
-                    if (!widget->mask().isNull() &&
-                            !widget->testAttribute(Qt::WA_TransparentForMouseEvents))
+                    if (!widget->mask().isNull())
                     {
                         right_mask += widget->mask().translated(widget->pos());
                     }
-                }
-                else
-                {
-                    right_mask += widget->geometry();
+                    else
+                    {
+                        right_mask += widget->geometry();
+                    }
                 }
             }
         }
@@ -623,18 +601,16 @@ void QGoodCentralWidget::updateWindow()
 
             for (QWidget *widget : list)
             {
-                if (!widget->mask().isNull() ||
-                        widget->testAttribute(Qt::WA_TransparentForMouseEvents))
+                if (!widget->testAttribute(Qt::WA_TransparentForMouseEvents))
                 {
-                    if (!widget->mask().isNull() &&
-                            !widget->testAttribute(Qt::WA_TransparentForMouseEvents))
+                    if (!widget->mask().isNull())
                     {
                         center_mask += widget->mask().translated(m_title_bar->m_center_widget_place_holder->pos());
                     }
-                }
-                else
-                {
-                    center_mask += widget->geometry().translated(m_title_bar->m_center_widget_place_holder->pos());
+                    else
+                    {
+                        center_mask += widget->geometry().translated(m_title_bar->m_center_widget_place_holder->pos());
+                    }
                 }
             }
         }

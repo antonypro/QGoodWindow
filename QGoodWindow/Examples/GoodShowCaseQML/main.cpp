@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
     QApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
 #endif
 
-    QApplication a(argc, argv);
+    QApplication app(argc, argv);
 
 #ifdef QT_VERSION_QT6
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
@@ -42,5 +42,5 @@ int main(int argc, char *argv[])
     MainWindow mw;
     mw.show();
 
-    return a.exec();
+    return app.exec();
 }

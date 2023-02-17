@@ -27,10 +27,9 @@ SOFTWARE.
 #define ICONWIDTH 16
 #define ICONHEIGHT 16
 
-IconWidget::IconWidget(qreal pixel_ratio, QWidget *parent) : QWidget(parent)
+IconWidget::IconWidget(QWidget *parent) : QWidget(parent)
 {
     m_active = true;
-    m_pixel_ratio = pixel_ratio;
 }
 
 void IconWidget::setPixmap(const QPixmap &pixmap)
@@ -39,15 +38,21 @@ void IconWidget::setPixmap(const QPixmap &pixmap)
 
     QImage tmp = m_pixmap.toImage();
 
-    for (int i = 0; i < m_pixmap.width(); i++)
+    for (int y = 0; y < tmp.height(); y++)
     {
-        for (int j = 0; j < m_pixmap.height(); j++)
+        QRgb *pixel_ptr = reinterpret_cast<QRgb*>(tmp.scanLine(y));
+
+        for (int x = 0; x < tmp.width(); x++)
         {
-            int gray = qGray(tmp.pixel(i, j));
+            QRgb pixel = pixel_ptr[x];
 
-            int alpha = qAlpha(tmp.pixel(i, j));
+            int gray = qGray(pixel);
 
-            tmp.setPixel(i, j, qRgba(gray, gray, gray, alpha));
+            int alpha = qAlpha(pixel);
+
+            QRgb rgba = qRgba(gray, gray, gray, alpha);
+
+            pixel_ptr[x] = rgba;
         }
     }
 
@@ -69,9 +74,7 @@ void IconWidget::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
 
-    painter.drawPixmap(qRound(width() - ICONWIDTH * m_pixel_ratio) / 2,
-                       qRound(height() - ICONHEIGHT * m_pixel_ratio) / 2,
-                       qRound(ICONWIDTH * m_pixel_ratio),
-                       qRound(ICONHEIGHT * m_pixel_ratio),
-                       m_active ? m_pixmap : m_grayed_pixmap);
+    painter.drawPixmap((width() - ICONWIDTH) / 2, (height() - ICONHEIGHT) / 2,
+                       ICONWIDTH, ICONHEIGHT,
+                       (m_active ? m_pixmap : m_grayed_pixmap));
 }

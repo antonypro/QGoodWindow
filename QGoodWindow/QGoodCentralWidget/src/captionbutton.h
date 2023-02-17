@@ -42,7 +42,7 @@ public:
         Close
     };
 
-    explicit CaptionButton(IconType type, qreal pixelRatio, QWidget *parent = nullptr);
+    explicit CaptionButton(IconType type, QWidget *parent = nullptr);
     ~CaptionButton();
 
 signals:
@@ -55,8 +55,12 @@ public slots:
 
 private:
     //Functions
-    void setColors();
+    QPixmap loadSVG(const QString &svg_path, int w, int h,
+                    const Qt::TransformationMode &mode);
+    void paintIcons(const QPixmap &pix_in, bool dark,
+                    QPixmap *pix_active_out, QPixmap *pix_inactive_out);
     void drawIcons();
+    void setColors();
     void paintEvent(QPaintEvent *event);
 
     //Variables
@@ -70,7 +74,6 @@ private:
     QColor m_pressed;
 
     IconType m_type;
-    qreal m_pixel_ratio;
     bool m_is_active;
     bool m_is_under_mouse;
     bool m_is_pressed;

@@ -37,21 +37,6 @@ SOFTWARE.
 
 #include "mainwindow.h"
 
-#ifdef QGOODWINDOW
-inline qreal pixelRatio()
-{
-    QScreen *screen = QApplication::primaryScreen();
-
-#ifdef Q_OS_MAC
-    qreal pixel_ratio = screen->devicePixelRatio();
-#else
-    qreal pixel_ratio = screen->logicalDotsPerInch() / qreal(96);
-#endif
-
-    return pixel_ratio;
-}
-#endif
-
 MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent)
 {
     m_central_widget = new CentralWidget(this);
@@ -67,7 +52,7 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent)
 
     //Set font of menu bar
     QFont font = menu_bar->font();
-    font.setPixelSize(qRound(12 * pixelRatio()));
+    font.setPixelSize(12);
 #ifdef Q_OS_WIN
     font.setFamily("Segoe UI");
 #else
@@ -133,7 +118,7 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent)
     setWindowIcon(qApp->style()->standardIcon(QStyle::SP_DesktopIcon));
     setWindowTitle("Good Window - CTRL+S toggle theme - CTRL+T toggle title bar!");
 
-    resize(m_central_widget->size());
+    resize(800, 600);
     move(QGuiApplication::primaryScreen()->availableGeometry().center() - rect().center());
 
 #ifdef QGOODWINDOW

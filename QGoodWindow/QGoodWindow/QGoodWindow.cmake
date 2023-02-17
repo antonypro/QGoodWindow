@@ -25,8 +25,8 @@ target_sources(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/src/darkstyle.cpp ${CMAKE_CURRENT_LIST_DIR}/src/darkstyle.h
     ${CMAKE_CURRENT_LIST_DIR}/src/lightstyle.cpp ${CMAKE_CURRENT_LIST_DIR}/src/lightstyle.h
     ${CMAKE_CURRENT_LIST_DIR}/src/stylecommon.cpp ${CMAKE_CURRENT_LIST_DIR}/src/stylecommon.h
-    ${CMAKE_CURRENT_LIST_DIR}/src/qgoodstateholder.h
-    ${CMAKE_CURRENT_LIST_DIR}/src/style.qrc
+    ${CMAKE_CURRENT_LIST_DIR}/src/qgoodstateholder.cpp ${CMAKE_CURRENT_LIST_DIR}/src/qgoodstateholder.h
+    ${CMAKE_CURRENT_LIST_DIR}/src/qgoodwindow_style.qrc
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

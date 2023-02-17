@@ -235,6 +235,14 @@ Position of the window on screen.
 
 Size of the window on screen.
 
+#### `{slot} public QSize sizeHint() const` 
+
+Size hint of the window.
+
+#### `{slot} public QSize minimumSizeHint() const` 
+
+Minimum size hint of the window.
+
 #### `{slot} public int x() const` 
 
 X position of the window on screen.
@@ -421,7 +429,7 @@ Set the app theme to the dark theme.
 
 Set the app theme to the light theme.
 
-#### `public static QGoodStateHolder * getGoodStateHolder()` 
+#### `public static QGoodStateHolder * qGoodStateHolderInstance()` 
 
 Get the global state holder.
 

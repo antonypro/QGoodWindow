@@ -31,7 +31,15 @@ if(qgoodwindow)
         ${CMAKE_CURRENT_LIST_DIR}/src/titlebar.cpp ${CMAKE_CURRENT_LIST_DIR}/src/titlebar.h
         ${CMAKE_CURRENT_LIST_DIR}/src/titlewidget.cpp ${CMAKE_CURRENT_LIST_DIR}/src/titlewidget.h
 
-        ${CMAKE_CURRENT_LIST_DIR}/src/icons.qrc
+        ${CMAKE_CURRENT_LIST_DIR}/src/qgoodcentralwidget_icons.qrc
+    )
+
+    find_package(Qt${QT_VERSION_MAJOR} REQUIRED
+        Svg
+    )
+
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        Qt${QT_VERSION_MAJOR}::Svg
     )
 endif()
 

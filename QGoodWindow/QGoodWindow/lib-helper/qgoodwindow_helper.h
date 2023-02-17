@@ -25,17 +25,22 @@ SOFTWARE.
 #ifndef QGOODWINDOW_HELPER
 #define QGOODWINDOW_HELPER
 
-#define QGOODWINDOW
-
 #include <QtCore/qglobal.h>
 
+#ifndef QGOODWINDOW
+#define QGOODWINDOW
+#endif
+
 #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0) && QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+#ifndef QT_VERSION_QT5
 #define QT_VERSION_QT5
+#endif
 #endif
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) && QT_VERSION < QT_VERSION_CHECK(7, 0, 0)
+#ifndef QT_VERSION_QT6
 #define QT_VERSION_QT6
+#endif
 #endif
 
 #endif // QGOODWINDOW_HELPER
-

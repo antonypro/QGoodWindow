@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2023 Antonio Dias (https://github.com/antonypro)
+Copyright © 2022-2023 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,17 +22,32 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "mainwindow.h"
-#include <QApplication>
+#include "qgoodstateholder.h"
 
-int main(int argc, char *argv[])
+QGoodStateHolder *QGoodStateHolder::instance()
 {
-    QGoodWindow::setup();
+	static QGoodStateHolder instance;
+	return &instance;
+}
 
-    QApplication app(argc, argv);
+QGoodStateHolder::QGoodStateHolder() : QObject()
+{
+	m_dark = false;
+}
 
-    MainWindow mw;
-    mw.show();
+QGoodStateHolder::~QGoodStateHolder()
+{
 
-    return app.exec();
+}
+
+bool QGoodStateHolder::isCurrentThemeDark() const
+{
+	return m_dark;
+}
+
+void QGoodStateHolder::setCurrentThemeDark(bool dark)
+{
+	m_dark = dark;
+
+	emit currentThemeChanged();
 }

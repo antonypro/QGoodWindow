@@ -25,16 +25,16 @@ SOFTWARE.
 #ifndef QGOODCENTRALWIDGET_H
 #define QGOODCENTRALWIDGET_H
 
-#include "qgoodcentralwidget_global.h"
-
 #include <QGoodWindow>
+
+#include "qgoodcentralwidget_global.h"
 
 #ifdef QGOODWINDOW
 class TitleBar;
 #endif
 
 /** **QGoodCentralWidget** class contains the public API's to control the behavior of **QGoodWindow**. */
-class SHAREDLIBSHARED_EXPORT QGoodCentralWidget : public QWidget
+class QGOODWINDOW_SHARED_EXPORT QGoodCentralWidget : public QWidget
 {
     Q_OBJECT
 public:

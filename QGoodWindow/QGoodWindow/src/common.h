@@ -33,6 +33,17 @@ SOFTWARE.
 
 #define _WIN32_WINNT _WIN32_WINNT_VISTA
 
+#include <windows.h>
+
+inline int BORDERWIDTH()
+{
+    return (GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER));
+}
+
+inline int BORDERHEIGHT()
+{
+    return (GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER));
+}
 #endif
 
 #include <QtCore>
@@ -43,7 +54,7 @@ SOFTWARE.
 
 #define BORDERWIDTH 10 //PIXELS
 
-#define BORDERWIDTHDPI qCeil(BORDERWIDTH * m_pixel_ratio)
+#define BORDERWIDTHDPI BORDERWIDTH
 
 #define MOVERESIZE_MOVE 8 //X11 Fixed Value
 
@@ -67,14 +78,6 @@ SOFTWARE.
 #define HTBOTTOM 5
 #define HTBOTTOMRIGHT 4
 #define HTCAPTION 8
-
-#endif
-
-#ifdef Q_OS_WIN
-
-#include <windows.h>
-
-#define BORDERWIDTH (GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER))
 
 #endif
 

@@ -54,7 +54,7 @@ else()
 endif()
 
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Set build mode")
-set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Release Debug)
+set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Release MinSizeRel RelWithDebInfo Debug)
 
 set(HEADER_FILES 
     ${CMAKE_CURRENT_SOURCE_DIR}/../QGoodWindow/src/qgoodwindow.h
@@ -86,13 +86,13 @@ install(FILES
 install(TARGETS ${PROJECT_NAME}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
         LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
-        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
         COMPONENT Libraries
 )
 
 if (shared_library)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
-        WITH_LIBRARY SHAREDLIB_LIBRARY
+        QGOODWINDOW_LIBRARY QGOODWINDOW_SHARED_LIBRARY
     )
     install(FILES
         ${CMAKE_CURRENT_SOURCE_DIR}/../QGoodWindow/lib-helper/qgoodwindow_global.h

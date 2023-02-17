@@ -26,4 +26,8 @@ CONFIG += staticlib
 
 TARGET = QGoodWindow
 
+#Install directory of built lib and headers
+INSTALL_DIR = $$PWD/build/build-static
+
 include($$PWD/../QGoodWindow/QGoodWindow.pri)
+include($$PWD/include/qgoodwindow-static.pri)

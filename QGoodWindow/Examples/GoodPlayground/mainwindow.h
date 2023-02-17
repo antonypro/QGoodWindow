@@ -35,7 +35,7 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
-    //Functions
+public slots:
     void show();
 
 private slots:

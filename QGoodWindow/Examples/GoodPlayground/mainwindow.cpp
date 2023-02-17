@@ -112,13 +112,9 @@ bool MainWindow::event(QEvent *event)
     switch (event->type())
     {
     case QEvent::Show:
-    {
-        QTimer::singleShot(0, this, &MainWindow::adjustSizeLabel);
-        break;
-    }
     case QEvent::Resize:
     {
-        adjustSizeLabel();
+        QTimer::singleShot(0, this, &MainWindow::adjustSizeLabel);
         break;
     }
     default:
@@ -130,16 +126,23 @@ bool MainWindow::event(QEvent *event)
 
 void MainWindow::show()
 {
-    //Restore window geometry
-    if (!restoreGeometry(m_settings->value("geometry").toByteArray()))
-    {
-        //If there is no saved geometry, use a default geometry
-        resize(500, 200);
-        move(QGuiApplication::primaryScreen()->availableGeometry().center() - rect().center());
+    QTimer::singleShot(0, this, [=]{
+        //Restore window geometry
+        if (!restoreGeometry(m_settings->value("geometry").toByteArray()))
+        {
+            //If there is no saved geometry, use a default geometry
+            if (QWidget *central_widget = m_good_central_widget->centralWidget())
+            {
+                resize(qMax(central_widget->minimumSizeHint().width(), 500),
+                       qMax(central_widget->minimumSizeHint().height(), 200));
+            }
 
-        //Call parent show function
+            move(QGuiApplication::primaryScreen()->availableGeometry().center() - rect().center());
+        }
+
+        //Call parent show
         QGoodWindow::show();
-    }
+    });
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)

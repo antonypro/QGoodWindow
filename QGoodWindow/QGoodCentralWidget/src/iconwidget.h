@@ -34,7 +34,7 @@ class IconWidget : public QWidget
 {
     Q_OBJECT
 public:
-    explicit IconWidget(qreal pixel_ratio, QWidget *parent = nullptr);
+    explicit IconWidget(QWidget *parent = nullptr);
 
 public slots:
     void setPixmap(const QPixmap &pixmap);
@@ -48,7 +48,6 @@ private:
     QPixmap m_pixmap;
     QPixmap m_grayed_pixmap;
     bool m_active;
-    qreal m_pixel_ratio;
 };
 //\endcond
 

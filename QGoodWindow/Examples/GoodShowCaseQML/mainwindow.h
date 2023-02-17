@@ -40,23 +40,6 @@ SOFTWARE.
 #endif
 #endif
 
-inline qreal pixelRatio()
-{
-#ifdef QGOODWINDOW
-    QScreen *screen = QApplication::primaryScreen();
-
-#ifdef Q_OS_MAC
-    qreal pixel_ratio = screen->devicePixelRatio();
-#else
-    qreal pixel_ratio = screen->logicalDotsPerInch() / qreal(96);
-#endif
-
-#else
-    qreal pixel_ratio = qreal(1);
-#endif
-    return pixel_ratio;
-}
-
 class MainWindow : public QGoodWindow
 {
     Q_OBJECT

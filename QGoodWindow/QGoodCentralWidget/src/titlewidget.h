@@ -36,7 +36,7 @@ class TitleWidget : public QWidget
 {
     Q_OBJECT
 public:
-    explicit TitleWidget(qreal pixel_ratio, TitleBar *title_bar, QWidget *parent = nullptr);
+    explicit TitleWidget(TitleBar *title_bar, QWidget *parent = nullptr);
 
 public slots:
     void setText(const QString &text);
@@ -56,7 +56,6 @@ private:
     Qt::Alignment m_alignment;
     QColor m_active_color;
     QColor m_inactive_color;
-    qreal m_pixel_ratio;
 };
 //\endcond
 

@@ -22,11 +22,15 @@
 
 TEMPLATE = lib
 
-CONFIG += sharedlib
+CONFIG += plugin
 
 TARGET = QGoodWindow
 
-DEFINES += WITH_LIBRARY SHAREDLIB_LIBRARY
+#Install directory of built lib and headers
+INSTALL_DIR = $$PWD/build/build-shared-with-central-widget
+
+DEFINES += QGOODWINDOW_LIBRARY QGOODWINDOW_SHARED_LIBRARY
 
 include($$PWD/../QGoodWindow/QGoodWindow.pri)
 include($$PWD/../QGoodCentralWidget/QGoodCentralWidget.pri)
+include($$PWD/include/qgoodwindow-and-central-widget-shared.pri)

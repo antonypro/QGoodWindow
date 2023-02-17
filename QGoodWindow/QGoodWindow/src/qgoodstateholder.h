@@ -32,48 +32,28 @@ SOFTWARE.
 #include "qgoodwindow_global.h"
 
 //\cond HIDDEN_SYMBOLS
-class SHAREDLIBSHARED_EXPORT QGoodStateHolder : public QObject
+class QGOODWINDOW_SHARED_EXPORT QGoodStateHolder : public QObject
 {
     Q_OBJECT
 public:
-    static QGoodStateHolder *instance()
-    {
-        static QGoodStateHolder instance;
-        return &instance;
-    }
+    static QGoodStateHolder *instance();
 
 private:
-    explicit QGoodStateHolder() : QObject()
-    {
-        m_dark = false;
-    }
-
-    ~QGoodStateHolder()
-    {
-
-    }
+    explicit QGoodStateHolder();
+    ~QGoodStateHolder();
 
 signals:
     void currentThemeChanged();
 
 public slots:
-    bool isCurrentThemeDark() const
-    {
-        return m_dark;
-    }
-
-    void setCurrentThemeDark(bool dark)
-    {
-        m_dark = dark;
-
-        emit currentThemeChanged();
-    }
+    bool isCurrentThemeDark() const;
+    void setCurrentThemeDark(bool dark);
 
 private:
     bool m_dark;
 };
 //\endcond
 
-#define qGoodStateHolder QGoodStateHolder::instance()
+#define qGoodStateHolder QGoodWindow::qGoodStateHolderInstance()
 
 #endif // QGOODSTATEHOLDER

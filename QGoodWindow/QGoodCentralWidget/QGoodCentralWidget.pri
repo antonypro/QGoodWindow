@@ -36,6 +36,8 @@ INCLUDEPATH += $$PWD #include <QGoodCentralWidget>
 DEFINES += QGOODCENTRALWIDGET
 
 qgoodwindow {
+QT += svg
+
 SOURCES += \
     $$PWD/src/captionbutton.cpp \
     $$PWD/src/iconwidget.cpp \
@@ -48,8 +50,6 @@ HEADERS += \
     $$PWD/src/titlebar.h \
     $$PWD/src/titlewidget.h
 
-RESOURCES +=
-}
-
 RESOURCES += \
-    $$PWD/src/icons.qrc
+    $$PWD/src/qgoodcentralwidget_icons.qrc
+}

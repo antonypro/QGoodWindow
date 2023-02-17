@@ -24,7 +24,7 @@ SOFTWARE.
 
 #include "titlebar.h"
 
-TitleBar::TitleBar(qreal pixel_ratio, QGoodWindow *gw, QWidget *parent) : QFrame(parent)
+TitleBar::TitleBar(QGoodWindow *gw, QWidget *parent) : QFrame(parent)
 {
     m_layout_spacing = 0;
 
@@ -55,23 +55,23 @@ TitleBar::TitleBar(qreal pixel_ratio, QGoodWindow *gw, QWidget *parent) : QFrame
 
     connect(qGoodStateHolder, &QGoodStateHolder::currentThemeChanged, this, &TitleBar::setTheme);
 
-    setFixedHeight(qRound(29 * pixel_ratio));
+    setFixedHeight(29);
 
-    m_icon_widget = new IconWidget(pixel_ratio, this);
-    m_icon_widget->setFixedWidth(qRound(29 * pixel_ratio));
+    m_icon_widget = new IconWidget(this);
+    m_icon_widget->setFixedWidth(29);
 
-    m_title_widget = new TitleWidget(pixel_ratio, this, this);
+    m_title_widget = new TitleWidget(this, this);
 
     m_caption_buttons = new QWidget(this);
     m_caption_buttons->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
 
-    m_min_btn = new CaptionButton(CaptionButton::IconType::Minimize, pixel_ratio, m_caption_buttons);
+    m_min_btn = new CaptionButton(CaptionButton::IconType::Minimize, m_caption_buttons);
 
-    m_restore_btn = new CaptionButton(CaptionButton::IconType::Restore, pixel_ratio, m_caption_buttons);
+    m_restore_btn = new CaptionButton(CaptionButton::IconType::Restore, m_caption_buttons);
 
-    m_max_btn = new CaptionButton(CaptionButton::IconType::Maximize, pixel_ratio, m_caption_buttons);
+    m_max_btn = new CaptionButton(CaptionButton::IconType::Maximize, m_caption_buttons);
 
-    m_cls_btn = new CaptionButton(CaptionButton::IconType::Close, pixel_ratio, m_caption_buttons);
+    m_cls_btn = new CaptionButton(CaptionButton::IconType::Close, m_caption_buttons);
 
     connect(m_min_btn, &CaptionButton::clicked, this, &TitleBar::showMinimized);
     connect(m_restore_btn, &CaptionButton::clicked, this, &TitleBar::showNormal);

@@ -29,10 +29,10 @@ int main(int argc, char *argv[])
 {
     QGoodWindow::setup();
 
-    QApplication a(argc, argv);
+    QApplication app(argc, argv);
 
     MainWindow mw;
     mw.show();
 
-    return a.exec();
+    return app.exec();
 }

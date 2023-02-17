@@ -83,10 +83,12 @@ int QGoodDialog::exec()
     if (m_parent_gw->isMinimized())
         m_parent_gw->showNormal();
 
+#ifdef Q_OS_LINUX
     QRect geom;
-    geom.setSize(m_child_gw->size());
+    geom.setSize(m_child_gw->frameGeometry().size());
     geom.moveCenter(m_parent_gw->frameGeometry().center());
     m_child_gw->setGeometry(geom);
+#endif
 
     QTimer::singleShot(0, m_child_gw, &QGoodWindow::show);
 

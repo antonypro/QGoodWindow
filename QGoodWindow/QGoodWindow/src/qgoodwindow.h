@@ -50,7 +50,7 @@ class Shadow;
 #endif
 
 /** **QGoodWindow** class contains the public API's to control the behavior of the customized window. */
-class SHAREDLIBSHARED_EXPORT QGoodWindow : public QMainWindow
+class QGOODWINDOW_SHARED_EXPORT QGoodWindow : public QMainWindow
 {
     Q_OBJECT
 public:
@@ -157,10 +157,9 @@ public:
     static void setAppLightTheme();
 
     /** Get the global state holder. */
-    static QGoodStateHolder *getGoodStateHolder();
+    static QGoodStateHolder *qGoodStateHolderInstance();
 
     /*** QGOODWINDOW FUNCTIONS END ***/
-
 signals:
     /** On handled caption buttons, this SIGNAL report the state of these buttons. */
     void captionButtonStateChanged(const QGoodWindow::CaptionButtonState &state);
@@ -319,6 +318,12 @@ public slots:
     /** Size of the window on screen. */
     QSize size() const;
 
+    /** Size hint of the window. */
+    QSize sizeHint() const override;
+
+    /** Minimum size hint of the window. */
+    QSize minimumSizeHint() const override;
+
     /** X position of the window on screen. */
     int x() const;
 
@@ -444,9 +449,12 @@ private:
     //Functions
     void initGW();
     void destroyGW();
+    void setWindowStateWin();
     static LRESULT WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
     void handleActivation();
     void handleDeactivation();
+    int mapScaledToGlobalX(int x);
+    int mapScaledToGlobalY(int y);
     void setWidgetFocus();
     void enableCaption();
     void disableCaption();
@@ -466,13 +474,21 @@ private:
     QPointer<QMainWindow> m_main_window;
     QPointer<Shadow> m_shadow;
     QPointer<QWidget> m_helper_widget;
+#ifdef QT_VERSION_QT6
     QPointer<QWindow> m_helper_window;
+#endif
     QGoodWindowUtils::NativeEventFilter *m_native_event;
     QWindow *m_window_handle;
 
     QPointer<QWidget> m_focus_widget;
 
+    QPointer<QTimer> m_resize_timer;
+
     bool m_closed;
+    bool m_visible;
+    bool m_internal_event;
+
+    Qt::WindowStates m_window_state;
 
     QPointer<QTimer> m_timer_menu;
     bool m_is_menu_visible;
@@ -502,7 +518,6 @@ private:
     QPoint m_cursor_pos;
     bool m_resize_move;
     bool m_resize_move_started;
-    qreal m_pixel_ratio;
     Qt::WindowFlags m_window_flags;
 
     friend class Shadow;
@@ -512,8 +527,7 @@ private:
     void notificationReceiver(const QByteArray &notification);
 
     //Variables
-    qreal m_pixel_ratio;
-    QPoint m_pos;
+    QPoint m_cursor_move_pos;
     bool m_mouse_button_pressed;
     bool m_on_animate_event;
 
@@ -529,7 +543,7 @@ private:
     int m_maximum_height;
 #endif
     //Functions
-    qintptr ncHitTest(int x, int y);
+    qintptr ncHitTest(int pos_x, int pos_y);
 
     void buttonEnter(qintptr button);
     void buttonLeave(qintptr button);
@@ -549,6 +563,8 @@ private:
     QRegion m_min_mask;
     QRegion m_max_mask;
     QRegion m_cls_mask;
+
+    qreal m_pixel_ratio;
 
     bool m_dark;
 

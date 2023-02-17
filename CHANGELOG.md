@@ -1,3 +1,16 @@
+## *Version 2.3:*
+
+- The library automatically adapts to primary screen DPI. [#25](https://github.com/antonypro/QGoodWindow/issues/25)
+- Improved compilation as shared or static library with QMake, the include headers contains the proper defines. [#26](https://github.com/antonypro/QGoodWindow/issues/26)
+- The caption buttons icons are now SVG instead of PNG.
+- Copied behavior of QWidget setWindowState and not apply state when the window is not visible.
+- Fixed bug that shows the shadow unexpectedly.
+- Fixed bug related to alignment that makes impossible compiling when no_qgoodwindow is set on Windows. [#24](https://github.com/antonypro/QGoodWindow/issues/24)
+- Fixed bug that makes the window blank on close on Windows.
+- Fixed bug with mouse position on caption buttons in modal QDialog on macOS.
+- Fixed bug that not centers correctly QGoodWindow children's.
+- Other bug fixes.
+
 ## *Version 2.2.1:*
 
 - Fixed bug that not shows the window icon set by the application.
@@ -66,4 +79,4 @@
 - Added support for Linux and macOS.
 - Fixed bug that crashes application on QCoreApplication::exit(). [#2](https://github.com/antonypro/QGoodWindow/issues/2)
 - Added support for multiple windows on the same process.
-- Other minor bug fixes.
+- Other bug fixes.

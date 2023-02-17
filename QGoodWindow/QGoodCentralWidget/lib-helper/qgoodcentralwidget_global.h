@@ -25,21 +25,6 @@ SOFTWARE.
 #ifndef QGOODCENTRALWIDGET_GLOBAL
 #define QGOODCENTRALWIDGET_GLOBAL
 
-#include <QtCore/qglobal.h>
-
 #include "qgoodcentralwidget_helper.h"
 
-#define WITH_LIBRARY //Shared library
-
-#ifdef WITH_LIBRARY
-#ifdef SHAREDLIB_LIBRARY
-#define SHAREDLIBSHARED_EXPORT Q_DECL_EXPORT
-#else
-#define SHAREDLIBSHARED_EXPORT Q_DECL_IMPORT
-#endif
-#else
-#define SHAREDLIBSHARED_EXPORT
-#endif
-
 #endif // QGOODCENTRALWIDGET_GLOBAL
-

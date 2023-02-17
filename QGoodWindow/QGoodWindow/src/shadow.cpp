@@ -22,23 +22,21 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "shadow.h"
 #include "common.h"
+#include "shadow.h"
 #include "qgoodwindow.h"
 
 #ifdef Q_OS_WIN
-#define SHADOWWIDTH qCeil(10 * m_pixel_ratio)
+#define SHADOWWIDTH 10
 #define COLOR1 QColor(0, 0, 0, 75)
 #define COLOR2 QColor(0, 0, 0, 30)
 #define COLOR3 QColor(0, 0, 0, 1)
 #endif
 
-Shadow::Shadow(qreal pixel_ratio, qintptr hwnd, QWidget *parent) : QWidget(parent)
+Shadow::Shadow(qintptr hwnd, QWidget *parent) : QWidget(parent)
 {
 #ifdef Q_OS_WIN
     setParent(nullptr);
-
-    m_pixel_ratio = pixel_ratio;
 
     m_hwnd = HWND(hwnd);
     m_active = true;
@@ -52,8 +50,6 @@ Shadow::Shadow(qreal pixel_ratio, qintptr hwnd, QWidget *parent) : QWidget(paren
 #endif
 #ifdef Q_OS_LINUX
     Q_UNUSED(hwnd)
-
-    m_pixel_ratio = pixel_ratio;
 
     m_parent = qobject_cast<QGoodWindow*>(parent);
 
@@ -128,6 +124,9 @@ void Shadow::hide()
 {
 #ifdef Q_OS_WIN
     m_timer->stop();
+
+    if (m_parent && (m_parent->isMinimized() || !m_parent->isVisible()))
+        return;
 
     if (!isVisible())
         return;

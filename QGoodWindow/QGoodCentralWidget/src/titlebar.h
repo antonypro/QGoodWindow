@@ -38,7 +38,7 @@ class TitleBar : public QFrame
 {
     Q_OBJECT
 public:
-    explicit TitleBar(qreal pixel_ratio, QGoodWindow *gw, QWidget *parent = nullptr);
+    explicit TitleBar(QGoodWindow *gw, QWidget *parent = nullptr);
 
 signals:
     void showMinimized();

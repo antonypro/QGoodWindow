@@ -24,12 +24,11 @@ SOFTWARE.
 
 #include "captionbutton.h"
 
-CaptionButton::CaptionButton(IconType type, qreal pixel_ratio, QWidget *parent) : QWidget(parent)
+CaptionButton::CaptionButton(IconType type, QWidget *parent) : QWidget(parent)
 {
     setVisible(false);
 
     m_type = type;
-    m_pixel_ratio = pixel_ratio;
     m_is_active = false;
     m_is_under_mouse = false;
     m_is_pressed = false;
@@ -44,77 +43,102 @@ CaptionButton::~CaptionButton()
 
 }
 
+QPixmap CaptionButton::loadSVG(const QString &svg_path, int w, int h,
+                               const Qt::TransformationMode &mode)
+{
+    const qreal scale_factor = qBound(qreal(1), qreal(qgetenv("QGOODWINDOW_SCALE_FACTOR").toDouble()), qreal(2));
+
+    w = qCeil(w * scale_factor);
+    h = qCeil(h * scale_factor);
+
+    //Fix bug that makes icon semi-transparent
+    QPixmap pix = QIcon(svg_path).pixmap(w * 2, h * 2);
+
+    //Resize to desired size
+    pix = pix.scaled(w, h, Qt::KeepAspectRatio, mode);
+
+    return pix;
+}
+
+void CaptionButton::paintIcons(const QPixmap &pix_in, bool dark,
+                               QPixmap *pix_active_out, QPixmap *pix_inactive_out)
+{
+    QImage img_active = pix_in.toImage();
+    QImage img_inactive = img_active;
+
+    const qreal grayed_reduction = qreal(0.40);
+
+    for (int y = 0; y < img_inactive.height(); y++)
+    {
+        QRgb *pixel_ptr = reinterpret_cast<QRgb*>(img_inactive.scanLine(y));
+
+        for (int x = 0; x < img_inactive.width(); x++)
+        {
+            QRgb pixel = pixel_ptr[x];
+
+            QRgb rgba = qRgba(qRound(qRed(pixel) * grayed_reduction),
+                              qRound(qGreen(pixel) * grayed_reduction),
+                              qRound(qBlue(pixel) * grayed_reduction),
+                              qAlpha(pixel));
+
+            pixel_ptr[x] = rgba;
+        }
+    }
+
+    if (dark)
+    {
+        img_active.invertPixels();
+        img_inactive.invertPixels();
+    }
+
+    if (pix_active_out)
+        *pix_active_out = QPixmap::fromImage(img_active);
+
+    if (pix_inactive_out)
+        *pix_inactive_out = QPixmap::fromImage(img_inactive);
+}
+
 void CaptionButton::drawIcons()
 {
-    int w = qCeil(10 * m_pixel_ratio);
+    const int size = 10;
 
-    if (w <= 10)
-        w = 10;
-    else if (w <= 12)
-        w = 12;
-    else
-        w = 15;
+    const int w = size;
+    const int h = size;
 
     switch (m_type)
     {
     case IconType::Minimize:
     {
-        if (m_icon_dark)
-        {
-            m_active_icon = QIcon(":/icons/minimize-active-dark.ico").pixmap(w, 1);
-            m_inactive_icon = QIcon(":/icons/minimize-inactive-dark.ico").pixmap(w, 1);
-        }
-        else
-        {
-            m_active_icon = QIcon(":/icons/minimize-active-light.ico").pixmap(w, 1);
-            m_inactive_icon = QIcon(":/icons/minimize-inactive-light.ico").pixmap(w, 1);
-        }
+        QPixmap icon = loadSVG(":/icons/minimize.svg", w, h, Qt::FastTransformation);
+
+        paintIcons(icon, m_icon_dark, &m_active_icon, &m_inactive_icon);
 
         break;
     }
     case IconType::Restore:
     {
-        if (m_icon_dark)
-        {
-            m_active_icon = QIcon(":/icons/restore-active-dark.ico").pixmap(w, w);
-            m_inactive_icon = QIcon(":/icons/restore-inactive-dark.ico").pixmap(w, w);
-        }
-        else
-        {
-            m_active_icon = QIcon(":/icons/restore-active-light.ico").pixmap(w, w);
-            m_inactive_icon = QIcon(":/icons/restore-inactive-light.ico").pixmap(w, w);
-        }
+        QPixmap icon = loadSVG(":/icons/restore.svg", w, h, Qt::SmoothTransformation);
+
+        paintIcons(icon, m_icon_dark, &m_active_icon, &m_inactive_icon);
 
         break;
     }
     case IconType::Maximize:
     {
-        if (m_icon_dark)
-        {
-            m_active_icon = QIcon(":/icons/maximize-active-dark.ico").pixmap(w, w);
-            m_inactive_icon = QIcon(":/icons/maximize-inactive-dark.ico").pixmap(w, w);
-        }
-        else
-        {
-            m_active_icon = QIcon(":/icons/maximize-active-light.ico").pixmap(w, w);
-            m_inactive_icon = QIcon(":/icons/maximize-inactive-light.ico").pixmap(w, w);
-        }
+        QPixmap icon = loadSVG(":/icons/maximize.svg", w, h, Qt::SmoothTransformation);
+
+        paintIcons(icon, m_icon_dark, &m_active_icon, &m_inactive_icon);
 
         break;
     }
     case IconType::Close:
     {
+        QPixmap icon = loadSVG(":/icons/close.svg", w, h, Qt::SmoothTransformation);
+
+        paintIcons(icon, m_icon_dark, &m_active_icon, &m_inactive_icon);
+
         if (m_icon_dark)
-        {
-            m_active_icon = QIcon(":/icons/close-active-dark.ico").pixmap(w, w);
-            m_inactive_icon = QIcon(":/icons/close-inactive-dark.ico").pixmap(w, w);
-            m_close_icon_hover = QIcon(":/icons/close-active-light.ico").pixmap(w, w);
-        }
-        else
-        {
-            m_active_icon = QIcon(":/icons/close-active-light.ico").pixmap(w, w);
-            m_inactive_icon = QIcon(":/icons/close-inactive-light.ico").pixmap(w, w);
-        }
+            paintIcons(icon, false/*dark*/, &m_close_icon_hover, nullptr);
 
         break;
     }
@@ -256,20 +280,8 @@ void CaptionButton::paintEvent(QPaintEvent *event)
 
     painter.fillRect(rect(), current_color);
 
-    int w = qCeil(10 * m_pixel_ratio);
-
-    if (w <= 10)
-        w = 10;
-    else if (w <= 12)
-        w = 12;
-    else
-        w = 15;
-
-    int h = (m_type != IconType::Minimize) ? w : 1;
-
     QRect target_rect;
     target_rect = current_icon.rect();
-    target_rect.setSize(QSize(w, h));
-    target_rect = QRect(rect().center() - target_rect.center(), target_rect.size());
+    target_rect.moveCenter(rect().center());
     painter.drawPixmap(target_rect, current_icon);
 }

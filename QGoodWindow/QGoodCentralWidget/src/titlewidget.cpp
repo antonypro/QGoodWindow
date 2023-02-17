@@ -25,13 +25,12 @@ SOFTWARE.
 #include "titlewidget.h"
 #include "titlebar.h"
 
-TitleWidget::TitleWidget(qreal pixel_ratio, TitleBar *title_bar, QWidget *parent) : QWidget(parent)
+TitleWidget::TitleWidget(TitleBar *title_bar, QWidget *parent) : QWidget(parent)
 {
     m_title_bar = title_bar;
 
     m_active = false;
     m_alignment = Qt::AlignLeft;
-    m_pixel_ratio = pixel_ratio;
 }
 
 void TitleWidget::setText(const QString &text)
@@ -48,10 +47,21 @@ void TitleWidget::setActive(bool active)
 
 void TitleWidget::setTitleAlignment(const Qt::Alignment &alignment)
 {
-    if (alignment == Qt::AlignLeft || alignment == Qt::AlignCenter || alignment == Qt::AlignRight)
+    switch (alignment)
+    {
+    case Qt::AlignLeft:
+    case Qt::AlignCenter:
+    case Qt::AlignRight:
+    {
         m_alignment = alignment;
-    else
+        break;
+    }
+    default:
+    {
         m_alignment = Qt::AlignLeft;
+        break;
+    }
+    }
 
     update();
 }
@@ -96,7 +106,7 @@ void TitleWidget::paintEvent(QPaintEvent *event)
     painter.setRenderHints(QPainter::Antialiasing);
 
     QFont font;
-    font.setPixelSize(qRound(12 * m_pixel_ratio));
+    font.setPixelSize(12);
 #ifdef Q_OS_WIN
     font.setFamily("Segoe UI");
 #else

@@ -32,7 +32,8 @@ SOURCES += \
     $$PWD/src/qgoodwindow.cpp \
     $$PWD/src/darkstyle.cpp \
     $$PWD/src/lightstyle.cpp \
-    $$PWD/src/stylecommon.cpp
+    $$PWD/src/stylecommon.cpp \
+    $$PWD/src/qgoodstateholder.cpp
 
 HEADERS += \
     $$PWD/src/qgoodwindow.h \
@@ -43,7 +44,7 @@ HEADERS += \
     $$PWD/src/qgoodwindow_global.h
 
 RESOURCES += \
-    $$PWD/src/style.qrc
+    $$PWD/src/qgoodwindow_style.qrc
 
 INCLUDEPATH += $$PWD #include <QGoodWindow>
 

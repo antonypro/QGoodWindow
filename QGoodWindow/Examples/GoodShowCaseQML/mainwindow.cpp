@@ -66,7 +66,7 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent, QColor("#303030"))
     setWindowIcon(p);
     setWindowTitle("Good Window - Press S to toggle theme - Press F to toggle fullscreen!");
 
-    resize(qRound(640 * pixelRatio()), qRound(480 * pixelRatio()));
+    resize(640, 480);
     move(QGuiApplication::primaryScreen()->availableGeometry().center() - rect().center());
 
 #ifdef Q_OS_WIN
