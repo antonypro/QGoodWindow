@@ -62,10 +62,4 @@ private:
 };
 //\endcond
 
-inline void setAppLightTheme()
-{
-    qApp->setStyle(new LightStyle());
-    qApp->style()->setObjectName("fusion");
-}
-
 #endif // LIGHTSTYLE

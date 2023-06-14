@@ -91,6 +91,20 @@ QMainWindow::separator{
   height:5px;
   padding:2px;
 }
+QComboBox QAbstractItemView {
+  border: 1px solid palette(shadow);
+}
+QComboBox:item:selected {
+  border: none;
+  background:palette(highlight);
+  color:rgba(255,255,255,255);
+}
+QComboBox::indicator{
+  background-color:transparent;
+  selection-background-color:transparent;
+  color:transparent;
+  selection-color:transparent;
+}
 QSplitter::handle:horizontal{
   width:10px;
 }

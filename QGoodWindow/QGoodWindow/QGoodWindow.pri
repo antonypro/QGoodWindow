@@ -30,18 +30,18 @@ CONFIG += c++11
 
 SOURCES += \
     $$PWD/src/qgoodwindow.cpp \
-    $$PWD/src/darkstyle.cpp \
+    $$PWD/src/qgoodstateholder.cpp \
     $$PWD/src/lightstyle.cpp \
-    $$PWD/src/stylecommon.cpp \
-    $$PWD/src/qgoodstateholder.cpp
+    $$PWD/src/darkstyle.cpp \
+    $$PWD/src/stylecommon.cpp
 
 HEADERS += \
     $$PWD/src/qgoodwindow.h \
-    $$PWD/src/darkstyle.h \
-    $$PWD/src/lightstyle.h \
-    $$PWD/src/stylecommon.h \
     $$PWD/src/qgoodstateholder.h \
-    $$PWD/src/qgoodwindow_global.h
+    $$PWD/src/intcommon.h \
+    $$PWD/src/lightstyle.h \
+    $$PWD/src/darkstyle.h \
+    $$PWD/src/stylecommon.h
 
 RESOURCES += \
     $$PWD/src/qgoodwindow_style.qrc
@@ -99,7 +99,13 @@ QMAKE_CXXFLAGS += -Wno-deprecated-declarations
 LIBS += -lX11
 
 CONFIG += link_pkgconfig
+
+equals(QT_MAJOR_VERSION, 5){
 PKGCONFIG += gtk+-2.0
+}
+equals(QT_MAJOR_VERSION, 6){
+PKGCONFIG += gtk+-3.0
+}
 
 DEFINES += QGOODWINDOW
 CONFIG += qgoodwindow

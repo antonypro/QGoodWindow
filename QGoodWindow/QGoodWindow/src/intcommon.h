@@ -22,25 +22,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef QGOODWINDOW_HELPER_H
-#define QGOODWINDOW_HELPER_H
+#ifndef INTCOMMON
+#define INTCOMMON
 
-#include <QtCore/qglobal.h>
+#include "qgoodwindow_helper.h"
 
-#ifndef QGOODWINDOW
-#define QGOODWINDOW
+#ifdef QT_VERSION_QT5
+typedef long qgoodintptr;
+#endif
+#ifdef QT_VERSION_QT6
+typedef qintptr qgoodintptr;
 #endif
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0) && QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-#ifndef QT_VERSION_QT5
-#define QT_VERSION_QT5
-#endif
-#endif
-
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) && QT_VERSION < QT_VERSION_CHECK(7, 0, 0)
-#ifndef QT_VERSION_QT6
-#define QT_VERSION_QT6
-#endif
-#endif
-
-#endif // QGOODWINDOW_HELPER_H
+#endif // INTCOMMON

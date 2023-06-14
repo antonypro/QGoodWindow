@@ -28,10 +28,11 @@ TitleBar::TitleBar(QGoodWindow *gw, QWidget *parent) : QFrame(parent)
 {
     m_layout_spacing = 0;
 
+    // Get Layout Spacing
     {
         QString old_style;
 
-        if (QString::compare(qApp->style()->objectName(), "fusion", Qt::CaseInsensitive) != 0)
+        if (!qApp->style()->objectName().startsWith("fusion"))
         {
             old_style = qApp->style()->objectName();
             qApp->setStyle(QStyleFactory::create("fusion"));
@@ -219,7 +220,7 @@ void TitleBar::setTheme()
                 setAttribute(Qt::WA_TranslucentBackground, true);
             else if (m_title_bar_color.isValid())
                 setStyleSheet(style.arg(m_title_bar_color.name()));
-            else if (qApp->style()->objectName() == "fusion")
+            else if (qApp->style()->objectName().startsWith("fusion"))
                 setStyleSheet(style.arg(qApp->palette().base().color().name()));
             else
                 setStyleSheet(style.arg("#000000"));
@@ -242,7 +243,7 @@ void TitleBar::setTheme()
                 setAttribute(Qt::WA_TranslucentBackground, true);
             else if (m_title_bar_color.isValid())
                 setStyleSheet(style.arg(m_title_bar_color.name()));
-            else if (qApp->style()->objectName() == "fusion")
+            else if (qApp->style()->objectName().startsWith("fusion"))
                 setStyleSheet(style.arg(qApp->palette().base().color().name()));
             else
                 setStyleSheet(style.arg("#FFFFFF"));
@@ -455,6 +456,9 @@ void TitleBar::updateWindow()
 
 void TitleBar::captionButtonStateChanged(const QGoodWindow::CaptionButtonState &state)
 {
+    if (!m_caption_buttons->isVisible())
+        return;
+
     switch (state)
     {
         // Hover enter

@@ -28,6 +28,7 @@ SOFTWARE.
 #include <QtCore>
 #include <QtGui>
 #include <QtWidgets>
+#include "intcommon.h"
 #include "qgoodstateholder.h"
 #include "lightstyle.h"
 #include "darkstyle.h"
@@ -138,6 +139,9 @@ public:
 
     /*** QGOODWINDOW FUNCTIONS BEGIN ***/
 
+    /** Returns the *QGoodWindow* version. */
+    static QString version();
+
     /** Call this function to setup *QApplication* for *QGoodWindow* usage. */
     static void setup();
 
@@ -167,20 +171,79 @@ signals:
     /** Notify that the system has changed between light and dark mode. */
     void systemThemeChanged();
 
-public slots:
     /*** QGOODWINDOW FUNCTIONS BEGIN ***/
 
-    /** Call setMargins() but only changes title bar height. */
+public:
+    /** Deprecated function scheduled for removal in some future version, don’t use it. */
+    Q_DECL_DEPRECATED void setLeftMargin(int width)
+    {Q_UNUSED(width); Q_ASSERT(false);}
+
+    /** Deprecated function scheduled for removal in some future version, don’t use it. */
+    Q_DECL_DEPRECATED void setRightMargin(int width)
+    {Q_UNUSED(width); Q_ASSERT(false);}
+
+    /** Deprecated function scheduled for removal in some future version, don’t use it. */
+    Q_DECL_DEPRECATED int leftMargin() const
+    {Q_ASSERT(false); return 0;}
+
+    /** Deprecated function scheduled for removal in some future version, don’t use it. */
+    Q_DECL_DEPRECATED int rightMargin() const
+    {Q_ASSERT(false); return 0;}
+
+    /** Deprecated function scheduled for removal in some future version, don’t use it. */
+    Q_DECL_DEPRECATED void setMargins(int title_bar_height, int icon_width, int left, int right)
+    {Q_UNUSED(title_bar_height); Q_UNUSED(icon_width); Q_UNUSED(left); Q_UNUSED(right); Q_ASSERT(false);}
+
+    /** Deprecated function scheduled for removal in some future version, don’t use it. */
+    Q_DECL_DEPRECATED void setLeftMask(const QRegion &mask)
+    {Q_UNUSED(mask); Q_ASSERT(false);}
+
+    /** Deprecated function scheduled for removal in some future version, don’t use it. */
+    Q_DECL_DEPRECATED void setRightMask(const QRegion &mask)
+    {Q_UNUSED(mask); Q_ASSERT(false);}
+
+    /** Deprecated function scheduled for removal in some future version, don’t use it. */
+    Q_DECL_DEPRECATED void setCenterMask(const QRegion &mask)
+    {Q_UNUSED(mask); Q_ASSERT(false);}
+
+    /** Deprecated function scheduled for removal in some future version, don’t use it. */
+    Q_DECL_DEPRECATED void setCaptionButtonsHandled(bool handled, const Qt::Corner &corner = Qt::TopRightCorner)
+    {Q_UNUSED(handled); Q_UNUSED(corner); Q_ASSERT(false);}
+
+    /** Deprecated function scheduled for removal in some future version, don’t use it. */
+    Q_DECL_DEPRECATED QRegion leftMask() const
+    {Q_ASSERT(false); return QRegion();}
+
+    /** Deprecated function scheduled for removal in some future version, don’t use it. */
+    Q_DECL_DEPRECATED QRegion rightMask() const
+    {Q_ASSERT(false); return QRegion();}
+
+    /** Deprecated function scheduled for removal in some future version, don’t use it. */
+    Q_DECL_DEPRECATED QRegion centerMask() const
+    {Q_ASSERT(false); return QRegion();}
+
+    /** Deprecated function scheduled for removal in some future version, don’t use it. */
+    Q_DECL_DEPRECATED QSize leftMaskSize() const
+    {Q_ASSERT(false); return QSize();}
+
+    /** Deprecated function scheduled for removal in some future version, don’t use it. */
+    Q_DECL_DEPRECATED QSize rightMaskSize() const
+    {Q_ASSERT(false); return QSize();}
+
+    /** Deprecated function scheduled for removal in some future version, don’t use it. */
+    Q_DECL_DEPRECATED QRect leftCaptionButtonsRect() const
+    {Q_ASSERT(false); return QRect();}
+
+    /** Deprecated function scheduled for removal in some future version, don’t use it. */
+    Q_DECL_DEPRECATED QRect rightCaptionButtonsRect() const
+    {Q_ASSERT(false); return QRect();}
+
+public slots:
+    /** Set title bar height for *QGoodWindow*. */
     void setTitleBarHeight(int height);
 
-    /** Call setMargins() but only changes icon width. */
+    /** Set current icon width on the left side of the title bar of *QGoodWindow*. */
     void setIconWidth(int width);
-
-    /** Call setMargins() but only changes left margin. */
-    void setLeftMargin(int width);
-
-    /** Call setMargins() but only changes right margin. */
-    void setRightMargin(int width);
 
     /** On Windows, Linux and macOS, returns the actual title bar height, on other OSes returns 0. */
     int titleBarHeight() const;
@@ -188,73 +251,32 @@ public slots:
     /** On Windows, Linux and macOS, return the actual icon width, on other OSes returns 0. */
     int iconWidth() const;
 
-    /** On Windows, Linux and macOS, returns the left margin of the customized title bar, on other OSes returns 0. */
-    int leftMargin() const;
+    /** Rect that contains the whole title bar. */
+    QRect titleBarRect() const;
 
-    /** On Windows, Linux and macOS, returns the right margin of the customized title bar, on other OSes returns 0. */
-    int rightMargin() const;
-
-    /** Set the tile bar height, icon width, left and right margins of the customized title bar.
-        Note: Any call to setMargins() clear the left and right masks and the title bar caption buttons masks. */
-    void setMargins(int title_bar_height, int icon_width, int left, int right);
-
-    /** Set the mask for the left margin of the customized title bar. */
-    void setLeftMask(const QRegion &mask);
-
-    /** Set the mask for the right margin of the customized title bar. */
-    void setRightMask(const QRegion &mask);
-
-    /** Set the mask for the center of the customized title bar. */
-    void setCenterMask(const QRegion &mask);
-
-    /** Set the mask for the customized title bar, used in combination with others masks. */
+    /** Set the mask for the customized title bar. */
     void setTitleBarMask(const QRegion &mask);
 
-    /** Set if the caption buttons should be handled by *QGoodWindow* and on which \e corner,
-     *valid only top left and top right corners. */
-    void setCaptionButtonsHandled(bool handled, const Qt::Corner &corner = Qt::TopRightCorner);
-
-    /** Set the location and shape of handled minimize button, relative to handled corner. */
+    /** Set the location and shape of handled minimize button, relative to title bar rect. */
     void setMinimizeMask(const QRegion &mask);
 
-    /** Set the location and shape of handled maximize button, relative to handled corner. */
+    /** Set the location and shape of handled maximize button, relative to title bar rect. */
     void setMaximizeMask(const QRegion &mask);
 
-    /** Set the location and shape of handled close button, relative to handled corner. */
+    /** Set the location and shape of handled close button, relative to title bar rect. */
     void setCloseMask(const QRegion &mask);
-
-    /** Get the mask for the left margin of the customized title bar. */
-    QRegion leftMask() const;
-
-    /** Get the mask for the right margin of the customized title bar. */
-    QRegion rightMask() const;
-
-    /** Get the mask for the center of the customized title bar. */
-    QRegion centerMask() const;
 
     /** Get the mask for the customized title bar. */
     QRegion titleBarMask() const;
 
-    /** Get the location and shape of handled minimize button, relative to handled corner. */
+    /** Get the location and shape of handled minimize button, relative to title bar rect. */
     QRegion minimizeMask() const;
 
-    /** Get the location and shape of handled maximize button, relative to handled corner. */
+    /** Get the location and shape of handled maximize button, relative to title bar rect. */
     QRegion maximizeMask() const;
 
-    /** Get the location and shape of handled close button, relative to handled corner. */
+    /** Get the location and shape of handled close button, relative to title bar rect. */
     QRegion closeMask() const;
-
-    /** Get the size that should be the size of the mask on the left margin of the customized title bar. */
-    QSize leftMaskSize() const;
-
-    /** Get the size that should be the size of the mask on the right margin of the customized title bar. */
-    QSize rightMaskSize() const;
-
-    /** If caption buttons are handled on left corner, their buttons masks should be in the bounds of this rect. */
-    QRect leftCaptionButtonsRect() const;
-
-    /** If caption buttons are handled on right corner, their buttons masks should be in the bounds of this rect. */
-    QRect rightCaptionButtonsRect() const;
 
     /*** QGOODWINDOW FUNCTIONS END ***/
 
@@ -318,12 +340,6 @@ public slots:
     /** Size of the window on screen. */
     QSize size() const;
 
-    /** Size hint of the window. */
-    QSize sizeHint() const override;
-
-    /** Minimum size hint of the window. */
-    QSize minimumSizeHint() const override;
-
     /** X position of the window on screen. */
     int x() const;
 
@@ -375,8 +391,8 @@ public slots:
     /** Hide the *QGoodWindow*. */
     void hide();
 
-    /** Close the *QGoodWindow*. */
-    void close();
+    /** Try to close the *QGoodWindow*, returns true if event is accepted or false otherwise. */
+    bool close();
 
     /** Returns if the *QGoodWindow* is visible or not. */
     bool isVisible() const;
@@ -436,12 +452,7 @@ protected:
 
     bool eventFilter(QObject *watched, QEvent *event) override;
 
-#ifdef QT_VERSION_QT5
-    bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;
-#endif
-#ifdef QT_VERSION_QT6
-    bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override;
-#endif
+    bool nativeEvent(const QByteArray &eventType, void *message, qgoodintptr *result) override;
 
 private:
 #ifdef QGOODWINDOW
@@ -449,17 +460,22 @@ private:
     //Functions
     void initGW();
     void destroyGW();
+    void closeGW();
     void setWindowStateWin();
     static LRESULT WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
     void handleActivation();
     void handleDeactivation();
-    int mapScaledToGlobalX(int x);
-    int mapScaledToGlobalY(int y);
     void setWidgetFocus();
     void enableCaption();
     void disableCaption();
     void frameChanged();
     void sizeMoveWindow();
+    void setWindowMask();
+    void moveShadow();
+    void updateScreen();
+    void setCurrentScreen(QScreen *screen);
+    QScreen *screenForWindow(HWND hwnd);
+    QScreen *screenForPoint(const QPoint &pos);
     void showContextMenu(int x, int y);
     void showContextMenu();
     QWidget *bestParentForModalWindow();
@@ -482,27 +498,26 @@ private:
 
     QPointer<QWidget> m_focus_widget;
 
-    QPointer<QTimer> m_resize_timer;
-
     bool m_closed;
     bool m_visible;
-    bool m_internal_event;
+    bool m_self_generated_close_event;
 
     Qt::WindowStates m_window_state;
 
     QPointer<QTimer> m_timer_menu;
     bool m_is_menu_visible;
 
-    bool m_is_full_screen;
     QRect m_rect_normal;
 
     bool m_active_state;
 
-    Qt::WindowState m_state;
+    Qt::WindowState m_last_state;
+    bool m_self_generated_show_event;
 
     QColor m_clear_color;
 
     friend class QGoodWindowUtils::NativeEventFilter;
+    friend class QGoodDialog;
 #endif
 #ifdef Q_OS_LINUX
     //Functions
@@ -555,9 +570,6 @@ private:
 
     QPointer<QTimer> m_hover_timer;
 
-    QRegion m_left_mask;
-    QRegion m_right_mask;
-    QRegion m_center_mask;
     QRegion m_title_bar_mask;
 
     QRegion m_min_mask;
@@ -568,13 +580,8 @@ private:
 
     bool m_dark;
 
-    bool m_caption_buttons_handled;
-    Qt::Corner m_caption_buttons_corner;
-
     int m_title_bar_height;
     int m_icon_width;
-    int m_left_margin;
-    int m_right_margin;
 
     bool m_is_caption_button_pressed;
     qintptr m_last_caption_button_hovered;

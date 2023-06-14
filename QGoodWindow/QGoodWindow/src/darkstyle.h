@@ -62,10 +62,4 @@ private:
 };
 //\endcond
 
-inline void setAppDarkTheme()
-{
-    qApp->setStyle(new DarkStyle());
-    qApp->style()->setObjectName("fusion");
-}
-
 #endif // DARKSTYLE

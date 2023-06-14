@@ -25,12 +25,14 @@ SOFTWARE.
 #include "macosnative.h"
 #include <Cocoa/Cocoa.h>
 
-void macOSNative::setStyle(long winid, bool fullscreen)
+void macOSNative::setStyle(long winid, StyleType type)
 {
     NSView *nativeView = reinterpret_cast<NSView*>(winid);
     NSWindow *nativeWindow = [nativeView window];
 
-    if (!fullscreen)
+    switch (type)
+    {
+    case StyleType::NoState:
     {
         [nativeWindow setStyleMask:NSWindowStyleMaskResizable |
                                    NSWindowStyleMaskMiniaturizable |
@@ -46,10 +48,30 @@ void macOSNative::setStyle(long winid, bool fullscreen)
         [nativeWindow standardWindowButton:NSWindowCloseButton].hidden = YES;
         [nativeWindow standardWindowButton:NSWindowZoomButton].hidden = YES;
         [nativeWindow makeKeyWindow];
+
+        break;
     }
-    else
+    case StyleType::Disabled:
+    {
+        [nativeWindow setStyleMask:NSWindowStyleMaskFullSizeContentView];
+        [nativeWindow setMovableByWindowBackground:NO];
+        [nativeWindow setMovable:NO];
+        [nativeWindow setTitlebarAppearsTransparent:YES];
+        [nativeWindow setShowsToolbarButton:NO];
+        [nativeWindow setTitleVisibility:NSWindowTitleHidden];
+        [nativeWindow standardWindowButton:NSWindowMiniaturizeButton].hidden = YES;
+        [nativeWindow standardWindowButton:NSWindowCloseButton].hidden = YES;
+        [nativeWindow standardWindowButton:NSWindowZoomButton].hidden = YES;
+        [nativeWindow makeKeyWindow];
+
+        break;
+    }
+    case StyleType::Fullscreen:
     {
         [nativeWindow setStyleMask:0];
+
+        break;
+    }
     }
 }
 

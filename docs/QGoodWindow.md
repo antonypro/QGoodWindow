@@ -35,6 +35,70 @@ Returns the window id of the *QGoodWindow*.
 
 Returns the window flags of the *QGoodWindow*.
 
+#### `public inline Q_DECL_DEPRECATED void setLeftMargin(int width)` 
+
+Deprecated function scheduled for removal in some future version, don’t use it.
+
+#### `public inline Q_DECL_DEPRECATED void setRightMargin(int width)` 
+
+Deprecated function scheduled for removal in some future version, don’t use it.
+
+#### `public inline Q_DECL_DEPRECATED int leftMargin() const` 
+
+Deprecated function scheduled for removal in some future version, don’t use it.
+
+#### `public inline Q_DECL_DEPRECATED int rightMargin() const` 
+
+Deprecated function scheduled for removal in some future version, don’t use it.
+
+#### `public inline Q_DECL_DEPRECATED void setMargins(int title_bar_height, int icon_width, int left, int right)` 
+
+Deprecated function scheduled for removal in some future version, don’t use it.
+
+#### `public inline Q_DECL_DEPRECATED void setLeftMask(const QRegion & mask)` 
+
+Deprecated function scheduled for removal in some future version, don’t use it.
+
+#### `public inline Q_DECL_DEPRECATED void setRightMask(const QRegion & mask)` 
+
+Deprecated function scheduled for removal in some future version, don’t use it.
+
+#### `public inline Q_DECL_DEPRECATED void setCenterMask(const QRegion & mask)` 
+
+Deprecated function scheduled for removal in some future version, don’t use it.
+
+#### `public inline Q_DECL_DEPRECATED void setCaptionButtonsHandled(bool handled, const Qt::Corner & corner)` 
+
+Deprecated function scheduled for removal in some future version, don’t use it.
+
+#### `public inline Q_DECL_DEPRECATED QRegion leftMask() const` 
+
+Deprecated function scheduled for removal in some future version, don’t use it.
+
+#### `public inline Q_DECL_DEPRECATED QRegion rightMask() const` 
+
+Deprecated function scheduled for removal in some future version, don’t use it.
+
+#### `public inline Q_DECL_DEPRECATED QRegion centerMask() const` 
+
+Deprecated function scheduled for removal in some future version, don’t use it.
+
+#### `public inline Q_DECL_DEPRECATED QSize leftMaskSize() const` 
+
+Deprecated function scheduled for removal in some future version, don’t use it.
+
+#### `public inline Q_DECL_DEPRECATED QSize rightMaskSize() const` 
+
+Deprecated function scheduled for removal in some future version, don’t use it.
+
+#### `public inline Q_DECL_DEPRECATED QRect leftCaptionButtonsRect() const` 
+
+Deprecated function scheduled for removal in some future version, don’t use it.
+
+#### `public inline Q_DECL_DEPRECATED QRect rightCaptionButtonsRect() const` 
+
+Deprecated function scheduled for removal in some future version, don’t use it.
+
 #### `{signal} public void captionButtonStateChanged(const QGoodWindow::CaptionButtonState & state)` 
 
 On handled caption buttons, this SIGNAL report the state of these buttons.
@@ -45,19 +109,11 @@ Notify that the system has changed between light and dark mode.
 
 #### `{slot} public void setTitleBarHeight(int height)` 
 
-Call setMargins() but only changes title bar height.
+Set title bar height for *QGoodWindow*.
 
 #### `{slot} public void setIconWidth(int width)` 
 
-Call setMargins() but only changes icon width.
-
-#### `{slot} public void setLeftMargin(int width)` 
-
-Call setMargins() but only changes left margin.
-
-#### `{slot} public void setRightMargin(int width)` 
-
-Call setMargins() but only changes right margin.
+Set current icon width on the left side of the title bar of *QGoodWindow*.
 
 #### `{slot} public int titleBarHeight() const` 
 
@@ -67,61 +123,25 @@ On Windows, Linux and macOS, returns the actual title bar height, on other OSes 
 
 On Windows, Linux and macOS, return the actual icon width, on other OSes returns 0.
 
-#### `{slot} public int leftMargin() const` 
+#### `{slot} public QRect titleBarRect() const` 
 
-On Windows, Linux and macOS, returns the left margin of the customized title bar, on other OSes returns 0.
-
-#### `{slot} public int rightMargin() const` 
-
-On Windows, Linux and macOS, returns the right margin of the customized title bar, on other OSes returns 0.
-
-#### `{slot} public void setMargins(int title_bar_height, int icon_width, int left, int right)` 
-
-Set the tile bar height, icon width, left and right margins of the customized title bar. Note: Any call to setMargins() clear the left and right masks and the title bar caption buttons masks.
-
-#### `{slot} public void setLeftMask(const QRegion & mask)` 
-
-Set the mask for the left margin of the customized title bar.
-
-#### `{slot} public void setRightMask(const QRegion & mask)` 
-
-Set the mask for the right margin of the customized title bar.
-
-#### `{slot} public void setCenterMask(const QRegion & mask)` 
-
-Set the mask for the center of the customized title bar.
+Rect that contains the whole title bar.
 
 #### `{slot} public void setTitleBarMask(const QRegion & mask)` 
 
-Set the mask for the customized title bar, used in combination with others masks.
-
-#### `{slot} public void setCaptionButtonsHandled(bool handled, const Qt::Corner & corner)` 
-
-Set if the caption buttons should be handled by *QGoodWindow* and on which *corner*, valid only top left and top right corners.
+Set the mask for the customized title bar.
 
 #### `{slot} public void setMinimizeMask(const QRegion & mask)` 
 
-Set the location and shape of handled minimize button, relative to handled corner.
+Set the location and shape of handled minimize button, relative to title bar rect.
 
 #### `{slot} public void setMaximizeMask(const QRegion & mask)` 
 
-Set the location and shape of handled maximize button, relative to handled corner.
+Set the location and shape of handled maximize button, relative to title bar rect.
 
 #### `{slot} public void setCloseMask(const QRegion & mask)` 
 
-Set the location and shape of handled close button, relative to handled corner.
-
-#### `{slot} public QRegion leftMask() const` 
-
-Get the mask for the left margin of the customized title bar.
-
-#### `{slot} public QRegion rightMask() const` 
-
-Get the mask for the right margin of the customized title bar.
-
-#### `{slot} public QRegion centerMask() const` 
-
-Get the mask for the center of the customized title bar.
+Set the location and shape of handled close button, relative to title bar rect.
 
 #### `{slot} public QRegion titleBarMask() const` 
 
@@ -129,31 +149,15 @@ Get the mask for the customized title bar.
 
 #### `{slot} public QRegion minimizeMask() const` 
 
-Get the location and shape of handled minimize button, relative to handled corner.
+Get the location and shape of handled minimize button, relative to title bar rect.
 
 #### `{slot} public QRegion maximizeMask() const` 
 
-Get the location and shape of handled maximize button, relative to handled corner.
+Get the location and shape of handled maximize button, relative to title bar rect.
 
 #### `{slot} public QRegion closeMask() const` 
 
-Get the location and shape of handled close button, relative to handled corner.
-
-#### `{slot} public QSize leftMaskSize() const` 
-
-Get the size that should be the size of the mask on the left margin of the customized title bar.
-
-#### `{slot} public QSize rightMaskSize() const` 
-
-Get the size that should be the size of the mask on the right margin of the customized title bar.
-
-#### `{slot} public QRect leftCaptionButtonsRect() const` 
-
-If caption buttons are handled on left corner, their buttons masks should be in the bounds of this rect.
-
-#### `{slot} public QRect rightCaptionButtonsRect() const` 
-
-If caption buttons are handled on right corner, their buttons masks should be in the bounds of this rect.
+Get the location and shape of handled close button, relative to title bar rect.
 
 #### `{slot} public void setFixedSize(int w, int h)` 
 
@@ -235,14 +239,6 @@ Position of the window on screen.
 
 Size of the window on screen.
 
-#### `{slot} public QSize sizeHint() const` 
-
-Size hint of the window.
-
-#### `{slot} public QSize minimumSizeHint() const` 
-
-Minimum size hint of the window.
-
 #### `{slot} public int x() const` 
 
 X position of the window on screen.
@@ -311,9 +307,9 @@ Turns the *QGoodWindow* into full screen mode. Including the title bar.
 
 Hide the *QGoodWindow*.
 
-#### `{slot} public void close()` 
+#### `{slot} public bool close()` 
 
-Close the *QGoodWindow*.
+Try to close the *QGoodWindow*, returns true if event is accepted or false otherwise.
 
 #### `{slot} public bool isVisible() const` 
 
@@ -404,6 +400,10 @@ CloseRelease            | Close button release.
 CloseClicked            | Close button clicked.
 
 Enum that contains caption buttons states when it's states are handled by *QGoodWindow*.
+
+#### `public static QString version()` 
+
+Returns the *QGoodWindow* version.
 
 #### `public static void setup()` 
 

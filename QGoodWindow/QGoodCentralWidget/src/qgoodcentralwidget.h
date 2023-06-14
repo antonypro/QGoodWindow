@@ -90,11 +90,19 @@ public slots:
     /** Change the visibility of *QGoodCentralWidget* title bar. */
     void setTitleBarVisible(bool visible);
 
+    /** Change the visibility of *QGoodCentralWidget* caption buttons. */
+    void setCaptionButtonsVisible(bool visible);
+
     /** Change the visibility of *QGoodCentralWidget* title bar title. */
     void setTitleVisible(bool visible);
 
     /** Change the visibility of *QGoodCentralWidget* title bar icon. */
     void setIconVisible(bool visible);
+
+    /** Change the width of *QGoodCentralWidget* title bar icon,
+     * width higher than 0 will hide the *QGoodCentralWidget* provided icon,
+     * this is useful when showing own icons. */
+    void setIconWidth(int width);
 
     /** Change the title bar height to \e height multiplied to current pixel ratio. */
     void setTitleBarHeight(int height);
@@ -104,9 +112,6 @@ public slots:
 
     /** Returns if the title bar and the central widget are unified. */
     bool isUnifiedTitleBarAndCentralWidget() const;
-
-    /** Returns the title bar bounding rect. */
-    QRect titleBarRect() const;
 
     /** Returns the left *QGoodCentralWidget* title bar widget or nullptr if none is set. */
     QWidget *leftTitleBarWidget() const;
@@ -132,11 +137,17 @@ public slots:
     /** Returns if the *QGoodCentralWidget* title bar is visible or not. */
     bool isTitleBarVisible() const;
 
+    /** Returns if the *QGoodCentralWidget* caption buttons are visible or not. */
+    bool isCaptionButtonsVisible() const;
+
     /** Returns if the *QGoodCentralWidget* title bar title is visible or not. */
     bool isTitleVisible() const;
 
     /** Returns if the *QGoodCentralWidget* title bar icon is visible or not. */
     bool isIconVisible() const;
+
+    /** Returns the customized icon width. */
+    int iconWidth() const;
 
     /** Returns the *QGoodCentralWidget* title bar height. */
     int titleBarHeight() const;
@@ -178,8 +189,10 @@ private:
     QColor m_title_bar_color;
     QColor m_active_border_color;
     bool m_title_bar_visible;
+    bool m_caption_buttons_visible;
     bool m_title_visible;
     bool m_icon_visible;
+    int m_icon_width;
 #endif
     //\endcond
 };

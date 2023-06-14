@@ -32,6 +32,13 @@ extern Notification notification;
 //\cond HIDDEN_SYMBOLS
 namespace macOSNative
 {
+enum class StyleType
+{
+    NoState,
+    Disabled,
+    Fullscreen
+};
+
     void registerThemeChangeNotification();
     void registerNotification(const char *notification_name, long wid);
     void unregisterNotification();
@@ -41,7 +48,7 @@ namespace macOSNative
         notification.notification(notification_name, wid);
     }
 
-    void setStyle(long winid, bool fullscreen);
+    void setStyle(long winid, StyleType type);
 
     const char *themeName();
 }

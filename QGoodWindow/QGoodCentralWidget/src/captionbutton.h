@@ -28,6 +28,7 @@ SOFTWARE.
 #include <QtCore>
 #include <QtGui>
 #include <QtWidgets>
+#include <QtSvg>
 
 //\cond HIDDEN_SYMBOLS
 class CaptionButton : public QWidget
@@ -55,8 +56,7 @@ public slots:
 
 private:
     //Functions
-    QPixmap loadSVG(const QString &svg_path, int w, int h,
-                    const Qt::TransformationMode &mode);
+    QPixmap loadSVG(const QString &svg_path, int w, int h);
     void paintIcons(const QPixmap &pix_in, bool dark,
                     QPixmap *pix_active_out, QPixmap *pix_inactive_out);
     void drawIcons();

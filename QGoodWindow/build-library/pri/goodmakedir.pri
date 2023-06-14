@@ -20,17 +20,27 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
-TEMPLATE = lib
+win32{
+goodmakedir1.commands += $(CHK_DIR_EXISTS) $$shell_path($$INSTALL_DIR) $(MKDIR) $$shell_path($$INSTALL_DIR)
+goodmakedir2.commands += $(CHK_DIR_EXISTS) $$shell_path($$HEADER_DESTINATION) $(MKDIR) $$shell_path($$HEADER_DESTINATION)
+goodmakedir3.commands += $(CHK_DIR_EXISTS) $$shell_path($$HEADER_DESTINATION/src) $(MKDIR) $$shell_path($$HEADER_DESTINATION/src)
+} else {
+goodmakedir1.commands += $(MKDIR) $$shell_path($$INSTALL_DIR)
+goodmakedir2.commands += $(MKDIR) $$shell_path($$HEADER_DESTINATION)
+goodmakedir3.commands += $(MKDIR) $$shell_path($$HEADER_DESTINATION/src)
+}
 
-CONFIG += plugin
+first.depends += $(first) \
+goodmakedir1 \
+goodmakedir2 \
+goodmakedir3
 
-TARGET = QGoodWindow
+export(first.depends)
+export(goodmakedir1.commands)
+export(goodmakedir2.commands)
+export(goodmakedir3.commands)
 
-#Install directory of built lib and headers
-INSTALL_DIR = $$PWD/build/build-shared-with-central-widget
-
-DEFINES += QGOODWINDOW_LIBRARY QGOODWINDOW_SHARED_LIBRARY
-
-include($$PWD/../QGoodWindow/QGoodWindow.pri)
-include($$PWD/../QGoodCentralWidget/QGoodCentralWidget.pri)
-include($$PWD/include/qgoodwindow-and-central-widget-shared.pri)
+QMAKE_EXTRA_TARGETS += first \
+goodmakedir1 \
+goodmakedir2 \
+goodmakedir3

@@ -96,6 +96,9 @@ void Shadow::show()
     if (!IsWindowEnabled(m_hwnd))
         return;
 
+    if (GetForegroundWindow() != m_hwnd)
+        return;
+
     QWidget::show();
     QWidget::raise();
 
@@ -156,15 +159,10 @@ void Shadow::setActive(bool active)
 #endif
 }
 
-#ifdef QT_VERSION_QT5
-bool Shadow::nativeEvent(const QByteArray &eventType, void *message, long *result)
-#endif
-#ifdef QT_VERSION_QT6
-bool Shadow::nativeEvent(const QByteArray &eventType, void *message, qintptr *result)
-#endif
+bool Shadow::nativeEvent(const QByteArray &eventType, void *message, qgoodintptr *result)
 {
 #ifdef Q_OS_WIN
-    MSG* msg = static_cast<MSG*>(message);
+    MSG *msg = static_cast<MSG*>(message);
 
     switch (msg->message)
     {
@@ -205,7 +203,7 @@ bool Shadow::nativeEvent(const QByteArray &eventType, void *message, qintptr *re
         //Transfer the above messages to main window,
         //this way the resize and snap effects happens also
         //when interacting with the shadow, and acts like a secondary border.
-        *result = long(SendMessageW(m_hwnd, msg->message, msg->wParam, msg->lParam));
+        *result = qgoodintptr(SendMessageW(m_hwnd, msg->message, msg->wParam, msg->lParam));
         return true;
     }
     default:

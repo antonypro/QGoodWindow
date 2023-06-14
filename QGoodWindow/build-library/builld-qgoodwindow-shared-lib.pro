@@ -1,6 +1,6 @@
 #The MIT License (MIT)
 
-#Copyright © 2022-2023 Antonio Dias (https://github.com/antonypro)
+#Copyright © 2023 Antonio Dias (https://github.com/antonypro)
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy
 #of this software and associated documentation files (the "Software"), to deal
@@ -20,35 +20,14 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
-QT += core gui widgets
+TEMPLATE = lib
 
-CONFIG += c++11
+CONFIG += plugin
 
-SOURCES += \
-    $$PWD/src/qgoodcentralwidget.cpp
+TARGET = QGoodWindow
 
-HEADERS += \
-    $$PWD/src/qgoodcentralwidget.h
+#Install directory of built lib and headers
+INSTALL_DIR = $$PWD/build/build-shared
 
-INCLUDEPATH += $$PWD #include <QGoodCentralWidget>
-
-DEFINES += QGOODCENTRALWIDGET
-
-qgoodwindow {
-QT += svg
-
-SOURCES += \
-    $$PWD/src/captionbutton.cpp \
-    $$PWD/src/iconwidget.cpp \
-    $$PWD/src/titlebar.cpp \
-    $$PWD/src/titlewidget.cpp
-
-HEADERS += \
-    $$PWD/src/captionbutton.h \
-    $$PWD/src/iconwidget.h \
-    $$PWD/src/titlebar.h \
-    $$PWD/src/titlewidget.h
-
-RESOURCES += \
-    $$PWD/src/qgoodcentralwidget_icons.qrc
-}
+include($$PWD/../QGoodWindow/QGoodWindow.pri)
+include($$PWD/pri/qgoodwindow-shared.pri)

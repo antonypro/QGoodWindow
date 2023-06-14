@@ -62,12 +62,7 @@ private slots:
 
 private:
     //Functions
-#ifdef QT_VERSION_QT5
-    bool nativeEvent(const QByteArray &eventType, void *message, long *result);
-#endif
-#ifdef QT_VERSION_QT6
-    bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result);
-#endif
+    bool nativeEvent(const QByteArray &eventType, void *message, qgoodintptr *result);
     void closeEvent(QCloseEvent *event);
 
     //Variables

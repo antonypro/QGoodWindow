@@ -22,10 +22,12 @@
 
 target_sources(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/src/qgoodwindow.cpp ${CMAKE_CURRENT_LIST_DIR}/src/qgoodwindow.h
-    ${CMAKE_CURRENT_LIST_DIR}/src/darkstyle.cpp ${CMAKE_CURRENT_LIST_DIR}/src/darkstyle.h
-    ${CMAKE_CURRENT_LIST_DIR}/src/lightstyle.cpp ${CMAKE_CURRENT_LIST_DIR}/src/lightstyle.h
-    ${CMAKE_CURRENT_LIST_DIR}/src/stylecommon.cpp ${CMAKE_CURRENT_LIST_DIR}/src/stylecommon.h
     ${CMAKE_CURRENT_LIST_DIR}/src/qgoodstateholder.cpp ${CMAKE_CURRENT_LIST_DIR}/src/qgoodstateholder.h
+    ${CMAKE_CURRENT_LIST_DIR}/src/lightstyle.cpp ${CMAKE_CURRENT_LIST_DIR}/src/lightstyle.h
+    ${CMAKE_CURRENT_LIST_DIR}/src/darkstyle.cpp ${CMAKE_CURRENT_LIST_DIR}/src/darkstyle.h
+    ${CMAKE_CURRENT_LIST_DIR}/src/stylecommon.cpp ${CMAKE_CURRENT_LIST_DIR}/src/stylecommon.h
+    ${CMAKE_CURRENT_LIST_DIR}/src/intcommon.h
+ 
     ${CMAKE_CURRENT_LIST_DIR}/src/qgoodwindow_style.qrc
 )
 
@@ -59,7 +61,7 @@ if(${QT_VERSION_MAJOR} EQUAL 6)
     )
 endif()
 
-if (WIN32)
+if(WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE
         Gdi32
         User32
@@ -109,19 +111,38 @@ if(NOT no_qgoodwindow)
             -Wno-deprecated-declarations
         )
 
-        find_package(PkgConfig REQUIRED)
-        pkg_check_modules(GTK2 REQUIRED "gtk+-2.0")
-        if(DEFINED GTK2_INCLUDE_DIRS)
-            target_include_directories(${PROJECT_NAME} PRIVATE ${GTK2_INCLUDE_DIRS})
+        if(${QT_VERSION_MAJOR} EQUAL 5)
+            find_package(PkgConfig REQUIRED)
+            pkg_check_modules(GTK2 REQUIRED "gtk+-2.0")
+            if(DEFINED GTK2_INCLUDE_DIRS)
+                target_include_directories(${PROJECT_NAME} PRIVATE ${GTK2_INCLUDE_DIRS})
+            endif()
+            if(DEFINED GTK2_LIBRARY_DIRS)
+                target_link_directories(${PROJECT_NAME} PRIVATE ${GTK2_LIBRARY_DIRS})
+            endif()
+            if(DEFINED GTK2_CFLAGS_OTHER)
+                target_compile_options(${PROJECT_NAME} PRIVATE ${GTK2_CFLAGS_OTHER})
+            endif()
+            if(DEFINED GTK2_LIBRARIES)
+                target_link_libraries(${PROJECT_NAME} PRIVATE ${GTK2_LIBRARIES})
+            endif()
         endif()
-        if(DEFINED GTK2_LIBRARY_DIRS)
-            target_link_directories(${PROJECT_NAME} PRIVATE ${GTK2_LIBRARY_DIRS})
-        endif()
-        if(DEFINED GTK2_CFLAGS_OTHER)
-            target_compile_options(${PROJECT_NAME} PRIVATE ${GTK2_CFLAGS_OTHER})
-        endif()
-        if(DEFINED GTK2_LIBRARIES)
-            target_link_libraries(${PROJECT_NAME} PRIVATE ${GTK2_LIBRARIES})
+
+        if(${QT_VERSION_MAJOR} EQUAL 6)
+            find_package(PkgConfig REQUIRED)
+            pkg_check_modules(GTK3 REQUIRED "gtk+-3.0")
+            if(DEFINED GTK3_INCLUDE_DIRS)
+                target_include_directories(${PROJECT_NAME} PRIVATE ${GTK3_INCLUDE_DIRS})
+            endif()
+            if(DEFINED GTK3_LIBRARY_DIRS)
+                target_link_directories(${PROJECT_NAME} PRIVATE ${GTK3_LIBRARY_DIRS})
+            endif()
+            if(DEFINED GTK3_CFLAGS_OTHER)
+                target_compile_options(${PROJECT_NAME} PRIVATE ${GTK3_CFLAGS_OTHER})
+            endif()
+            if(DEFINED GTK3_LIBRARIES)
+                target_link_libraries(${PROJECT_NAME} PRIVATE ${GTK3_LIBRARIES})
+            endif()
         endif()
 
         target_link_libraries(${PROJECT_NAME} PRIVATE

@@ -57,6 +57,10 @@ Set the color of *QGoodCentralWidget* border.
 
 Change the visibility of *QGoodCentralWidget* title bar.
 
+#### `{slot} public void setCaptionButtonsVisible(bool visible)` 
+
+Change the visibility of *QGoodCentralWidget* caption buttons.
+
 #### `{slot} public void setTitleVisible(bool visible)` 
 
 Change the visibility of *QGoodCentralWidget* title bar title.
@@ -64,6 +68,10 @@ Change the visibility of *QGoodCentralWidget* title bar title.
 #### `{slot} public void setIconVisible(bool visible)` 
 
 Change the visibility of *QGoodCentralWidget* title bar icon.
+
+#### `{slot} public void setIconWidth(int width)` 
+
+Change the width of *QGoodCentralWidget* title bar icon, width higher than 0 will hide the *QGoodCentralWidget* provided icon, this is useful when showing own icons.
 
 #### `{slot} public void setTitleBarHeight(int height)` 
 
@@ -76,10 +84,6 @@ Change the caption button width to *width* multiplied to current pixel ratio.
 #### `{slot} public bool isUnifiedTitleBarAndCentralWidget() const` 
 
 Returns if the title bar and the central widget are unified.
-
-#### `{slot} public QRect titleBarRect() const` 
-
-Returns the title bar bounding rect.
 
 #### `{slot} public QWidget * leftTitleBarWidget() const` 
 
@@ -113,6 +117,10 @@ Returns the *QGoodCentralWidget* border color.
 
 Returns if the *QGoodCentralWidget* title bar is visible or not.
 
+#### `{slot} public bool isCaptionButtonsVisible() const` 
+
+Returns if the *QGoodCentralWidget* caption buttons are visible or not.
+
 #### `{slot} public bool isTitleVisible() const` 
 
 Returns if the *QGoodCentralWidget* title bar title is visible or not.
@@ -120,6 +128,10 @@ Returns if the *QGoodCentralWidget* title bar title is visible or not.
 #### `{slot} public bool isIconVisible() const` 
 
 Returns if the *QGoodCentralWidget* title bar icon is visible or not.
+
+#### `{slot} public int iconWidth() const` 
+
+Returns the customized icon width.
 
 #### `{slot} public int titleBarHeight() const` 
 

@@ -31,4 +31,4 @@ INSTALL_DIR = $$PWD/build/build-static-with-central-widget
 
 include($$PWD/../QGoodWindow/QGoodWindow.pri)
 include($$PWD/../QGoodCentralWidget/QGoodCentralWidget.pri)
-include($$PWD/include/qgoodwindow-and-central-widget-static.pri)
+include($$PWD/pri/qgoodwindow-and-central-widget-static.pri)

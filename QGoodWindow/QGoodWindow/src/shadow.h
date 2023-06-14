@@ -28,6 +28,7 @@ SOFTWARE.
 #include <QtCore>
 #include <QtGui>
 #include <QtWidgets>
+#include "intcommon.h"
 
 #if defined Q_OS_WIN || defined Q_OS_LINUX
 class QGoodWindow;
@@ -51,12 +52,7 @@ public slots:
 
 private:
     //Functions
-#ifdef QT_VERSION_QT5
-    bool nativeEvent(const QByteArray &eventType, void *message, long *result);
-#endif
-#ifdef QT_VERSION_QT6
-    bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result);
-#endif
+    bool nativeEvent(const QByteArray &eventType, void *message, qgoodintptr *result);
     bool event(QEvent *event);
     void paintEvent(QPaintEvent *event);
 

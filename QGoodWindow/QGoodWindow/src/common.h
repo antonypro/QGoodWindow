@@ -44,6 +44,11 @@ inline int BORDERHEIGHT()
 {
     return (GetSystemMetrics(SM_CXFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER));
 }
+
+#ifndef WM_DPICHANGED
+#define WM_DPICHANGED 0x02E0
+#endif
+
 #endif
 
 #include <QtCore>

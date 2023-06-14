@@ -44,9 +44,9 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent)
     //React to state holder theme change and apply our dark or light theme to the whole app
     connect(qGoodStateHolder, &QGoodStateHolder::currentThemeChanged, this, [=]{
         if (qGoodStateHolder->isCurrentThemeDark())
-            setAppDarkTheme();
+            QGoodWindow::setAppDarkTheme();
         else
-            setAppLightTheme();
+            QGoodWindow::setAppLightTheme();
     });
 
     //React to system theme change

@@ -134,17 +134,12 @@ MainWindow::~MainWindow()
 void MainWindow::themeChange()
 {
     if (qGoodStateHolder->isCurrentThemeDark())
-        setAppDarkTheme();
+        QGoodWindow::setAppDarkTheme();
     else
-        setAppLightTheme();
+        QGoodWindow::setAppLightTheme();
 }
 
-#ifdef QT_VERSION_QT5
-bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, long *result)
-#endif
-#ifdef QT_VERSION_QT6
-bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr *result)
-#endif
+bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, qgoodintptr *result)
 {
 #ifdef QGOODWINDOW
 #ifdef Q_OS_WIN
@@ -159,9 +154,9 @@ bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr
         //Keep window theme on Windows theme change events.
         QTimer::singleShot(100, this, [=]{
             if (qGoodStateHolder->isCurrentThemeDark())
-                setAppDarkTheme();
+                QGoodWindow::setAppDarkTheme();
             else
-                setAppLightTheme();
+                QGoodWindow::setAppLightTheme();
         });
 
         break;

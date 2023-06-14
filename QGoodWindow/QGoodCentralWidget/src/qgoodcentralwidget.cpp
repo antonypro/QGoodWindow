@@ -75,8 +75,10 @@ QGoodCentralWidget::QGoodCentralWidget(QGoodWindow *gw) : QWidget(gw)
     m_draw_borders = !QGoodWindow::shouldBordersBeDrawnBySystem();
 
     m_title_bar_visible = true;
+    m_caption_buttons_visible = true;
     m_title_visible = true;
     m_icon_visible = true;
+    m_icon_width = 0;
 
     m_frame = new QFrame(this);
     m_frame->setObjectName("GoodFrame");
@@ -109,27 +111,29 @@ int QGoodCentralWidget::execDialogWithWindow(QDialog *dialog, QGoodWindow *paren
 #ifdef QGOODWINDOW
     dialog->setWindowFlags(Qt::Widget);
 
-    QGoodWindow gw(parent_gw);
-    QGoodCentralWidget gcw(&gw);
-    gcw.setCentralWidget(dialog);
+    QGoodWindow *gw = new QGoodWindow(parent_gw);
+    gw->setAttribute(Qt::WA_DeleteOnClose);
 
-    gcw.setLeftTitleBarWidget(left_title_bar_widget);
-    gcw.setRightTitleBarWidget(right_title_bar_widget);
+    QGoodCentralWidget *gcw = new QGoodCentralWidget(gw);
+    gcw->setCentralWidget(dialog);
+
+    gcw->setLeftTitleBarWidget(left_title_bar_widget);
+    gcw->setRightTitleBarWidget(right_title_bar_widget);
 
     if (base_gcw)
     {
         if (base_gcw->titleBarColor() != QColor(Qt::transparent))
-            gcw.setTitleBarColor(base_gcw->titleBarColor());
-        gcw.setActiveBorderColor(base_gcw->activeBorderColor());
-        gcw.setTitleAlignment(base_gcw->titleAlignment());
+            gcw->setTitleBarColor(base_gcw->titleBarColor());
+        gcw->setActiveBorderColor(base_gcw->activeBorderColor());
+        gcw->setTitleAlignment(base_gcw->titleAlignment());
     }
 
-    gcw.setTitleVisible(title_visible);
-    gcw.setIconVisible(icon_visible);
+    gcw->setTitleVisible(title_visible);
+    gcw->setIconVisible(icon_visible);
 
-    gw.setCentralWidget(&gcw);
+    gw->setCentralWidget(gcw);
 
-    return QGoodWindow::execDialog(dialog, &gw, parent_gw);
+    return QGoodWindow::execDialog(dialog, gw, parent_gw);
 #else
     Q_UNUSED(parent_gw)
     Q_UNUSED(base_gcw)
@@ -313,6 +317,18 @@ void QGoodCentralWidget::setTitleBarVisible(bool visible)
 #endif
 }
 
+void QGoodCentralWidget::setCaptionButtonsVisible(bool visible)
+{
+#ifdef QGOODWINDOW
+    m_caption_buttons_visible = visible;
+    m_title_bar->m_caption_buttons->setVisible(m_caption_buttons_visible);
+    m_title_bar->m_caption_buttons->setEnabled(m_caption_buttons_visible);
+    updateWindow();
+#else
+    Q_UNUSED(visible)
+#endif
+}
+
 void QGoodCentralWidget::setTitleVisible(bool visible)
 {
 #ifdef QGOODWINDOW
@@ -329,11 +345,25 @@ void QGoodCentralWidget::setIconVisible(bool visible)
 {
 #ifdef QGOODWINDOW
     m_icon_visible = visible;
+    if (m_icon_visible) m_icon_width = 0;
     m_title_bar->m_icon_widget->setVisible(m_icon_visible);
     m_title_bar->m_icon_widget->setEnabled(m_icon_visible);
     updateWindow();
 #else
     Q_UNUSED(visible)
+#endif
+}
+
+void QGoodCentralWidget::setIconWidth(int width)
+{
+#ifdef QGOODWINDOW
+    m_icon_width = width;
+    m_icon_visible = (m_icon_width == 0);
+    m_title_bar->m_icon_widget->setVisible(m_icon_visible);
+    m_title_bar->m_icon_widget->setEnabled(m_icon_visible);
+    updateWindow();
+#else
+    Q_UNUSED(width)
 #endif
 }
 
@@ -365,15 +395,6 @@ bool QGoodCentralWidget::isUnifiedTitleBarAndCentralWidget() const
     return m_unified_title_bar_and_central_widget;
 #else
     return false;
-#endif
-}
-
-QRect QGoodCentralWidget::titleBarRect() const
-{
-#ifdef QGOODWINDOW
-    return QRect(0, 0, m_frame->width(), titleBarHeight());
-#else
-    return QRect();
 #endif
 }
 
@@ -445,6 +466,15 @@ bool QGoodCentralWidget::isTitleBarVisible() const
 #endif
 }
 
+bool QGoodCentralWidget::isCaptionButtonsVisible() const
+{
+#ifdef QGOODWINDOW
+    return m_caption_buttons_visible;
+#else
+    return true;
+#endif
+}
+
 bool QGoodCentralWidget::isTitleVisible() const
 {
 #ifdef QGOODWINDOW
@@ -460,6 +490,15 @@ bool QGoodCentralWidget::isIconVisible() const
     return m_icon_visible;
 #else
     return true;
+#endif
+}
+
+int QGoodCentralWidget::iconWidth() const
+{
+#ifdef QGOODWINDOW
+    return m_icon_width;
+#else
+    return 0;
 #endif
 }
 
@@ -484,6 +523,9 @@ int QGoodCentralWidget::captionButtonWidth() const
 void QGoodCentralWidget::updateWindow()
 {
 #ifdef QGOODWINDOW
+    if (!m_gw)
+        return;
+
     if (!m_gw->isVisible() || m_gw->isMinimized())
         return;
 
@@ -492,6 +534,7 @@ void QGoodCentralWidget::updateWindow()
     bool draw_borders = m_draw_borders;
     bool is_maximized = m_gw->isMaximized();
     bool is_full_screen = m_gw->isFullScreen();
+    int title_bar_width = m_title_bar->width();
     int title_bar_height = m_title_bar->height();
     int icon_width = m_title_bar->m_icon_widget->width();
 
@@ -507,36 +550,27 @@ void QGoodCentralWidget::updateWindow()
 
     m_frame->setStyleSheet(m_frame_style.arg(border_str));
 
-    m_title_bar->setMaximized(is_maximized);
+    m_title_bar->setMaximized(is_maximized && !is_full_screen);
 
     m_title_bar->setVisible(m_title_bar_visible && !is_full_screen);
 
     if (!is_full_screen)
     {
-        int left_width = (m_title_bar_left_widget ? m_title_bar_left_widget->width() : 0);
-        int right_width = (m_title_bar_right_widget ? m_title_bar_right_widget->width() : 0);
-        int spacing = ((m_title_bar_left_widget || m_title_bar_right_widget) ? m_title_bar->layoutSpacing() : 0);
-        int maximized_left = (is_maximized ? 1 : 0);
-
-        QRect left_rect = (m_title_bar_left_widget ? m_title_bar_left_widget->rect() : QRect());
-        QRect right_rect = m_gw->rightCaptionButtonsRect();
-
         m_gw->setTitleBarHeight(m_title_bar_visible ? title_bar_height : 0);
-        m_gw->setIconWidth(m_icon_visible ? icon_width : 0);
-        m_gw->setLeftMargin(left_width);
-        m_gw->setRightMargin(right_width + spacing + m_title_bar->captionButtonsWidth());
 
-        QRegion left_mask = left_rect;
-        QRegion right_mask = right_rect;
+        if (m_icon_width > 0)
+            m_gw->setIconWidth(m_icon_width);
+        else if (m_icon_visible)
+            m_gw->setIconWidth(icon_width);
+        else
+            m_gw->setIconWidth(0);
+
+        QRegion left_mask;
+        QRegion right_mask;
         QRegion center_mask;
 
         if (m_title_bar_left_widget)
         {
-            //Remove the widget rect from mask and put it again later.
-            left_mask -= QRect(m_title_bar_left_widget->x(), 0,
-                               m_title_bar_left_widget->width() + spacing,
-                               title_bar_height);
-
             QWidgetList list;
 
             if (!m_left_widget_transparent_for_mouse)
@@ -550,11 +584,16 @@ void QGoodCentralWidget::updateWindow()
                 {
                     if (!widget->mask().isNull())
                     {
-                        left_mask += widget->mask().translated(widget->pos());
+                        left_mask += widget->mask().translated(m_title_bar->m_left_widget_place_holder->pos());
                     }
                     else
                     {
-                        left_mask += widget->geometry();
+                        QRect geom = widget->geometry();
+
+                        if (geom.width() > m_title_bar_left_widget->width())
+                            geom.setWidth(m_title_bar_left_widget->width());
+
+                        left_mask += geom.translated(m_title_bar->m_left_widget_place_holder->pos());
                     }
                 }
             }
@@ -562,11 +601,6 @@ void QGoodCentralWidget::updateWindow()
 
         if (m_title_bar_right_widget)
         {
-            //Remove the widget rect from mask and put it again later.
-            right_mask -= QRect(m_title_bar_right_widget->x(), 0,
-                                m_title_bar_right_widget->width() + spacing,
-                                title_bar_height);
-
             QWidgetList list;
 
             if (!m_right_widget_transparent_for_mouse)
@@ -580,11 +614,16 @@ void QGoodCentralWidget::updateWindow()
                 {
                     if (!widget->mask().isNull())
                     {
-                        right_mask += widget->mask().translated(widget->pos());
+                        right_mask += widget->mask().translated(m_title_bar->m_right_widget_place_holder->pos());
                     }
                     else
                     {
-                        right_mask += widget->geometry();
+                        QRect geom = widget->geometry();
+
+                        if (geom.width() > m_title_bar_right_widget->width())
+                            geom.setWidth(m_title_bar_right_widget->width());
+
+                        right_mask += geom.translated(m_title_bar->m_right_widget_place_holder->pos());
                     }
                 }
             }
@@ -609,34 +648,44 @@ void QGoodCentralWidget::updateWindow()
                     }
                     else
                     {
-                        center_mask += widget->geometry().translated(m_title_bar->m_center_widget_place_holder->pos());
+                        QRect geom = widget->geometry();
+
+                        if (geom.width() > m_title_bar_center_widget->width())
+                            geom.setWidth(m_title_bar_center_widget->width());
+
+                        center_mask += geom.translated(m_title_bar->m_center_widget_place_holder->pos());
                     }
                 }
             }
         }
 
-        m_gw->setLeftMask(left_mask);
-        m_gw->setRightMask(right_mask);
-        m_gw->setCenterMask(center_mask);
-        m_gw->setTitleBarMask(m_title_bar_mask);
+        QRegion title_bar_mask;
 
-        m_gw->setCaptionButtonsHandled(true, Qt::TopRightCorner);
+        if (!m_title_bar_mask.isEmpty())
+            title_bar_mask = m_title_bar_mask;
+        else
+            title_bar_mask -= m_gw->titleBarRect();
 
-        QRect min_rect = m_title_bar->minimizeButtonRect();
-        QRect max_rect = m_title_bar->maximizeButtonRect();
-        QRect cls_rect = m_title_bar->closeButtonRect();
+        title_bar_mask += left_mask;
+        title_bar_mask += center_mask;
+        title_bar_mask += right_mask;
 
-        min_rect.moveLeft(right_width + spacing + maximized_left);
-        max_rect.moveLeft(right_width + spacing + min_rect.width() + maximized_left);
-        cls_rect.moveLeft(right_width + spacing + min_rect.width() + max_rect.width() + maximized_left);
+        m_gw->setTitleBarMask(title_bar_mask);
 
-        m_gw->setMinimizeMask(min_rect);
-        m_gw->setMaximizeMask(max_rect);
-        m_gw->setCloseMask(cls_rect);
-    }
-    else
-    {
-        m_gw->setMargins(0, 0, 0, 0);
+        if (m_caption_buttons_visible)
+        {
+            QRect min_rect = m_title_bar->minimizeButtonRect();
+            QRect max_rect = m_title_bar->maximizeButtonRect();
+            QRect cls_rect = m_title_bar->closeButtonRect();
+
+            min_rect.moveLeft(title_bar_width - cls_rect.width() - max_rect.width() - min_rect.width());
+            max_rect.moveLeft(title_bar_width - cls_rect.width() - max_rect.width());
+            cls_rect.moveLeft(title_bar_width - cls_rect.width());
+
+            m_gw->setMinimizeMask(min_rect);
+            m_gw->setMaximizeMask(max_rect);
+            m_gw->setCloseMask(cls_rect);
+        }
     }
 
     m_title_bar->setActive(window_active);

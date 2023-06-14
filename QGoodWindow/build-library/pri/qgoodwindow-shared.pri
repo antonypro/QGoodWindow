@@ -20,16 +20,10 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
-TEMPLATE = lib
+DESTDIR = $$shell_path($$INSTALL_DIR/lib)
 
-CONFIG += plugin
+HEADER_DESTINATION = $$shell_path($$INSTALL_DIR/include)
 
-TARGET = QGoodWindow
+include($$PWD/goodmakedir.pri)
 
-#Install directory of built lib and headers
-INSTALL_DIR = $$PWD/build/build-shared
-
-DEFINES += QGOODWINDOW_LIBRARY QGOODWINDOW_SHARED_LIBRARY
-
-include($$PWD/../QGoodWindow/QGoodWindow.pri)
-include($$PWD/include/qgoodwindow-shared.pri)
+include($$PWD/qgoodwindow-include.pri)

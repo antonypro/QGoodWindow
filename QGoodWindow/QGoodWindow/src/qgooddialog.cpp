@@ -24,7 +24,15 @@ SOFTWARE.
 
 #include "qgooddialog.h"
 #include "qgoodwindow.h"
-#include "shadow.h"
+
+#ifdef Q_OS_MAC
+#include "macosnative.h"
+#endif
+
+namespace QGoodDialogUtils
+{
+static bool m_dialog_is_visible = false;
+}
 
 QGoodDialog::QGoodDialog(QDialog *dialog, QGoodWindow *child_gw, QGoodWindow *parent_gw) : QObject()
 {
@@ -46,6 +54,11 @@ int QGoodDialog::exec()
     if (!m_parent_gw)
         return QDialog::Rejected;
 
+    if (QGoodDialogUtils::m_dialog_is_visible)
+        return QDialog::Rejected;
+
+    QGoodDialogUtils::m_dialog_is_visible = true;
+
     m_child_gw->installEventFilter(this);
 
     m_dialog->installEventFilter(this);
@@ -60,15 +73,57 @@ int QGoodDialog::exec()
     m_child_gw->setWindowModality(Qt::WindowModal);
 #endif
 
-    if (qobject_cast<QMessageBox*>(m_dialog) != nullptr)
-    {
-        m_child_gw->setFixedSize(m_child_gw->sizeHint());
-    }
-    else if (qobject_cast<QInputDialog*>(m_dialog) != nullptr)
-    {
-        m_child_gw->resize(m_child_gw->sizeHint());
-        m_child_gw->setFixedHeight(m_child_gw->sizeHint().height());
-    }
+#if defined Q_OS_WIN || defined Q_OS_LINUX
+    bool is_message_box = qobject_cast<QMessageBox*>(m_dialog);
+    bool is_input_dialog = qobject_cast<QInputDialog*>(m_dialog);
+
+    auto func_center = [=]{
+        QScreen *parent_screen = m_parent_gw->windowHandle()->screen();
+
+        qreal pixel_ratio = parent_screen->devicePixelRatio();
+        QRect screen_geom = parent_screen->availableGeometry();
+        screen_geom.moveTop(qFloor(screen_geom.top() / pixel_ratio));
+        screen_geom.moveLeft(qFloor(screen_geom.left() / pixel_ratio));
+
+        QRect child_geom;
+        child_geom.setSize(m_child_gw->size());
+        child_geom.moveCenter(m_parent_gw->geometry().center());
+
+        if (child_geom.left() < screen_geom.left())
+            child_geom.moveLeft(screen_geom.left());
+        else if (child_geom.right() > screen_geom.right())
+            child_geom.moveRight(screen_geom.right());
+
+        if (child_geom.top() < screen_geom.top())
+            child_geom.moveTop(screen_geom.top());
+        else if (child_geom.bottom() > screen_geom.bottom())
+            child_geom.moveBottom(screen_geom.bottom());
+
+        m_child_gw->setGeometry(child_geom);
+    };
+
+    auto func_fixed_size = [=]{
+        if (is_message_box || is_input_dialog)
+        {
+            m_child_gw->setFixedSize(m_child_gw->sizeHint());
+        }
+        else
+        {
+            if (m_dialog->minimumSize() == m_dialog->maximumSize())
+            {
+                m_child_gw->setFixedSize(m_child_gw->sizeHint());
+            }
+            else
+            {
+                m_child_gw->setMinimumSize(m_dialog->minimumSize());
+                m_child_gw->setMaximumSize(m_dialog->maximumSize());
+            }
+        }
+    };
+
+    QTimer::singleShot(0, m_child_gw, func_center);
+    func_fixed_size();
+#endif
 
     if (!m_dialog->windowTitle().isNull())
         m_child_gw->setWindowTitle(m_dialog->windowTitle());
@@ -83,19 +138,14 @@ int QGoodDialog::exec()
     if (m_parent_gw->isMinimized())
         m_parent_gw->showNormal();
 
-#ifdef Q_OS_LINUX
-    QRect geom;
-    geom.setSize(m_child_gw->frameGeometry().size());
-    geom.moveCenter(m_parent_gw->frameGeometry().center());
-    m_child_gw->setGeometry(geom);
-#endif
-
     QTimer::singleShot(0, m_child_gw, &QGoodWindow::show);
 
     m_loop.exec();
 
     m_dialog->setParent(nullptr);
     m_child_gw->setParent(nullptr);
+
+    QGoodDialogUtils::m_dialog_is_visible = false;
 
     return m_dialog->result();
 }
@@ -117,12 +167,21 @@ bool QGoodDialog::eventFilter(QObject *watched, QEvent *event)
 #ifdef Q_OS_WIN
             HWND hwnd_gw = HWND(m_child_gw->winId());
 
-            for (QWindow *window : qApp->topLevelWindows())
+            for (QWindow *w : qApp->topLevelWindows())
             {
-                HWND hwnd = HWND(window->winId());
+                //Prevent problems with fullscreen mode.
+                if (w->type() == Qt::Window)
+                    continue;
+
+                HWND hwnd = HWND(w->winId());
 
                 if (hwnd == hwnd_gw || IsChild(hwnd_gw, hwnd))
                     continue;
+
+                if (m_window_list.contains(w))
+                    continue;
+
+                m_window_list.append(w);
 
                 EnableWindow(hwnd, FALSE);
             }
@@ -146,6 +205,8 @@ bool QGoodDialog::eventFilter(QObject *watched, QEvent *event)
 
                 w->setModality(Qt::WindowModal);
             }
+
+            macOSNative::setStyle(long(m_parent_gw->winId()), macOSNative::StyleType::Disabled);
 #endif
             break;
         }
@@ -156,11 +217,13 @@ bool QGoodDialog::eventFilter(QObject *watched, QEvent *event)
             m_loop.quit();
 
 #ifdef Q_OS_WIN
-            for (QWindow *window : qApp->topLevelWindows())
+            for (QWindow *w : m_window_list)
             {
-                HWND hwnd = HWND(window->winId());
+                HWND hwnd = HWND(w->winId());
                 EnableWindow(hwnd, TRUE);
             }
+
+            m_window_list.clear();
 #endif
 #ifdef Q_OS_MAC
             for (QWindow *w : m_window_list)
@@ -169,6 +232,10 @@ bool QGoodDialog::eventFilter(QObject *watched, QEvent *event)
             }
 
             m_window_list.clear();
+
+            QTimer::singleShot(500, this, [=]{
+                macOSNative::setStyle(long(m_parent_gw->winId()), macOSNative::StyleType::NoState);
+            });
 #endif
             break;
         }

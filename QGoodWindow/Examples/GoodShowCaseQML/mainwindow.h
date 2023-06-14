@@ -47,12 +47,23 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+public slots:
+    QString loadPixmapToString(const QString &path);
+
+private slots:
+    QPixmap loadGrayedPixmap(const QPixmap &pix);
+    QString loadPixmapAsBase64(const QPixmap &pix);
+    void captionButtonStateChangedPrivate(const QGoodWindow::CaptionButtonState &state);
+
 private:
     //Functions
+    bool event(QEvent *event);
     void closeEvent(QCloseEvent *event);
 
     //Variables
     QGoodCentralWidget *m_good_central_widget;
+    QPointer<QQuickWidget> m_quick_widget;
+    QHash<QString, QString> m_pix_str_hash;
 };
 
 #endif // MAINWINDOW_H

@@ -43,20 +43,9 @@ CaptionButton::~CaptionButton()
 
 }
 
-QPixmap CaptionButton::loadSVG(const QString &svg_path, int w, int h,
-                               const Qt::TransformationMode &mode)
+QPixmap CaptionButton::loadSVG(const QString &svg_path, int w, int h)
 {
-    const qreal scale_factor = qBound(qreal(1), qreal(qgetenv("QGOODWINDOW_SCALE_FACTOR").toDouble()), qreal(2));
-
-    w = qCeil(w * scale_factor);
-    h = qCeil(h * scale_factor);
-
-    //Fix bug that makes icon semi-transparent
-    QPixmap pix = QIcon(svg_path).pixmap(w * 2, h * 2);
-
-    //Resize to desired size
-    pix = pix.scaled(w, h, Qt::KeepAspectRatio, mode);
-
+    QPixmap pix = QIcon(svg_path).pixmap(w, h);
     return pix;
 }
 
@@ -109,7 +98,7 @@ void CaptionButton::drawIcons()
     {
     case IconType::Minimize:
     {
-        QPixmap icon = loadSVG(":/icons/minimize.svg", w, h, Qt::FastTransformation);
+        QPixmap icon = loadSVG(":/icons/minimize.svg", w, h);
 
         paintIcons(icon, m_icon_dark, &m_active_icon, &m_inactive_icon);
 
@@ -117,7 +106,7 @@ void CaptionButton::drawIcons()
     }
     case IconType::Restore:
     {
-        QPixmap icon = loadSVG(":/icons/restore.svg", w, h, Qt::SmoothTransformation);
+        QPixmap icon = loadSVG(":/icons/restore.svg", w, h);
 
         paintIcons(icon, m_icon_dark, &m_active_icon, &m_inactive_icon);
 
@@ -125,7 +114,7 @@ void CaptionButton::drawIcons()
     }
     case IconType::Maximize:
     {
-        QPixmap icon = loadSVG(":/icons/maximize.svg", w, h, Qt::SmoothTransformation);
+        QPixmap icon = loadSVG(":/icons/maximize.svg", w, h);
 
         paintIcons(icon, m_icon_dark, &m_active_icon, &m_inactive_icon);
 
@@ -133,7 +122,7 @@ void CaptionButton::drawIcons()
     }
     case IconType::Close:
     {
-        QPixmap icon = loadSVG(":/icons/close.svg", w, h, Qt::SmoothTransformation);
+        QPixmap icon = loadSVG(":/icons/close.svg", w, h);
 
         paintIcons(icon, m_icon_dark, &m_active_icon, &m_inactive_icon);
 
@@ -275,7 +264,7 @@ void CaptionButton::paintEvent(QPaintEvent *event)
     }
 
     QPainter painter(this);
-    painter.setRenderHints(QPainter::Antialiasing);
+    painter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
     painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
 
     painter.fillRect(rect(), current_color);

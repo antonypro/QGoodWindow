@@ -32,10 +32,10 @@ set(CMAKE_AUTOUIC ON)
 
 find_package(QT NAMES Qt5 Qt6 REQUIRED)
 
-if (${QT_VERSION_MAJOR} EQUAL 5)
+if(${QT_VERSION_MAJOR} EQUAL 5)
     set(CMAKE_CXX_STANDARD 11)
 endif()
-if (${QT_VERSION_MAJOR} EQUAL 6)
+if(${QT_VERSION_MAJOR} EQUAL 6)
     set(CMAKE_CXX_STANDARD 17)
 endif()
 
@@ -47,7 +47,13 @@ if(NOT DEFINED shared_library)
     set(shared_library OFF CACHE BOOL "Build shared library")
 endif()
 
-if (shared_library)
+#set(with_central_widget TRUE) #Build with QGoodCentralWidget
+
+if(NOT DEFINED with_central_widget)
+    set(with_central_widget OFF CACHE BOOL "Build with QGoodCentralWidget")
+endif()
+
+if(shared_library)
     add_library(${PROJECT_NAME} SHARED)
 else()
     add_library(${PROJECT_NAME} STATIC)
@@ -58,15 +64,14 @@ set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Release MinSizeRel RelWithD
 
 set(HEADER_FILES 
     ${CMAKE_CURRENT_SOURCE_DIR}/../QGoodWindow/src/qgoodwindow.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/../QGoodWindow/src/intcommon.h
     ${CMAKE_CURRENT_SOURCE_DIR}/../QGoodWindow/src/qgoodstateholder.h
     ${CMAKE_CURRENT_SOURCE_DIR}/../QGoodWindow/src/lightstyle.h
     ${CMAKE_CURRENT_SOURCE_DIR}/../QGoodWindow/src/darkstyle.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/../QGoodCentralWidget/src/qgoodcentralwidget.h
 )
 
 install(FILES 
         ${CMAKE_CURRENT_SOURCE_DIR}/../QGoodWindow/QGoodWindow
-        ${CMAKE_CURRENT_SOURCE_DIR}/../QGoodCentralWidget/QGoodCentralWidget
         DESTINATION include
         COMPONENT Headers
 )
@@ -78,7 +83,6 @@ install(FILES ${HEADER_FILES}
 
 install(FILES 
         ${CMAKE_CURRENT_SOURCE_DIR}/../QGoodWindow/lib-helper/qgoodwindow_helper.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/../QGoodCentralWidget/lib-helper/qgoodcentralwidget_helper.h
         DESTINATION include/src
         COMPONENT Headers
 )
@@ -90,25 +94,57 @@ install(TARGETS ${PROJECT_NAME}
         COMPONENT Libraries
 )
 
-if (shared_library)
+if(shared_library)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
         QGOODWINDOW_LIBRARY QGOODWINDOW_SHARED_LIBRARY
     )
     install(FILES
         ${CMAKE_CURRENT_SOURCE_DIR}/../QGoodWindow/lib-helper/qgoodwindow_global.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/../QGoodCentralWidget/lib-helper/qgoodcentralwidget_global.h
         DESTINATION ${CMAKE_INSTALL_PREFIX}/include/src
         COMPONENT Headers
     )
 else()
     install(FILES
         ${CMAKE_CURRENT_SOURCE_DIR}/../QGoodWindow/src/qgoodwindow_global.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/../QGoodCentralWidget/src/qgoodcentralwidget_global.h
         DESTINATION ${CMAKE_INSTALL_PREFIX}/include/src
         COMPONENT Headers
     )
 endif()
 
+if(with_central_widget)
+    set(HEADER_FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/../QGoodCentralWidget/src/qgoodcentralwidget.h
+    )
+
+    install(FILES
+            ${CMAKE_CURRENT_SOURCE_DIR}/../QGoodCentralWidget/QGoodCentralWidget
+            DESTINATION include
+            COMPONENT Headers
+    )
+
+    install(FILES
+            ${CMAKE_CURRENT_SOURCE_DIR}/../QGoodCentralWidget/lib-helper/qgoodcentralwidget_helper.h
+            DESTINATION include/src
+            COMPONENT Headers
+    )
+
+    if(shared_library)
+        install(FILES
+            ${CMAKE_CURRENT_SOURCE_DIR}/../QGoodCentralWidget/lib-helper/qgoodcentralwidget_global.h
+            DESTINATION ${CMAKE_INSTALL_PREFIX}/include/src
+            COMPONENT Headers
+        )
+    else()
+        install(FILES
+            ${CMAKE_CURRENT_SOURCE_DIR}/../QGoodCentralWidget/src/qgoodcentralwidget_global.h
+            DESTINATION ${CMAKE_INSTALL_PREFIX}/include/src
+            COMPONENT Headers
+        )
+    endif()
+endif()
+
 include(${CMAKE_CURRENT_SOURCE_DIR}/../QGoodWindow/QGoodWindow.cmake)
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/../QGoodCentralWidget/QGoodCentralWidget.cmake)
+if(with_central_widget)
+    include(${CMAKE_CURRENT_SOURCE_DIR}/../QGoodCentralWidget/QGoodCentralWidget.cmake)
+endif()

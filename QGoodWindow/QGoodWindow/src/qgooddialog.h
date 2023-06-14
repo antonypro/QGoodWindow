@@ -51,7 +51,7 @@ private:
     QPointer<QDialog> m_dialog;
     QPointer<QGoodWindow> m_child_gw;
     QPointer<QGoodWindow> m_parent_gw;
-#ifdef Q_OS_MAC
+#if defined Q_OS_WIN || defined Q_OS_MAC
     QWindowList m_window_list;
 #endif
 };

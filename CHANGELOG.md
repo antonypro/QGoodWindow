@@ -1,3 +1,23 @@
+## *Version 2.4:*
+
+- Some functions are deprecated and QGoodWindow are no longer based on margins but on masks.
+- Automatic window re-scale on DPI change is now supported. [#34](https://github.com/antonypro/QGoodWindow/issues/34)
+- Lots of improvements on multi monitor environment with different DPI on Windows.
+- To solve incompatibility with native event filter, qgoodintptr can be used with both Qt 5 and Qt 6.
+- Updated Linux dependencies, they are listed in docs.
+- QShowEvent and QHideEvent are sent properly on Windows.
+- windowFlags() behaves correctly on fixed size window on Linux.
+- QGoodWindow close() function returns if the close event is accepted or not as is in QMainWindow.
+- Added possibility to hide caption buttons on QGoodCentralWidget.
+- Added possibility to build library with QGoodWindow and without QGoodCentralWidget on CMake.
+- Moved titleBarRect() function from QGoodCentralWidget to QGoodWindow.
+- Fixed bug on Windows secondary screen that shows wrong shadow position on high DPI. [#32](https://github.com/antonypro/QGoodWindow/issues/32)
+- Fixed bug related to customized QDialog's crash on exit.
+- Fixed bug that bad scales caption buttons icons on high DPI environments. [#31](https://github.com/antonypro/QGoodWindow/issues/31)
+- Fixed bug that won't close child windows on exit.
+- Fixed crash on GoodShowCaseQML example when closing. [#36](https://github.com/antonypro/QGoodWindow/issues/36)
+- Other bug fixes.
+
 ## *Version 2.3:*
 
 - The library automatically adapts to primary screen DPI. [#25](https://github.com/antonypro/QGoodWindow/issues/25)

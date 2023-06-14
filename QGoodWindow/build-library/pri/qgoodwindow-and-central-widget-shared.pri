@@ -1,6 +1,6 @@
 #The MIT License (MIT)
 
-#Copyright © 2022-2023 Antonio Dias (https://github.com/antonypro)
+#Copyright © 2023 Antonio Dias (https://github.com/antonypro)
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy
 #of this software and associated documentation files (the "Software"), to deal
@@ -20,35 +20,11 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
-QT += core gui widgets
+DESTDIR = $$shell_path($$INSTALL_DIR/lib)
 
-CONFIG += c++11
+HEADER_DESTINATION = $$INSTALL_DIR/include
 
-SOURCES += \
-    $$PWD/src/qgoodcentralwidget.cpp
+include($$PWD/goodmakedir.pri)
 
-HEADERS += \
-    $$PWD/src/qgoodcentralwidget.h
-
-INCLUDEPATH += $$PWD #include <QGoodCentralWidget>
-
-DEFINES += QGOODCENTRALWIDGET
-
-qgoodwindow {
-QT += svg
-
-SOURCES += \
-    $$PWD/src/captionbutton.cpp \
-    $$PWD/src/iconwidget.cpp \
-    $$PWD/src/titlebar.cpp \
-    $$PWD/src/titlewidget.cpp
-
-HEADERS += \
-    $$PWD/src/captionbutton.h \
-    $$PWD/src/iconwidget.h \
-    $$PWD/src/titlebar.h \
-    $$PWD/src/titlewidget.h
-
-RESOURCES += \
-    $$PWD/src/qgoodcentralwidget_icons.qrc
-}
+include($$PWD/qgoodwindow-include.pri)
+include($$PWD/qgoodcentralwidget-include.pri)

@@ -37,27 +37,19 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent, QColor("#002640"))
 #ifdef QGOODWINDOW
     m_good_central_widget->setUnifiedTitleBarAndCentralWidget(true);
 
-    connect(this, &QGoodWindow::systemThemeChanged, this, [=]{
-        qGoodStateHolder->setCurrentThemeDark(QGoodWindow::isSystemThemeDark());
-    });
+    qGoodStateHolder->setCurrentThemeDark(true);
 
-    QShortcut *shortcut1 = new QShortcut(QKeySequence(Qt::Key_S), this);
-
-    connect(shortcut1, &QShortcut::activated, this, [=]{
-        qGoodStateHolder->setCurrentThemeDark(!qGoodStateHolder->isCurrentThemeDark());
-    });
+    QGoodWindow::setAppDarkTheme();
 #endif
 
-    QShortcut *shortcut2 = new QShortcut(QKeySequence(Qt::Key_F), this);
+    QShortcut *shortcut1 = new QShortcut(QKeySequence(Qt::Key_F), this);
 
-    connect(shortcut2, &QShortcut::activated, this, [=]{
+    connect(shortcut1, &QShortcut::activated, this, [=]{
         if (!isFullScreen())
             showFullScreen();
         else
             showNormal();
     });
-
-    qGoodStateHolder->setCurrentThemeDark(QGoodWindow::isSystemThemeDark());
 
     m_good_central_widget->setCentralWidget(gl);
     setCentralWidget(m_good_central_widget);
@@ -66,7 +58,7 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent, QColor("#002640"))
     p.fill(Qt::red);
 
     setWindowIcon(p);
-    setWindowTitle("Good Window - Press S to toggle theme - Press F to toggle fullscreen!");
+    setWindowTitle("Good Window - Press F to toggle fullscreen!");
 
     resize(640, 480);
     move(QGuiApplication::primaryScreen()->availableGeometry().center() - rect().center());
