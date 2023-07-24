@@ -3140,10 +3140,7 @@ void QGoodWindow::sizeMoveWindow()
 
     moveShadow();
 
-    QTimer::singleShot(0, this, [=]{
-        m_main_window->resize(size());
-        m_main_window->repaint();
-    });
+    m_main_window->setGeometry(rect());
 }
 
 void QGoodWindow::setWindowMask()
