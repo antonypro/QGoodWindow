@@ -1,3 +1,7 @@
+## *Version 2.4-1:*
+
+- Merged pull request [#41](https://github.com/antonypro/QGoodWindow/pull/41) that fixes black screen on resize [#38](https://github.com/antonypro/QGoodWindow/issues/38).
+
 ## *Version 2.4:*
 
 - Some functions are deprecated and QGoodWindow are no longer based on margins but on masks.
