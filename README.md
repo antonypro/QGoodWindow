@@ -29,7 +29,17 @@ To see instructions on how to build, use, and `API` information, please see [the
 
 You can contribute with suggestions, writing issues on [Issues](https://github.com/antonypro/QGoodWindow/issues) or filling pull requests.
 
-Also, if you see value in my project, consider become a [Sponsor](https://github.com/sponsors/antonypro).
+Also, if you see value in my project, consider become a sponsor:
+
+GitHub Sponsors:
+
+https://github.com/sponsors/antonypro
+
+Bitcoin:
+
+![img/bitcoin-qrcode.png](img/bitcoin-qrcode.png)
+
+Address: bc1qfk849eam7hsdna55lf2za9neq57re667c0eh54
 
 ### **Changes:**
 
