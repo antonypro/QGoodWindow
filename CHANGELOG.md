@@ -1,3 +1,15 @@
+## *Version 2.4.1:*
+
+- More improvements on multi monitor environment with different DPI on Windows.
+
+- Increased mouse hit test precision on Windows and Linux.
+
+- Fixed some bugs related to save and restore position on close and re-open window on secondary monitor.
+
+- Fixed bug that may show a black border on Linux with Wayland. [#40](https://github.com/antonypro/QGoodWindow/issues/40)
+
+- Other bug fixes.
+
 ## *Version 2.4-1:*
 
 - Merged pull request [#41](https://github.com/antonypro/QGoodWindow/pull/41) that fixes black screen on resize [#38](https://github.com/antonypro/QGoodWindow/issues/38).

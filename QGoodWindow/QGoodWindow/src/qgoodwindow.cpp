@@ -271,6 +271,8 @@ QGoodWindow::QGoodWindow(QWidget *parent, const QColor &clear_color) : QMainWind
 
     m_parent = parent;
 
+    m_is_using_system_borders = shouldBordersBeDrawnBySystem();
+
     m_dark = isSystemThemeDark();
 
     m_title_bar_height = 30;
@@ -305,9 +307,20 @@ QGoodWindow::QGoodWindow(QWidget *parent, const QColor &clear_color) : QMainWind
     m_on_animate_event = false;
 #endif
 #ifdef Q_OS_WIN
+    m_window_ready = false;
     m_closed = false;
     m_visible = false;
     m_self_generated_close_event = false;
+
+    m_timer_move = new QTimer(this);
+    connect(m_timer_move, &QTimer::timeout, this, [=]{
+        QScreen *screen = screenForWindow(m_hwnd);
+
+        if (windowHandle()->screen() != screen)
+            updateScreen(screen);
+    });
+    m_timer_move->setSingleShot(true);
+    m_timer_move->setInterval(0);
 
     m_window_state = Qt::WindowNoState;
 
@@ -321,6 +334,8 @@ QGoodWindow::QGoodWindow(QWidget *parent, const QColor &clear_color) : QMainWind
     m_last_state = Qt::WindowNoState;
 
     m_self_generated_show_event = false;
+
+    m_self_generated_resize_event = false;
 
     m_native_event = nullptr;
 
@@ -366,8 +381,6 @@ QGoodWindow::QGoodWindow(QWidget *parent, const QColor &clear_color) : QMainWind
 
     m_is_win_11_or_greater = QGoodWindowUtils::isWin11OrGreater();
 
-    m_win_use_native_borders = m_is_win_11_or_greater;
-
     m_window_handle = QWindow::fromWinId(WId(m_hwnd));
 
     initGW();
@@ -381,8 +394,11 @@ QGoodWindow::QGoodWindow(QWidget *parent, const QColor &clear_color) : QMainWind
     m_helper_window->setGeometry(0, 0, 1, 1);
     m_helper_window->setOpacity(0);
 #endif
-    if (!m_win_use_native_borders)
-        m_shadow = new Shadow(qintptr(m_hwnd), m_parent ? this : nullptr);
+    if (!m_is_using_system_borders)
+    {
+        QGoodWindow *parent = m_parent ? this : nullptr;
+        m_shadow = new Shadow(qintptr(m_hwnd), parent, parent);
+    }
 
     m_main_window = static_cast<QMainWindow*>(this);
     m_main_window->installEventFilter(this);
@@ -436,9 +452,21 @@ QGoodWindow::QGoodWindow(QWidget *parent, const QColor &clear_color) : QMainWind
         QMainWindow::setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::Tool);
     }
 
-    m_shadow = new Shadow(qintptr(nullptr), this);
-    m_shadow->installEventFilter(this);
-    m_shadow->setMouseTracking(true);
+    m_top_shadow = new Shadow(qintptr(nullptr), this, this);
+    m_top_shadow->installEventFilter(this);
+    m_top_shadow->setMouseTracking(true);
+
+    m_bottom_shadow = new Shadow(qintptr(nullptr), this, this);
+    m_bottom_shadow->installEventFilter(this);
+    m_bottom_shadow->setMouseTracking(true);
+
+    m_left_shadow = new Shadow(qintptr(nullptr), this, this);
+    m_left_shadow->installEventFilter(this);
+    m_left_shadow->setMouseTracking(true);
+
+    m_right_shadow = new Shadow(qintptr(nullptr), this, this);
+    m_right_shadow->installEventFilter(this);
+    m_right_shadow->setMouseTracking(true);
 #endif
 #ifdef Q_OS_MAC
     installEventFilter(this);
@@ -581,6 +609,15 @@ void QGoodWindow::setup()
     Q_INIT_RESOURCE(qgoodcentralwidget_icons);
 #endif
 
+#ifdef Q_OS_LINUX
+    qputenv("XDG_SESSION_TYPE", "xcb");
+    qputenv("QT_QPA_PLATFORM", "xcb");
+
+    int argc = 0;
+    char **argv = nullptr;
+    gtk_init(&argc, &argv);
+#endif
+
 #ifndef Q_OS_MAC
 
 #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
@@ -706,12 +743,21 @@ int QGoodWindow::iconWidth() const
 QRect QGoodWindow::titleBarRect() const
 {
 #ifdef QGOODWINDOW
-    int border_width = 0;
-
-    if (windowState().testFlag(Qt::WindowNoState) && !shouldBordersBeDrawnBySystem())
-        border_width = 1;
-
-    return QRect(border_width, border_width, width() - border_width * 2, titleBarHeight());
+    if (!m_is_using_system_borders)
+    {
+        if (windowState().testFlag(Qt::WindowNoState))
+        {
+            return QRect(1, 1, width() - 2, titleBarHeight());
+        }
+        else
+        {
+            return QRect(0, 0, width(), titleBarHeight());
+        }
+    }
+    else
+    {
+        return QRect(0, 0, width(), titleBarHeight());
+    }
 #else
     return QRect();
 #endif
@@ -1078,7 +1124,7 @@ void QGoodWindow::resize(int width, int height)
     width = qFloor(width * m_pixel_ratio);
     height = qFloor(height * m_pixel_ratio);
 
-    if (m_win_use_native_borders)
+    if (m_is_using_system_borders)
     {
         width += BORDERWIDTH() * 2;
         height += BORDERHEIGHT();
@@ -1501,7 +1547,12 @@ bool QGoodWindow::restoreGeometry(const QByteArray &geometry)
     window_center_pos.setY(center_y);
 
     QScreen *screen = screenForPoint(window_center_pos);
-    m_pixel_ratio = screen->devicePixelRatio();
+
+    if (!screen)
+        screen = screenForPoint(window_geom.center());
+
+    if (screen)
+        m_pixel_ratio = screen->devicePixelRatio();
 
     m_rect_normal = window_geom;
 #endif
@@ -1548,18 +1599,13 @@ bool QGoodWindow::event(QEvent *event)
 #ifdef Q_OS_WIN
     switch (event->type())
     {
-    case QEvent::Show:
     case QEvent::ScreenChangeInternal:
     {
-        QTimer::singleShot(0, this, &QGoodWindow::updateScreen);
-        break;
-    }
-    default:
-        break;
-    }
+        if (!FIXED_SIZE(this))
+            updateWindowSize();
 
-    switch (event->type())
-    {
+        break;
+    }
     case QEvent::ChildPolished:
     {
         QChildEvent *child_event = static_cast<QChildEvent*>(event);
@@ -1609,14 +1655,20 @@ bool QGoodWindow::event(QEvent *event)
     }
     case QEvent::Resize:
     {
+        if (!windowState().testFlag(Qt::WindowNoState))
+            break;
+
+        if (!m_window_ready)
+            break;
+
+        if (m_self_generated_resize_event)
+            break;
+
         const QSize current_size = size();
         const QSize mw_size = m_main_window->size();
 
-        if (isVisible() && current_size.width() < mw_size.width() &&
-                current_size.height() < mw_size.height())
-        {
+        if (current_size != mw_size)
             resize(mw_size);
-        }
 
         break;
     }
@@ -1638,31 +1690,33 @@ bool QGoodWindow::event(QEvent *event)
     switch (event->type())
     {
     case QEvent::Show:
+    case QEvent::Hide:
     case QEvent::WindowActivate:
+    case QEvent::WindowDeactivate:
     case QEvent::WindowStateChange:
     case QEvent::Resize:
+    case QEvent::Move:
     {
-        if (windowState().testFlag(Qt::WindowNoState))
+        if (isVisible() && windowState().testFlag(Qt::WindowNoState))
         {
             setMask(rect());
 
-            if (!isMinimized() && isVisible())
-                m_shadow->showLater();
+            sizeMoveBorders();
+
+            m_top_shadow->showLater();
+            m_bottom_shadow->showLater();
+            m_left_shadow->showLater();
+            m_right_shadow->showLater();
         }
         else
         {
             setMask(QRect());
-            m_shadow->hide();
+
+            m_top_shadow->hide();
+            m_bottom_shadow->hide();
+            m_left_shadow->hide();
+            m_right_shadow->hide();
         }
-
-        break;
-    }
-    case QEvent::Move:
-    {
-        if (FIXED_SIZE(this))
-            break;
-
-        sizeMoveBorders();
 
         break;
     }
@@ -1674,7 +1728,10 @@ bool QGoodWindow::event(QEvent *event)
         if (!windowState().testFlag(Qt::WindowNoState))
             break;
 
-        m_shadow->hide();
+        m_top_shadow->hide();
+        m_bottom_shadow->hide();
+        m_left_shadow->hide();
+        m_right_shadow->hide();
 
         break;
     }
@@ -1688,7 +1745,10 @@ bool QGoodWindow::event(QEvent *event)
         if (!windowState().testFlag(Qt::WindowNoState))
             break;
 
-        m_shadow->show();
+        m_top_shadow->show();
+        m_bottom_shadow->show();
+        m_left_shadow->show();
+        m_right_shadow->show();
 
         break;
     }
@@ -1852,7 +1912,10 @@ bool QGoodWindow::eventFilter(QObject *watched, QEvent *event)
 
     if (widget->window() != this
         #ifdef Q_OS_LINUX
-            && widget != m_shadow
+            && widget != m_top_shadow
+            && widget != m_bottom_shadow
+            && widget != m_left_shadow
+            && widget != m_right_shadow
         #endif
             )
         return QMainWindow::eventFilter(watched, event);
@@ -2404,68 +2467,6 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
 
     switch (message)
     {
-    case WM_SHOWWINDOW:
-    {
-        bool show = bool(wParam);
-
-        if (show)
-        {
-            if (gw->m_shadow)
-            {
-                if (gw->windowState().testFlag(Qt::WindowNoState))
-                {
-                    //Show shadow if on "normal" state with delay.
-                    gw->m_shadow->showLater();
-                }
-            }
-
-            SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
-                         SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_FRAMECHANGED);
-
-            QTimer::singleShot(0, gw, [=]{
-                gw->m_self_generated_show_event = true;
-                QShowEvent event;
-                QApplication::sendEvent(gw, &event);
-                gw->m_self_generated_show_event = false;
-            });
-
-            QTimer::singleShot(0, gw->m_main_window, [=]{
-                if (!gw->m_main_window->isVisible())
-                {
-                    gw->m_main_window->show();
-                    gw->sizeMoveWindow();
-                }
-            });
-
-#ifdef QT_VERSION_QT6
-            if (gw->m_helper_window)
-                gw->m_helper_window->show();
-#endif
-        }
-        else //hide
-        {
-            if (gw->focusWidget())
-            {
-                //If app have a valid focused widget,
-                //save them to restore focus later.
-
-                gw->m_focus_widget = gw->focusWidget();
-            }
-
-            if (gw->m_shadow)
-                gw->m_shadow->hide();
-
-#ifdef QT_VERSION_QT6
-            if (gw->m_helper_window)
-                gw->m_helper_window->hide();
-#endif
-
-            QHideEvent event;
-            QApplication::sendEvent(gw, &event);
-        }
-
-        break;
-    }
     case WM_ACTIVATE:
     {
         switch (wParam)
@@ -2538,7 +2539,7 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
 
         int border_width = 0;
 
-        if (gw->m_win_use_native_borders && gw->windowState().testFlag(Qt::WindowNoState))
+        if (gw->m_is_using_system_borders && gw->windowState().testFlag(Qt::WindowNoState))
             border_width = BORDERWIDTH();
 
         QSize minimum = gw->minimumSize();
@@ -2825,7 +2826,7 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
         if (gw->isFullScreen())
             break;
 
-        if (gw->m_win_use_native_borders && !gw->isMaximized())
+        if (gw->m_is_using_system_borders && !gw->isMaximized())
         {
             const int border_width = BORDERWIDTH();
 
@@ -2923,6 +2924,65 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
 
         WINDOWPOS *pwp = reinterpret_cast<WINDOWPOS*>(lParam);
 
+        if (pwp->flags & SWP_SHOWWINDOW)
+        {
+            if (gw->m_shadow)
+            {
+                if (gw->windowState().testFlag(Qt::WindowNoState))
+                {
+                    //Show shadow if on "normal" state with delay.
+                    gw->m_shadow->showLater();
+                }
+            }
+
+            SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
+                         SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+
+            QTimer::singleShot(0, gw, [=]{
+                gw->m_self_generated_show_event = true;
+                QShowEvent event;
+                QApplication::sendEvent(gw, &event);
+                gw->m_self_generated_show_event = false;
+            });
+
+            QTimer::singleShot(0, gw->m_main_window, [=]{
+                if (!gw->m_main_window->isVisible())
+                {
+                    gw->m_main_window->show();
+                    gw->updateScreen(gw->screenForWindow(hwnd));
+                    gw->m_main_window->resize(0, 0);
+                    gw->m_window_ready = true;
+                    gw->m_main_window->resize(gw->size());
+                }
+            });
+
+#ifdef QT_VERSION_QT6
+            if (gw->m_helper_window)
+                gw->m_helper_window->show();
+#endif
+        }
+        else if (pwp->flags & SWP_HIDEWINDOW)
+        {
+            if (gw->focusWidget())
+            {
+                //If app have a valid focused widget,
+                //save them to restore focus later.
+
+                gw->m_focus_widget = gw->focusWidget();
+            }
+
+            if (gw->m_shadow)
+                gw->m_shadow->hide();
+
+#ifdef QT_VERSION_QT6
+            if (gw->m_helper_window)
+                gw->m_helper_window->hide();
+#endif
+
+            QHideEvent event;
+            QApplication::sendEvent(gw, &event);
+        }
+
         if (pwp->flags == (SWP_NOSIZE + SWP_NOMOVE))
         {
             //Activate window to fix no activation
@@ -2970,9 +3030,41 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
         emit gw->windowIconChanged(gw->windowIcon());
         break;
     }
+    case WM_ENTERSIZEMOVE:
+    {
+        gw->m_timer_move->stop();
+
+        break;
+    }
+    case WM_EXITSIZEMOVE:
+    {
+        if (gw->windowHandle()->screen() != gw->screenForWindow(hwnd))
+            gw->m_timer_move->start();
+
+        break;
+    }
     case WM_DPICHANGED:
     {
-        QTimer::singleShot(0, gw, &QGoodWindow::updateScreen);
+        gw->m_timer_move->stop();
+
+        //Wait to refresh screen pixel ratio information.
+        QCoreApplication::processEvents();
+
+        QScreen *screen = gw->screenForWindow(hwnd);
+
+        if (!screen)
+            break;
+
+        if (FIXED_SIZE(gw) && (gw->windowHandle()->screen() != screen))
+        {
+            gw->screenChangeMoveWindow(screen);
+        }
+        else
+        {
+            gw->updateScreen(screen);
+            gw->resize(gw->size());
+        }
+
         break;
     }
     case WM_DISPLAYCHANGE:
@@ -3136,11 +3228,9 @@ void QGoodWindow::sizeMoveWindow()
     setWindowMask();
 #endif
 
-    updateScreen();
-
     moveShadow();
 
-    m_main_window->setGeometry(rect());
+    m_main_window->resize(size());
 }
 
 void QGoodWindow::setWindowMask()
@@ -3179,13 +3269,10 @@ void QGoodWindow::moveShadow()
         return;
 
     const int shadow_width = m_shadow->shadowWidth();
-    const QRect screen_geom = windowHandle()->screen()->geometry();
+    const QPoint adjusted_pos = screenAdjustedPos();
 
-    int adjust_x = qFloor(screen_geom.x() - (screen_geom.x() / m_pixel_ratio));
-    int adjust_y = qFloor(screen_geom.y() - (screen_geom.y() / m_pixel_ratio));
-
-    int pos_x = x() - shadow_width + adjust_x;
-    int pos_y = y() - shadow_width + adjust_y;
+    int pos_x = x() - shadow_width + adjusted_pos.x();
+    int pos_y = y() - shadow_width + adjusted_pos.y();
     int w = width() + shadow_width * 2;
     int h = height() + shadow_width * 2;
 
@@ -3194,30 +3281,18 @@ void QGoodWindow::moveShadow()
     m_shadow->setActive(isActiveWindow());
 }
 
-void QGoodWindow::updateScreen()
+void QGoodWindow::screenChangeMoveWindow(QScreen *screen)
 {
-    QScreen *screen = screenForWindow(m_hwnd);
+    if (!FIXED_SIZE(this))
+        return;
 
     if (!screen)
         return;
 
-    qreal old_pixel_ratio = m_pixel_ratio;
-
-    qreal new_pixel_ratio = screen->devicePixelRatio();
-
-    setCurrentScreen(screen);
-
-    if (qFuzzyCompare(old_pixel_ratio, new_pixel_ratio))
-        return;
-
-    m_pixel_ratio = new_pixel_ratio;
-
-    qreal pixel_ratio;
-
-    if (new_pixel_ratio >= old_pixel_ratio)
-        pixel_ratio = new_pixel_ratio / qreal(1);
-    else
-        pixel_ratio = qreal(1) / old_pixel_ratio;
+    QRect screen_geom = screen->geometry();
+    qreal screen_pixel_ratio = screen->devicePixelRatio();
+    screen_geom.setWidth(qFloor(screen_geom.width() * screen_pixel_ratio));
+    screen_geom.setHeight(qFloor(screen_geom.height() * screen_pixel_ratio));
 
     RECT rect;
     GetWindowRect(m_hwnd, &rect);
@@ -3228,50 +3303,79 @@ void QGoodWindow::updateScreen()
     window_geom.setWidth(rect.right - rect.left);
     window_geom.setHeight(rect.bottom - rect.top);
 
-    QPoint window_center_pos = window_geom.center();
-
-    window_geom.setWidth(qFloor(window_geom.width() * pixel_ratio));
-    window_geom.setHeight(qFloor(window_geom.height() * pixel_ratio));
-    window_geom.moveCenter(QPoint(window_center_pos.x(), window_geom.center().y()));
-
-    QRect screen_geom = screen->geometry();
-    screen_geom.setWidth(qFloor(screen_geom.width() * m_pixel_ratio));
-    screen_geom.setHeight(qFloor(screen_geom.height() * m_pixel_ratio));
-
     QPoint center_pos = window_geom.center();
+    int border_width = m_is_using_system_borders ? BORDERWIDTH() : 0;
 
-    const int margin = 2;
+    QSize size = minimumSize();
+    size.setWidth(qFloor(size.width() * screen_pixel_ratio) + border_width * 2);
+    size.setHeight(qFloor(size.height() * screen_pixel_ratio) + border_width);
+    window_geom.setSize(size);
 
-    if (center_pos.x() < screen_geom.left() + margin)
-        center_pos.setX(screen_geom.left() + margin);
-    else if (center_pos.x() > screen_geom.right() - margin)
-        center_pos.setX(screen_geom.right() - margin);
+    //Keep X position.
+    center_pos.setY(window_geom.center().y());
 
-    if (center_pos.y() < screen_geom.top() + margin)
-        center_pos.setY(screen_geom.top() + margin);
-    else if (center_pos.y() > screen_geom.bottom() - margin)
-        center_pos.setY(screen_geom.bottom() - margin);
+    const int top_dist = qAbs(screen_geom.top() - center_pos.y());
+    const int bottom_dist = qAbs(screen_geom.bottom() - center_pos.y());
+    const int left_dist = qAbs(screen_geom.left() - center_pos.x());
+    const int right_dist = qAbs(screen_geom.right() - center_pos.x());
+
+    const int margin = qCeil(screen_pixel_ratio);
+
+    if (!screen_geom.contains(center_pos))
+    {
+        if (left_dist < right_dist)
+        {
+            if (left_dist < top_dist && left_dist < bottom_dist)
+            {
+                center_pos.setX(screen_geom.left() + margin);
+            }
+            else if (top_dist < bottom_dist)
+            {
+                center_pos.setY(screen_geom.top() + margin);
+            }
+            else
+            {
+                center_pos.setY(screen_geom.bottom() - margin);
+            }
+        }
+        else if (left_dist > right_dist)
+        {
+            if (right_dist < top_dist && right_dist < bottom_dist)
+            {
+                center_pos.setX(screen_geom.right() - margin);
+            }
+            else if (top_dist < bottom_dist)
+            {
+                center_pos.setY(screen_geom.top() + margin);
+            }
+            else
+            {
+                center_pos.setY(screen_geom.bottom() - margin);
+            }
+        }
+    }
 
     window_geom.moveCenter(center_pos);
 
-    SetWindowPos(m_hwnd, nullptr, window_geom.x(), window_geom.y(),
-                 window_geom.width(), window_geom.height(), SWP_NOACTIVATE);
+    setCurrentScreen(screen);
+
+    m_pixel_ratio = screen_pixel_ratio;
+
+    SetWindowPos(m_hwnd, nullptr, window_geom.x(), window_geom.y(), window_geom.width(), window_geom.height(), SWP_NOACTIVATE);
 
     moveShadow();
+}
 
-    if (FIXED_SIZE(this))
-    {
-        QTimer::singleShot(0, this, [=]{
-            const QSize new_size = m_main_window->size();
-            QSize tmp_size;
-            tmp_size.setWidth(qFloor(new_size.width() * m_pixel_ratio));
-            tmp_size.setHeight(qFloor(new_size.height() * m_pixel_ratio));
-            m_main_window->resize(tmp_size);
-            m_main_window->repaint();
-            m_main_window->resize(new_size);
-            m_main_window->repaint();
-        });
-    }
+void QGoodWindow::updateScreen(QScreen *screen)
+{
+    if (!screen)
+        return;
+
+    m_pixel_ratio = screen->devicePixelRatio();
+    setCurrentScreen(screen);
+    moveShadow();
+
+    updateWindowSize();
 }
 
 void QGoodWindow::setCurrentScreen(QScreen *screen)
@@ -3282,6 +3386,18 @@ void QGoodWindow::setCurrentScreen(QScreen *screen)
     if (m_shadow)
         m_shadow->setScreen(screen);
 #endif
+}
+
+void QGoodWindow::updateWindowSize()
+{
+    QTimer::singleShot(0, this, [=]{
+        const int border_width = BORDERWIDTH();
+        m_self_generated_resize_event = true;
+        m_main_window->resize(1, 1);
+        m_main_window->resize(width() + border_width, height() + border_width);
+        m_main_window->resize(size());
+        m_self_generated_resize_event = false;
+    });
 }
 
 QScreen *QGoodWindow::screenForWindow(HWND hwnd)
@@ -3307,6 +3423,16 @@ QScreen *QGoodWindow::screenForWindow(HWND hwnd)
     }
 
     return nullptr;
+}
+
+QPoint QGoodWindow::screenAdjustedPos()
+{
+    const QRect screen_geom = windowHandle()->screen()->geometry();
+
+    int adjust_x = qFloor(screen_geom.x() - (screen_geom.x() / m_pixel_ratio));
+    int adjust_y = qFloor(screen_geom.y() - (screen_geom.y() / m_pixel_ratio));
+
+    return QPoint(adjust_x, adjust_y);
 }
 
 QScreen *QGoodWindow::screenForPoint(const QPoint &pos)
@@ -3419,7 +3545,7 @@ void QGoodWindow::showContextMenu()
     int pos_x = x();
     int pos_y = y() + titleBarHeight();
 
-    if (m_win_use_native_borders && windowState().testFlag(Qt::WindowNoState))
+    if (m_is_using_system_borders && windowState().testFlag(Qt::WindowNoState))
         pos_x += BORDERWIDTH();
 
     pos_x = qFloor(pos_x * m_pixel_ratio);
@@ -3441,7 +3567,7 @@ void QGoodWindow::moveCenterWindow(QWidget *widget)
 
     int border_width = 0;
 
-    if (m_win_use_native_borders && windowState().testFlag(Qt::WindowNoState))
+    if (m_is_using_system_borders && windowState().testFlag(Qt::WindowNoState))
         border_width = BORDERWIDTH();
 
     QRect rect;
@@ -3794,30 +3920,64 @@ void QGoodWindow::sizeMoveBorders()
 
     const int border_width = BORDERWIDTHDPI;
 
-    QRect new_rect = frameGeometry();
-
-    QRegion rgn;
-
-    QRegion visible_region;
+    QRegion visible_rgn;
 
     for (const QScreen *screen : QApplication::screens())
     {
-        visible_region += screen->availableGeometry();
+        visible_rgn += screen->availableGeometry();
     }
 
-    new_rect.adjust(-border_width, -border_width, border_width, border_width);
+    QRect visible_geom = visible_rgn.boundingRect();
+    QRect frame_geom = frameGeometry();
+    frame_geom.adjust(-border_width, -border_width, border_width, border_width);
 
-    rgn = visible_region.intersected(new_rect);
+    {
+        int x = frame_geom.left();
+        int y = frame_geom.top();
+        int w = frame_geom.width();
+        int h = border_width;
 
-    new_rect = new_rect.intersected(visible_region.boundingRect());
+        QRect top_rect = QRect(x, y, w, h).intersected(visible_geom);
 
-    rgn -= frameGeometry();
+        m_top_shadow->move(top_rect.topLeft());
+        m_top_shadow->setFixedSize(top_rect.size());
+    }
 
-    rgn.translate(-new_rect.topLeft());
+    {
+        int x = frame_geom.left();
+        int y = frame_geom.bottom() - border_width;
+        int w = frame_geom.width();
+        int h = border_width;
 
-    m_shadow->move(new_rect.topLeft());
-    m_shadow->setFixedSize(new_rect.size());
-    m_shadow->setMask(rgn);
+        QRect bottom_rect = QRect(x, y, w, h).intersected(visible_geom);
+
+        m_bottom_shadow->move(bottom_rect.topLeft());
+        m_bottom_shadow->setFixedSize(bottom_rect.size());
+    }
+
+    {
+        int x = frame_geom.left();
+        int y = frame_geom.top() + border_width;
+        int w = border_width;
+        int h = frame_geom.height() - border_width * 2;
+
+        QRect left_rect = QRect(x, y, w, h).intersected(visible_geom);
+
+        m_left_shadow->move(left_rect.topLeft());
+        m_left_shadow->setFixedSize(left_rect.size());
+    }
+
+    {
+        int x = frame_geom.left() + frame_geom.width() - border_width;
+        int y = frame_geom.top() + border_width;
+        int w = border_width;
+        int h = frame_geom.height() - border_width * 2;
+
+        QRect right_rect = QRect(x, y, w, h).intersected(visible_geom);
+
+        m_right_shadow->move(right_rect.topLeft());
+        m_right_shadow->setFixedSize(right_rect.size());
+    }
 }
 #endif
 #ifdef Q_OS_MAC
@@ -3854,10 +4014,15 @@ qintptr QGoodWindow::ncHitTest(int pos_x, int pos_y)
 #ifdef Q_OS_WIN
     if (windowState().testFlag(Qt::WindowNoState))
     {
-        if (m_win_use_native_borders)
-            border_width = BORDERWIDTH(); //in pixels.
+        if (m_is_using_system_borders)
+        {
+            if (!FIXED_SIZE(this))
+                border_width = qFloor(BORDERWIDTH() / m_pixel_ratio); //in pixels.
+        }
         else
+        {
             border_width = qFloor(1 * m_pixel_ratio); //in pixels.
+        }
     }
 #endif
 
@@ -3874,13 +4039,11 @@ qintptr QGoodWindow::ncHitTest(int pos_x, int pos_y)
                 !size_grip->window()->windowFlags().testFlag(Qt::SubWindow))
         {
             QPoint cursor_pos_map_widget = size_grip->parentWidget()->mapFromGlobal(cursor_pos);
-            QRect screen_geom = windowHandle()->screen()->geometry();
 
-            int adjust_x = qFloor(screen_geom.x() - (screen_geom.x() / m_pixel_ratio));
-            int adjust_y = qFloor(screen_geom.y() - (screen_geom.y() / m_pixel_ratio));
+            QPoint adjusted_pos = screenAdjustedPos();
 
-            cursor_pos_map_widget.setX(cursor_pos_map_widget.x() + adjust_x);
-            cursor_pos_map_widget.setY(cursor_pos_map_widget.y() + adjust_y);
+            cursor_pos_map_widget.setX(cursor_pos_map_widget.x() + adjusted_pos.x());
+            cursor_pos_map_widget.setY(cursor_pos_map_widget.y() + adjusted_pos.y());
 
             if (size_grip->geometry().contains(cursor_pos_map_widget))
                 return HTBOTTOMRIGHT;

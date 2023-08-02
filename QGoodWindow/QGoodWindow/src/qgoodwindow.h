@@ -472,8 +472,11 @@ private:
     void sizeMoveWindow();
     void setWindowMask();
     void moveShadow();
-    void updateScreen();
+    void screenChangeMoveWindow(QScreen *screen);
+    void updateScreen(QScreen *screen);
     void setCurrentScreen(QScreen *screen);
+    void updateWindowSize();
+    QPoint screenAdjustedPos();
     QScreen *screenForWindow(HWND hwnd);
     QScreen *screenForPoint(const QPoint &pos);
     void showContextMenu(int x, int y);
@@ -486,7 +489,6 @@ private:
     //Variables
     HWND m_hwnd;
     bool m_is_win_11_or_greater;
-    bool m_win_use_native_borders;
     QPointer<QMainWindow> m_main_window;
     QPointer<Shadow> m_shadow;
     QPointer<QWidget> m_helper_widget;
@@ -498,9 +500,11 @@ private:
 
     QPointer<QWidget> m_focus_widget;
 
+    bool m_window_ready;
     bool m_closed;
     bool m_visible;
     bool m_self_generated_close_event;
+    QPointer<QTimer> m_timer_move;
 
     Qt::WindowStates m_window_state;
 
@@ -513,6 +517,7 @@ private:
 
     Qt::WindowState m_last_state;
     bool m_self_generated_show_event;
+    bool m_self_generated_resize_event;
 
     QColor m_clear_color;
 
@@ -527,7 +532,10 @@ private:
     void sizeMoveBorders();
 
     //Variables
-    QPointer<Shadow> m_shadow;
+    QPointer<Shadow> m_top_shadow;
+    QPointer<Shadow> m_bottom_shadow;
+    QPointer<Shadow> m_left_shadow;
+    QPointer<Shadow> m_right_shadow;
 
     int m_margin;
     QPoint m_cursor_pos;
@@ -577,6 +585,8 @@ private:
     QRegion m_cls_mask;
 
     qreal m_pixel_ratio;
+
+    bool m_is_using_system_borders;
 
     bool m_dark;
 

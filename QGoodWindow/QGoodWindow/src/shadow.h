@@ -40,7 +40,7 @@ class Shadow : public QWidget
     Q_OBJECT
 public:
 #if defined Q_OS_WIN || defined Q_OS_LINUX
-    explicit Shadow(qintptr hwnd, QWidget *parent);
+    explicit Shadow(qintptr hwnd, QGoodWindow *gw, QWidget *parent);
 #endif
 
 public slots:
@@ -59,7 +59,7 @@ private:
     //Variables
 #if defined Q_OS_WIN || defined Q_OS_LINUX
     QPointer<QGoodWindow> m_parent;
-    QTimer *m_timer;
+    QPointer<QTimer> m_timer;
 #endif
 #ifdef Q_OS_WIN
     HWND m_hwnd;

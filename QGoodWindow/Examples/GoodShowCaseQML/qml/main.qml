@@ -135,7 +135,7 @@ Rectangle
                     width: 16
                     height: 16
                     smooth: true
-                    source: isActive ? windowIcon : windowIconGrayed
+                    source: isTitleBarVisible ? (isActive ? windowIcon : windowIconGrayed) : ""
                 }
             }
 
@@ -162,7 +162,7 @@ Rectangle
                 height: parent.height
                 buttonColor: "#009900"
                 buttonColorPressed: "#005500"
-                imgSource: loadPixmapToString(":/icons/minimize.svg")
+                imgSource: isTitleBarVisible ? loadPixmapToString(":/icons/minimize.svg") : ""
             }
 
             CaptionButton
@@ -174,8 +174,8 @@ Rectangle
                 height: parent.height
                 buttonColor: "#999900"
                 buttonColorPressed: "#555500"
-                imgSource: !isMaximized ? loadPixmapToString(":/icons/maximize.svg") :
-                                          loadPixmapToString(":/icons/restore.svg")
+                imgSource: isTitleBarVisible ? (!isMaximized ? loadPixmapToString(":/icons/maximize.svg") :
+                                                               loadPixmapToString(":/icons/restore.svg")) : ""
             }
 
             CaptionButton
@@ -187,7 +187,7 @@ Rectangle
                 height: parent.height
                 buttonColor: "#FF0000"
                 buttonColorPressed: "#990000"
-                imgSource: loadPixmapToString(":/icons/close.svg")
+                imgSource: isTitleBarVisible ? loadPixmapToString(":/icons/close.svg") : ""
             }
         }
 
@@ -202,8 +202,8 @@ Rectangle
             Rectangle
             {
                 color: "green"
-                width: 100
-                height: 100
+                width: Math.min(parent.width, parent.height) / 2
+                height: Math.min(parent.width, parent.height) / 2
                 anchors.centerIn: parent
 
                 RotationAnimation on rotation

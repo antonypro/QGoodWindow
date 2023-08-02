@@ -33,14 +33,14 @@ SOFTWARE.
 #define COLOR3 QColor(0, 0, 0, 1)
 #endif
 
-Shadow::Shadow(qintptr hwnd, QWidget *parent) : QWidget(parent)
+Shadow::Shadow(qintptr hwnd, QGoodWindow *gw, QWidget *parent) : QWidget(parent)
 {
 #ifdef Q_OS_WIN
     setParent(nullptr);
 
     m_hwnd = HWND(hwnd);
     m_active = true;
-    m_parent = qobject_cast<QGoodWindow*>(parent);
+    m_parent = gw;
 
     setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::Tool |
                    (m_parent ? Qt::WindowStaysOnTopHint : Qt::WindowType(0)));
@@ -51,12 +51,11 @@ Shadow::Shadow(qintptr hwnd, QWidget *parent) : QWidget(parent)
 #ifdef Q_OS_LINUX
     Q_UNUSED(hwnd)
 
-    m_parent = qobject_cast<QGoodWindow*>(parent);
+    m_parent = gw;
 
     setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::Tool |
                    Qt::WindowDoesNotAcceptFocus | Qt::NoDropShadowWindowHint);
 
-    setAttribute(Qt::WA_NoSystemBackground);
     setAttribute(Qt::WA_TranslucentBackground);
 #endif
 #if defined Q_OS_WIN || defined Q_OS_LINUX
@@ -295,6 +294,6 @@ void Shadow::paintEvent(QPaintEvent *event)
 
     QPainter painter(this);
     painter.setCompositionMode(QPainter::CompositionMode_Source);
-    painter.fillRect(rect(), Qt::transparent);
+    painter.fillRect(rect(), QColor(0, 0, 0, 0));
 #endif
 }

@@ -2,7 +2,7 @@
 
 *Border less window implementation for Qt 5 and Qt 6 on Windows, Linux and macOS.*
 
-Version 2.4-1
+Version 2.4.1
 
 #### *QGoodWindow* in dark mode on Windows 11: ![](img/qgoodwindow.png)
 
@@ -11,6 +11,10 @@ Version 2.4-1
 **QGoodWindow** project is separated in two modules, the  **QGoodWindow** and **QGoodCentralWidget**.
 
 **QGoodWindow** provides the core of the project and can be used without **QGoodCentralWidget**, however **QGoodCentralWidget** offers a ready to use window with icon, title, caption buttons and a easy way to add widgets to the title bar.
+
+### **Requirements:**
+
+Is required at least **Qt 5.5** with a full compliant **C++11** compiler.
 
 ### **Building, using and API:**
 
