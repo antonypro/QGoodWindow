@@ -31,11 +31,11 @@ target_sources(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/src/qgoodwindow_style.qrc
 )
 
-target_include_directories(${PROJECT_NAME} PRIVATE
+target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}
 )
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE
+target_compile_definitions(${PROJECT_NAME} PUBLIC
     UNICODE
 )
 
@@ -44,25 +44,25 @@ if(WIN32 AND ${QT_VERSION_MAJOR} EQUAL 5)
         WinExtras
     )
 
-    target_link_libraries(${PROJECT_NAME} PRIVATE
+    target_link_libraries(${PROJECT_NAME} PUBLIC
         Qt5::WinExtras
     )
 endif()
 
 if(${QT_VERSION_MAJOR} EQUAL 5)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE
+    target_compile_definitions(${PROJECT_NAME} PUBLIC
         QT_VERSION_QT5
     )
 endif()
 
 if(${QT_VERSION_MAJOR} EQUAL 6)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE
+    target_compile_definitions(${PROJECT_NAME} PUBLIC
         QT_VERSION_QT6
     )
 endif()
 
 if(WIN32)
-    target_link_libraries(${PROJECT_NAME} PRIVATE
+    target_link_libraries(${PROJECT_NAME} PUBLIC
         Gdi32
         User32
     )
@@ -78,7 +78,7 @@ if(NOT no_qgoodwindow)
             ${CMAKE_CURRENT_LIST_DIR}/src/shadow.cpp ${CMAKE_CURRENT_LIST_DIR}/src/shadow.h
         )
 
-        target_compile_definitions(${PROJECT_NAME} PRIVATE
+        target_compile_definitions(${PROJECT_NAME} PUBLIC
             QGOODWINDOW
         )
 
@@ -88,7 +88,7 @@ if(NOT no_qgoodwindow)
             Widgets
         )
 
-        target_link_libraries(${PROJECT_NAME} PRIVATE
+        target_link_libraries(${PROJECT_NAME} PUBLIC
             Qt${QT_VERSION_MAJOR}::Core
             Qt${QT_VERSION_MAJOR}::Gui
             Qt${QT_VERSION_MAJOR}::Widgets
@@ -103,11 +103,11 @@ if(NOT no_qgoodwindow)
             ${CMAKE_CURRENT_LIST_DIR}/src/shadow.cpp ${CMAKE_CURRENT_LIST_DIR}/src/shadow.h
         )
 
-        target_compile_definitions(${PROJECT_NAME} PRIVATE
+        target_compile_definitions(${PROJECT_NAME} PUBLIC
             QGOODWINDOW
         )
 
-        target_compile_options(${PROJECT_NAME} PRIVATE
+        target_compile_options(${PROJECT_NAME} PUBLIC
             -Wno-deprecated-declarations
         )
 
@@ -115,16 +115,16 @@ if(NOT no_qgoodwindow)
             find_package(PkgConfig REQUIRED)
             pkg_check_modules(GTK2 REQUIRED "gtk+-2.0")
             if(DEFINED GTK2_INCLUDE_DIRS)
-                target_include_directories(${PROJECT_NAME} PRIVATE ${GTK2_INCLUDE_DIRS})
+                target_include_directories(${PROJECT_NAME} PUBLIC ${GTK2_INCLUDE_DIRS})
             endif()
             if(DEFINED GTK2_LIBRARY_DIRS)
-                target_link_directories(${PROJECT_NAME} PRIVATE ${GTK2_LIBRARY_DIRS})
+                target_link_directories(${PROJECT_NAME} PUBLIC ${GTK2_LIBRARY_DIRS})
             endif()
             if(DEFINED GTK2_CFLAGS_OTHER)
-                target_compile_options(${PROJECT_NAME} PRIVATE ${GTK2_CFLAGS_OTHER})
+                target_compile_options(${PROJECT_NAME} PUBLIC ${GTK2_CFLAGS_OTHER})
             endif()
             if(DEFINED GTK2_LIBRARIES)
-                target_link_libraries(${PROJECT_NAME} PRIVATE ${GTK2_LIBRARIES})
+                target_link_libraries(${PROJECT_NAME} PUBLIC ${GTK2_LIBRARIES})
             endif()
         endif()
 
@@ -132,20 +132,20 @@ if(NOT no_qgoodwindow)
             find_package(PkgConfig REQUIRED)
             pkg_check_modules(GTK3 REQUIRED "gtk+-3.0")
             if(DEFINED GTK3_INCLUDE_DIRS)
-                target_include_directories(${PROJECT_NAME} PRIVATE ${GTK3_INCLUDE_DIRS})
+                target_include_directories(${PROJECT_NAME} PUBLIC ${GTK3_INCLUDE_DIRS})
             endif()
             if(DEFINED GTK3_LIBRARY_DIRS)
-                target_link_directories(${PROJECT_NAME} PRIVATE ${GTK3_LIBRARY_DIRS})
+                target_link_directories(${PROJECT_NAME} PUBLIC ${GTK3_LIBRARY_DIRS})
             endif()
             if(DEFINED GTK3_CFLAGS_OTHER)
-                target_compile_options(${PROJECT_NAME} PRIVATE ${GTK3_CFLAGS_OTHER})
+                target_compile_options(${PROJECT_NAME} PUBLIC ${GTK3_CFLAGS_OTHER})
             endif()
             if(DEFINED GTK3_LIBRARIES)
-                target_link_libraries(${PROJECT_NAME} PRIVATE ${GTK3_LIBRARIES})
+                target_link_libraries(${PROJECT_NAME} PUBLIC ${GTK3_LIBRARIES})
             endif()
         endif()
 
-        target_link_libraries(${PROJECT_NAME} PRIVATE
+        target_link_libraries(${PROJECT_NAME} PUBLIC
             X11
         )
 
@@ -156,7 +156,7 @@ if(NOT no_qgoodwindow)
             Test
         )
 
-        target_link_libraries(${PROJECT_NAME} PRIVATE
+        target_link_libraries(${PROJECT_NAME} PUBLIC
             Qt${QT_VERSION_MAJOR}::Core
             Qt${QT_VERSION_MAJOR}::Gui
             Qt${QT_VERSION_MAJOR}::Widgets
@@ -168,13 +168,13 @@ if(NOT no_qgoodwindow)
                 X11Extras
             )
 
-            target_link_libraries(${PROJECT_NAME} PRIVATE
+            target_link_libraries(${PROJECT_NAME} PUBLIC
                 Qt5::X11Extras
             )
         endif()
 
         if(${QT_VERSION_MAJOR} EQUAL 6)
-            target_include_directories(${PROJECT_NAME} PRIVATE
+            target_include_directories(${PROJECT_NAME} PUBLIC
                 ${Qt6Gui_PRIVATE_INCLUDE_DIRS}
             )
         endif()
@@ -189,7 +189,7 @@ if(NOT no_qgoodwindow)
             ${CMAKE_CURRENT_LIST_DIR}/src/qgooddialog.cpp ${CMAKE_CURRENT_LIST_DIR}/src/qgooddialog.h
         )
 
-        target_compile_definitions(${PROJECT_NAME} PRIVATE
+        target_compile_definitions(${PROJECT_NAME} PUBLIC
             QGOODWINDOW
         )
 
@@ -199,13 +199,13 @@ if(NOT no_qgoodwindow)
             Widgets
         )
 
-        target_link_libraries(${PROJECT_NAME} PRIVATE
+        target_link_libraries(${PROJECT_NAME} PUBLIC
             Qt${QT_VERSION_MAJOR}::Core
             Qt${QT_VERSION_MAJOR}::Gui
             Qt${QT_VERSION_MAJOR}::Widgets
         )
 
-        target_link_libraries(${PROJECT_NAME} PRIVATE
+        target_link_libraries(${PROJECT_NAME} PUBLIC
             "-framework AppKit"
             "-framework Cocoa"
             "-framework Foundation"

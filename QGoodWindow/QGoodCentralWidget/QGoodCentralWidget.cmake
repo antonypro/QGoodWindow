@@ -38,11 +38,11 @@ if(qgoodwindow)
         Svg
     )
 
-    target_link_libraries(${PROJECT_NAME} PRIVATE
+    target_link_libraries(${PROJECT_NAME} PUBLIC
         Qt${QT_VERSION_MAJOR}::Svg
     )
 endif()
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_LIST_DIR})
+target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_LIST_DIR})
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE QGOODCENTRALWIDGET)
+target_compile_definitions(${PROJECT_NAME} PUBLIC QGOODCENTRALWIDGET)
