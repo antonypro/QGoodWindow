@@ -58,7 +58,7 @@ public:
     explicit GLWidget(QWidget *parent = nullptr);
     ~GLWidget();
 
-public slots:
+public Q_SLOTS:
     void rotate();
 
 private:

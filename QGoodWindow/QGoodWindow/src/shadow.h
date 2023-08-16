@@ -43,7 +43,7 @@ public:
     explicit Shadow(qintptr hwnd, QGoodWindow *gw, QWidget *parent);
 #endif
 
-public slots:
+public Q_SLOTS:
     void showLater();
     void show();
     void hide();

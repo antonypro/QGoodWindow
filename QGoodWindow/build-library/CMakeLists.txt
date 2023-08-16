@@ -59,6 +59,8 @@ else()
     add_library(${PROJECT_NAME} STATIC)
 endif()
 
+target_compile_definitions(${PROJECT_NAME} PRIVATE QT_NO_KEYWORDS)
+
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Set build mode")
 set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Release MinSizeRel RelWithDebInfo Debug)
 

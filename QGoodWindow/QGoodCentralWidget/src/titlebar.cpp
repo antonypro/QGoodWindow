@@ -552,22 +552,22 @@ void TitleBar::captionButtonStateChanged(const QGoodWindow::CaptionButtonState &
         // Mouse button clicked
     case QGoodWindow::CaptionButtonState::MinimizeClicked:
     {
-        emit m_min_btn->clicked();
+        Q_EMIT m_min_btn->clicked();
 
         break;
     }
     case QGoodWindow::CaptionButtonState::MaximizeClicked:
     {
         if (!m_is_maximized)
-            emit m_max_btn->clicked();
+            Q_EMIT m_max_btn->clicked();
         else
-            emit m_restore_btn->clicked();
+            Q_EMIT m_restore_btn->clicked();
 
         break;
     }
     case QGoodWindow::CaptionButtonState::CloseClicked:
     {
-        emit m_cls_btn->clicked();
+        Q_EMIT m_cls_btn->clicked();
 
         break;
     }

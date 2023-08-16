@@ -42,10 +42,10 @@ private:
     explicit QGoodStateHolder();
     ~QGoodStateHolder();
 
-signals:
+Q_SIGNALS:
     void currentThemeChanged();
 
-public slots:
+public Q_SLOTS:
     bool isCurrentThemeDark() const;
     void setCurrentThemeDark(bool dark);
 

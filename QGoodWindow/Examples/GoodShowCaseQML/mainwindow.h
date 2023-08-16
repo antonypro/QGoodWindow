@@ -47,10 +47,10 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
-public slots:
+public Q_SLOTS:
     QString loadPixmapToString(const QString &path);
 
-private slots:
+private Q_SLOTS:
     QPixmap loadGrayedPixmap(const QPixmap &pix);
     QString loadPixmapAsBase64(const QPixmap &pix);
     void captionButtonStateChangedPrivate(const QGoodWindow::CaptionButtonState &state);

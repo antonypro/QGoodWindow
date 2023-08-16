@@ -492,13 +492,13 @@ QGoodWindow::QGoodWindow(QWidget *parent, const QColor &clear_color) : QMainWind
         if (windowTitle().isEmpty())
         {
             setWindowTitle(qApp->applicationName());
-            QTimer::singleShot(0, this, [=]{emit windowTitleChanged(windowTitle());});
+            QTimer::singleShot(0, this, [=]{Q_EMIT windowTitleChanged(windowTitle());});
         }
 
         if (windowIcon().isNull())
         {
             setWindowIcon(qApp->style()->standardIcon(QStyle::SP_DesktopIcon));
-            QTimer::singleShot(0, this, [=]{emit windowIconChanged(windowIcon());});
+            QTimer::singleShot(0, this, [=]{Q_EMIT windowIconChanged(windowIcon());});
         }
     };
 #ifdef Q_OS_WIN
@@ -544,7 +544,7 @@ void QGoodWindow::themeChanged()
     if (m_dark != dark)
     {
         m_dark = dark;
-        emit systemThemeChanged();
+        Q_EMIT systemThemeChanged();
     }
 #endif
 }
@@ -3022,12 +3022,12 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
 #endif
     case WM_SETTEXT:
     {
-        emit gw->windowTitleChanged(gw->windowTitle());
+        Q_EMIT gw->windowTitleChanged(gw->windowTitle());
         break;
     }
     case WM_SETICON:
     {
-        emit gw->windowIconChanged(gw->windowIcon());
+        Q_EMIT gw->windowIconChanged(gw->windowIcon());
         break;
     }
     case WM_ENTERSIZEMOVE:
@@ -4126,19 +4126,19 @@ void QGoodWindow::buttonEnter(qintptr button)
     {
     case HTMINBUTTON:
     {
-        emit captionButtonStateChanged(CaptionButtonState::MinimizeHoverEnter);
+        Q_EMIT captionButtonStateChanged(CaptionButtonState::MinimizeHoverEnter);
 
         break;
     }
     case HTMAXBUTTON:
     {
-        emit captionButtonStateChanged(CaptionButtonState::MaximizeHoverEnter);
+        Q_EMIT captionButtonStateChanged(CaptionButtonState::MaximizeHoverEnter);
 
         break;
     }
     case HTCLOSE:
     {
-        emit captionButtonStateChanged(CaptionButtonState::CloseHoverEnter);
+        Q_EMIT captionButtonStateChanged(CaptionButtonState::CloseHoverEnter);
 
         break;
     }
@@ -4161,19 +4161,19 @@ void QGoodWindow::buttonLeave(qintptr button)
     {
     case HTMINBUTTON:
     {
-        emit captionButtonStateChanged(CaptionButtonState::MinimizeHoverLeave);
+        Q_EMIT captionButtonStateChanged(CaptionButtonState::MinimizeHoverLeave);
 
         break;
     }
     case HTMAXBUTTON:
     {
-        emit captionButtonStateChanged(CaptionButtonState::MaximizeHoverLeave);
+        Q_EMIT captionButtonStateChanged(CaptionButtonState::MaximizeHoverLeave);
 
         break;
     }
     case HTCLOSE:
     {
-        emit captionButtonStateChanged(CaptionButtonState::CloseHoverLeave);
+        Q_EMIT captionButtonStateChanged(CaptionButtonState::CloseHoverLeave);
 
         break;
     }
@@ -4194,7 +4194,7 @@ bool QGoodWindow::buttonPress(qintptr button)
         m_is_caption_button_pressed = true;
         m_caption_button_pressed = HTMINBUTTON;
 
-        emit captionButtonStateChanged(CaptionButtonState::MinimizePress);
+        Q_EMIT captionButtonStateChanged(CaptionButtonState::MinimizePress);
 
         activateWindow();
 
@@ -4205,7 +4205,7 @@ bool QGoodWindow::buttonPress(qintptr button)
         m_is_caption_button_pressed = true;
         m_caption_button_pressed = HTMAXBUTTON;
 
-        emit captionButtonStateChanged(CaptionButtonState::MaximizePress);
+        Q_EMIT captionButtonStateChanged(CaptionButtonState::MaximizePress);
 
         activateWindow();
 
@@ -4216,7 +4216,7 @@ bool QGoodWindow::buttonPress(qintptr button)
         m_is_caption_button_pressed = true;
         m_caption_button_pressed = HTCLOSE;
 
-        emit captionButtonStateChanged(CaptionButtonState::ClosePress);
+        Q_EMIT captionButtonStateChanged(CaptionButtonState::ClosePress);
 
         activateWindow();
 
@@ -4247,11 +4247,11 @@ bool QGoodWindow::buttonRelease(qintptr button, bool valid_click)
     {
     case HTMINBUTTON:
     {
-        emit captionButtonStateChanged(CaptionButtonState::MinimizeRelease);
+        Q_EMIT captionButtonStateChanged(CaptionButtonState::MinimizeRelease);
 
         if (valid_click)
         {
-            emit captionButtonStateChanged(CaptionButtonState::MinimizeClicked);
+            Q_EMIT captionButtonStateChanged(CaptionButtonState::MinimizeClicked);
             m_hover_timer->start();
         }
 
@@ -4259,11 +4259,11 @@ bool QGoodWindow::buttonRelease(qintptr button, bool valid_click)
     }
     case HTMAXBUTTON:
     {
-        emit captionButtonStateChanged(CaptionButtonState::MaximizeRelease);
+        Q_EMIT captionButtonStateChanged(CaptionButtonState::MaximizeRelease);
 
         if (valid_click)
         {
-            emit captionButtonStateChanged(CaptionButtonState::MaximizeClicked);
+            Q_EMIT captionButtonStateChanged(CaptionButtonState::MaximizeClicked);
             m_hover_timer->start();
         }
 
@@ -4271,11 +4271,11 @@ bool QGoodWindow::buttonRelease(qintptr button, bool valid_click)
     }
     case HTCLOSE:
     {
-        emit captionButtonStateChanged(CaptionButtonState::CloseRelease);
+        Q_EMIT captionButtonStateChanged(CaptionButtonState::CloseRelease);
 
         if (valid_click)
         {
-            emit captionButtonStateChanged(CaptionButtonState::CloseClicked);
+            Q_EMIT captionButtonStateChanged(CaptionButtonState::CloseClicked);
             m_hover_timer->start();
         }
 

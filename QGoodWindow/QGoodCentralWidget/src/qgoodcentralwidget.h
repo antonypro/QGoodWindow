@@ -54,7 +54,7 @@ public:
                                     QWidget *right_title_bar_widget = nullptr,
                                     bool title_visible = true, bool icon_visible = true);
 
-public slots:
+public Q_SLOTS:
     /** Set the title bar and the central widget unified. */
     void setUnifiedTitleBarAndCentralWidget(bool unified);
 

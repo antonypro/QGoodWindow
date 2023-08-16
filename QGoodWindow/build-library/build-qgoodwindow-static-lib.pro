@@ -22,7 +22,7 @@
 
 TEMPLATE = lib
 
-CONFIG += staticlib
+CONFIG += staticlib no_keywords
 
 TARGET = QGoodWindow
 
