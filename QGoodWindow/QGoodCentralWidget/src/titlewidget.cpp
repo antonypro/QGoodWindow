@@ -107,8 +107,7 @@ void TitleWidget::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.setRenderHints(QPainter::Antialiasing);
 
-    QFont font;
-    font.setPixelSize(12);
+    QFont font = this->font();
 #ifdef Q_OS_WIN
     font.setFamily("Segoe UI");
 #else
