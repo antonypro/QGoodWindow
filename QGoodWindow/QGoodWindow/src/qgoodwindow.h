@@ -164,7 +164,7 @@ public:
     static QGoodStateHolder *qGoodStateHolderInstance();
 
     /*** QGOODWINDOW FUNCTIONS END ***/
-signals:
+Q_SIGNALS:
     /** On handled caption buttons, this SIGNAL report the state of these buttons. */
     void captionButtonStateChanged(const QGoodWindow::CaptionButtonState &state);
 
@@ -238,7 +238,7 @@ public:
     Q_DECL_DEPRECATED QRect rightCaptionButtonsRect() const
     {Q_ASSERT(false); return QRect();}
 
-public slots:
+public Q_SLOTS:
     /** Set title bar height for *QGoodWindow*. */
     void setTitleBarHeight(int height);
 

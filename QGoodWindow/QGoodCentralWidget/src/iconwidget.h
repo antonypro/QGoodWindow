@@ -36,7 +36,7 @@ class IconWidget : public QWidget
 public:
     explicit IconWidget(QWidget *parent = nullptr);
 
-public slots:
+public Q_SLOTS:
     void setPixmap(const QPixmap &pixmap);
     void setActive(bool active);
 

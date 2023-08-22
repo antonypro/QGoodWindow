@@ -40,13 +40,13 @@ class TitleBar : public QFrame
 public:
     explicit TitleBar(QGoodWindow *gw, QWidget *parent = nullptr);
 
-signals:
+Q_SIGNALS:
     void showMinimized();
     void showNormal();
     void showMaximized();
     void closeWindow();
 
-public slots:
+public Q_SLOTS:
     void setTitle(const QString &title);
     void setIcon(const QPixmap &icon);
     void setActive(bool active);

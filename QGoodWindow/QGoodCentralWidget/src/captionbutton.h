@@ -46,10 +46,10 @@ public:
     explicit CaptionButton(IconType type, QWidget *parent = nullptr);
     ~CaptionButton();
 
-signals:
+Q_SIGNALS:
     void clicked();
 
-public slots:
+public Q_SLOTS:
     void setIconMode(bool icon_dark);
     void setActive(bool is_active);
     void setState(int state);

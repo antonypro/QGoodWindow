@@ -35,10 +35,10 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
-public slots:
+public Q_SLOTS:
     void show();
 
-private slots:
+private Q_SLOTS:
     void adjustSizeLabel();
 
 private:

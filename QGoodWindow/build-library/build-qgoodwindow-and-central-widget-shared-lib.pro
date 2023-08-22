@@ -22,7 +22,7 @@
 
 TEMPLATE = lib
 
-CONFIG += plugin
+CONFIG += plugin no_keywords
 
 TARGET = QGoodWindow
 

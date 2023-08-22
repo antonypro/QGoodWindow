@@ -38,7 +38,7 @@ class TitleWidget : public QWidget
 public:
     explicit TitleWidget(TitleBar *title_bar, QWidget *parent = nullptr);
 
-public slots:
+public Q_SLOTS:
     void setText(const QString &text);
     void setActive(bool active);
     void setTitleAlignment(const Qt::Alignment &alignment);
