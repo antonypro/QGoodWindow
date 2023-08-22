@@ -1,3 +1,7 @@
+## *Version 2.4.1-1:*
+
+- Merged pull request [#44](https://github.com/antonypro/QGoodWindow/pull/44).
+
 ## *Version 2.4.1:*
 
 - More improvements on multi monitor environment with different DPI on Windows.
