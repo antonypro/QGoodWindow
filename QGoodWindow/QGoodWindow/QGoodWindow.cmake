@@ -66,6 +66,9 @@ if(WIN32)
         Gdi32
         User32
     )
+
+    set_property(TARGET ${PROJECT_NAME} PROPERTY WIN32_EXECUTABLE true)
+    set(CMAKE_VS_INCLUDE_INSTALL_TO_DEFAULT_BUILD true)
 endif()
 
 if(NOT no_qgoodwindow)

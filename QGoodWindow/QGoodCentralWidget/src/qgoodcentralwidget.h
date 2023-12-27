@@ -164,10 +164,14 @@ protected:
     //\cond HIDDEN_SYMBOLS
     //Functions
     bool eventFilter(QObject *watched, QEvent *event);
+    bool event(QEvent *event);
     //\endcond
 
 private:
     //\cond HIDDEN_SYMBOLS
+    //Functions
+    void updateWindowLater();
+
     //Variables
     QPointer<QGoodWindow> m_gw;
     QPointer<QWidget> m_central_widget_place_holder;

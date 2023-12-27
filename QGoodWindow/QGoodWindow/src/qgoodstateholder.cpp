@@ -49,5 +49,5 @@ void QGoodStateHolder::setCurrentThemeDark(bool dark)
 {
 	m_dark = dark;
 
-	Q_EMIT currentThemeChanged();
+    Q_EMIT currentThemeChanged();
 }

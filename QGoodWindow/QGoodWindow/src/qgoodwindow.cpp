@@ -45,9 +45,9 @@ SOFTWARE.
 #endif
 
 #ifdef QGOODWINDOW
-#define FIXED_WIDTH(gw) (gw->minimumWidth() >= gw->maximumWidth())
-#define FIXED_HEIGHT(gw) (gw->minimumHeight() >= gw->maximumHeight())
-#define FIXED_SIZE(gw) (FIXED_WIDTH(gw) && FIXED_HEIGHT(gw))
+#define FIXED_WIDTH(widget) (widget->minimumWidth() >= widget->maximumWidth())
+#define FIXED_HEIGHT(widget) (widget->minimumHeight() >= widget->maximumHeight())
+#define FIXED_SIZE(widget) (FIXED_WIDTH(widget) && FIXED_HEIGHT(widget))
 #endif
 
 #ifdef Q_OS_WIN
@@ -178,7 +178,7 @@ private:
     HWND m_gw_hwnd;
 };
 
-inline bool isWinXOrGreater(DWORD major_version, DWORD build_number)
+inline bool isWinXOrGreater(DWORD major_version, DWORD minor_version, DWORD build_number)
 {
     bool is_win_x_or_greater = false;
 
@@ -192,8 +192,11 @@ inline bool isWinXOrGreater(DWORD major_version, DWORD build_number)
         os_info.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEXW);
         NTSTATUS status = pRtlGetVersion(&os_info);
         if (status == 0)
+        {
             is_win_x_or_greater = (os_info.dwMajorVersion >= major_version &&
-                                    os_info.dwBuildNumber >= build_number);
+                                   os_info.dwMinorVersion >= minor_version &&
+                                   os_info.dwBuildNumber >= build_number);
+        }
     }
 
     return is_win_x_or_greater;
@@ -201,7 +204,7 @@ inline bool isWinXOrGreater(DWORD major_version, DWORD build_number)
 
 inline bool isWin11OrGreater()
 {
-    bool is_win_11_or_greater = isWinXOrGreater(10, 22000);
+    bool is_win_11_or_greater = isWinXOrGreater(10, 0, 22000);
 
     return is_win_11_or_greater;
 }
@@ -303,11 +306,12 @@ QGoodWindow::QGoodWindow(QWidget *parent, const QColor &clear_color) : QMainWind
     m_last_move_button = -1;
 #endif
 #ifdef Q_OS_MAC
+    m_is_native_caption_buttons_visible_on_mac = true;
     m_mouse_button_pressed = false;
     m_on_animate_event = false;
 #endif
 #ifdef Q_OS_WIN
-    m_window_ready = false;
+    m_window_ready_for_resize = false;
     m_closed = false;
     m_visible = false;
     m_self_generated_close_event = false;
@@ -334,8 +338,6 @@ QGoodWindow::QGoodWindow(QWidget *parent, const QColor &clear_color) : QMainWind
     m_last_state = Qt::WindowNoState;
 
     m_self_generated_show_event = false;
-
-    m_self_generated_resize_event = false;
 
     m_native_event = nullptr;
 
@@ -398,10 +400,18 @@ QGoodWindow::QGoodWindow(QWidget *parent, const QColor &clear_color) : QMainWind
     {
         QGoodWindow *parent = m_parent ? this : nullptr;
         m_shadow = new Shadow(qintptr(m_hwnd), parent, parent);
+        m_shadow->createWinId();
+        connect(m_shadow, &Shadow::showSignal, this, &QGoodWindow::moveShadow);
     }
 
     m_main_window = static_cast<QMainWindow*>(this);
+    m_main_window->createWinId();
     m_main_window->installEventFilter(this);
+
+    QWidget *widget_proxy = new QWidget(m_main_window);
+    m_main_window->setCentralWidget(widget_proxy);
+
+    m_proxy_widget = new QWidget(widget_proxy);
 
     QScreen *screen = screenForWindow(m_hwnd);
     m_pixel_ratio = screen->devicePixelRatio();
@@ -415,6 +425,16 @@ QGoodWindow::QGoodWindow(QWidget *parent, const QColor &clear_color) : QMainWind
         m_native_event = new QGoodWindowUtils::NativeEventFilter(this);
         qApp->installNativeEventFilter(m_native_event);
     }
+
+    if (m_parent)
+    {
+        disableMinimize();
+        disableMaximize();
+    }
+
+    //Fix that hides native title bar.
+    frameChanged();
+
 #ifdef QT_VERSION_QT5
     if (!QtWin::isCompositionEnabled())
     {
@@ -452,27 +472,21 @@ QGoodWindow::QGoodWindow(QWidget *parent, const QColor &clear_color) : QMainWind
         QMainWindow::setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::Tool);
     }
 
-    m_top_shadow = new Shadow(qintptr(nullptr), this, this);
-    m_top_shadow->installEventFilter(this);
-    m_top_shadow->setMouseTracking(true);
-
-    m_bottom_shadow = new Shadow(qintptr(nullptr), this, this);
-    m_bottom_shadow->installEventFilter(this);
-    m_bottom_shadow->setMouseTracking(true);
-
-    m_left_shadow = new Shadow(qintptr(nullptr), this, this);
-    m_left_shadow->installEventFilter(this);
-    m_left_shadow->setMouseTracking(true);
-
-    m_right_shadow = new Shadow(qintptr(nullptr), this, this);
-    m_right_shadow->installEventFilter(this);
-    m_right_shadow->setMouseTracking(true);
+    m_shadow = new Shadow(qintptr(nullptr), this, this);
+    m_shadow->installEventFilter(this);
+    m_shadow->setMouseTracking(true);
+    connect(m_shadow, &Shadow::showSignal, this, &QGoodWindow::sizeMoveBorders);
 #endif
 #ifdef Q_OS_MAC
     installEventFilter(this);
     setMouseTracking(true);
 
     createWinId();
+
+    style_ptr = new macOSNative::Style();
+
+    macOSNative::Style *style = static_cast<macOSNative::Style*>(style_ptr);
+    style->m_is_dialog = (m_parent != nullptr);
 
     notification.addWindow(this);
 
@@ -529,6 +543,7 @@ QGoodWindow::~QGoodWindow()
     QGoodWindowUtils::m_gw_list.removeAll(this);
 #endif
 #ifdef Q_OS_MAC
+    delete static_cast<macOSNative::Style*>(style_ptr);
     notification.removeWindow(this);
 #endif
 #if defined Q_OS_LINUX || defined Q_OS_MAC
@@ -620,6 +635,33 @@ void QGoodWindow::setup()
 
 #ifndef Q_OS_MAC
 
+#ifdef Q_OS_WIN
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+    if (QGoodWindowUtils::isWinXOrGreater(10, 0, 15063)) //Windows 10 version 1703 or later.
+    {
+        static const qintptr vDPI_AWARENESS_CONTEXT = 0;
+        static const qintptr vDPI_AWARENESS_CONTEXT_UNAWARE = ((vDPI_AWARENESS_CONTEXT)-1);
+        static const qintptr vDPI_AWARENESS_CONTEXT_SYSTEM_AWARE = ((vDPI_AWARENESS_CONTEXT)-2);
+        static const qintptr vDPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE = ((vDPI_AWARENESS_CONTEXT)-3);
+        static const qintptr vDPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = ((vDPI_AWARENESS_CONTEXT)-4);
+        static const qintptr vDPI_AWARENESS_CONTEXT_UNAWARE_GDISCALED = ((vDPI_AWARENESS_CONTEXT)-5);
+
+        Q_UNUSED(vDPI_AWARENESS_CONTEXT_UNAWARE)
+        Q_UNUSED(vDPI_AWARENESS_CONTEXT_SYSTEM_AWARE)
+        Q_UNUSED(vDPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE)
+        Q_UNUSED(vDPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2)
+        Q_UNUSED(vDPI_AWARENESS_CONTEXT_UNAWARE_GDISCALED)
+
+        typedef BOOL(*tSetProcessDpiAwarenessContext)(HANDLE);
+        tSetProcessDpiAwarenessContext pSetProcessDpiAwarenessContext =
+                tSetProcessDpiAwarenessContext(QLibrary::resolve("user32", "SetProcessDpiAwarenessContext"));
+
+        if (pSetProcessDpiAwarenessContext)
+            pSetProcessDpiAwarenessContext(HANDLE(vDPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2));
+    }
+#endif
+#endif
+
 #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
     qputenv("QT_ENABLE_HIGHDPI_SCALING", "1");
 #elif QT_VERSION >= QT_VERSION_CHECK(5, 6, 0)
@@ -702,6 +744,41 @@ void QGoodWindow::setAppLightTheme()
 QGoodStateHolder *QGoodWindow::qGoodStateHolderInstance()
 {
     return QGoodStateHolder::instance();
+}
+
+void QGoodWindow::setNativeCaptionButtonsVisibleOnMac(bool visible)
+{
+#ifdef Q_OS_MAC
+    m_is_native_caption_buttons_visible_on_mac = visible;
+
+    macOSNative::Style *style = static_cast<macOSNative::Style*>(style_ptr);
+    style->m_is_native_caption_buttons_visible = m_is_native_caption_buttons_visible_on_mac;
+    macOSNative::setStyle(long(winId()), style);
+
+    Q_EMIT captionButtonsVisibilityChangedOnMacOS();
+#else
+    Q_UNUSED(visible)
+#endif
+}
+
+bool QGoodWindow::isNativeCaptionButtonsVisibleOnMac() const
+{
+#ifdef Q_OS_MAC
+    return m_is_native_caption_buttons_visible_on_mac;
+#else
+    return false;
+#endif
+}
+
+QRect QGoodWindow::titleBarButtonsRectOnMacOS() const
+{
+#ifdef Q_OS_MAC
+    int x, y, w, h;
+    macOSNative::titleBarButtonsRect(long(winId()), &x, &y, &w, &h);
+    return QRect(x, y, w, h);
+#else
+    return QRect();
+#endif
 }
 
 void QGoodWindow::setTitleBarHeight(int height)
@@ -834,8 +911,56 @@ QRegion QGoodWindow::closeMask() const
     return QRegion();
 #endif
 }
-
 /*** QGOODWINDOW FUNCTIONS END ***/
+
+void QGoodWindow::setCentralWidget(QWidget *widget)
+{
+#ifdef Q_OS_WIN
+    if (m_proxy_widget->layout())
+        delete m_proxy_widget->layout();
+
+    QHBoxLayout *layout = new QHBoxLayout(m_proxy_widget);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->addWidget(widget);
+
+    m_central_widget = widget;
+#else
+    QMainWindow::setCentralWidget(widget);
+#endif
+}
+
+QWidget *QGoodWindow::centralWidget() const
+{
+#ifdef Q_OS_WIN
+    return m_central_widget;
+#else
+    return QMainWindow::centralWidget();
+#endif
+}
+
+QSize QGoodWindow::sizeHint() const
+{
+#ifdef Q_OS_WIN
+    if (!m_central_widget)
+        return QMainWindow::sizeHint();
+
+    return m_central_widget->sizeHint();
+#else
+    return QMainWindow::sizeHint();
+#endif
+}
+
+QSize QGoodWindow::minimumSizeHint() const
+{
+#ifdef Q_OS_WIN
+    if (!m_central_widget)
+        return QMainWindow::minimumSizeHint();
+
+    return m_central_widget->minimumSizeHint();
+#else
+    return QMainWindow::minimumSizeHint();
+#endif
+}
 
 void QGoodWindow::setFixedSize(int w, int h)
 {
@@ -850,9 +975,10 @@ void QGoodWindow::setFixedSize(int w, int h)
 
     if (!already_fixed)
     {
-        SetWindowLongW(m_hwnd, GWL_STYLE,
-                       WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME |
-                           (!m_parent ? WS_MINIMIZEBOX : 0));
+        if (!m_parent)
+            disableMinimize();
+
+        disableMaximize();
     }
 
     resize(w, h);
@@ -1176,10 +1302,13 @@ void QGoodWindow::activateWindow()
 void QGoodWindow::show()
 {
 #ifdef Q_OS_WIN
-    if (windowState().testFlag(Qt::WindowNoState))
-        ShowWindow(m_hwnd, SW_SHOW);
-    else
+    if (!isVisible() && !m_window_state.testFlag(Qt::WindowNoState))
+    {
         setWindowStateWin();
+        return;
+    }
+
+    ShowWindow(m_hwnd, SW_SHOW);
 #else
     QMainWindow::show();
 #endif
@@ -1263,10 +1392,11 @@ void QGoodWindow::showFullScreen()
     SetWindowPos(m_hwnd, nullptr, screen_geom.x(), screen_geom.y(),
                  screen_geom.width(), screen_geom.height(), SWP_NOACTIVATE);
 
-    QRect window_rect = rect();
-
-    window_rect.setWidth(qFloor(window_rect.width() * m_pixel_ratio));
-    window_rect.setHeight(qFloor(window_rect.height() * m_pixel_ratio));
+    QRect window_rect;
+    window_rect.moveTop(0);
+    window_rect.moveLeft(0);
+    window_rect.setWidth(screen_geom.width());
+    window_rect.setHeight(screen_geom.height());
 
 #ifdef QT_VERSION_QT5
     HRGN hrgn = QtWin::toHRGN(QRegion(window_rect));
@@ -1381,8 +1511,10 @@ void QGoodWindow::setWindowState(Qt::WindowStates state)
 #ifdef Q_OS_WIN
     m_window_state = state;
 
-    if (isVisible())
-        setWindowStateWin();
+    if (!isVisible())
+        return;
+
+    setWindowStateWin();
 #else
     QMainWindow::setWindowState(state);
 #endif
@@ -1462,13 +1594,11 @@ QByteArray QGoodWindow::saveGeometry() const
     stream.setVersion(QDataStream::Qt_5_0);
 
     QRect window_geom = normalGeometry();
+    window_geom.moveTop(qFloor(window_geom.y() * m_pixel_ratio));
+    window_geom.moveLeft(qFloor(window_geom.x() * m_pixel_ratio));
+    window_geom.setWidth(qFloor(window_geom.width() * m_pixel_ratio));
+    window_geom.setHeight(qFloor(window_geom.height() * m_pixel_ratio));
 
-    QPoint window_center_pos = window_geom.center();
-    window_center_pos.setX(qFloor(window_center_pos.x() * m_pixel_ratio));
-    window_center_pos.setY(qFloor(window_center_pos.y() * m_pixel_ratio));
-
-    stream << qint32(window_center_pos.x());
-    stream << qint32(window_center_pos.y());
     stream << qint32(window_geom.x());
     stream << qint32(window_geom.y());
     stream << qint32(window_geom.width());
@@ -1486,14 +1616,12 @@ QByteArray QGoodWindow::saveGeometry() const
 bool QGoodWindow::restoreGeometry(const QByteArray &geometry)
 {
 #ifdef QGOODWINDOW
-    if (geometry.size() != int(sizeof(qint32) * 6 + sizeof(bool) * 3))
+    if (geometry.size() != int(sizeof(qint32) * 4 + sizeof(bool) * 3))
         return false;
 
     QDataStream stream(geometry);
     stream.setVersion(QDataStream::Qt_5_0);
 
-    qint32 center_x;
-    qint32 center_y;
     qint32 rect_x;
     qint32 rect_y;
     qint32 rect_width;
@@ -1502,8 +1630,6 @@ bool QGoodWindow::restoreGeometry(const QByteArray &geometry)
     bool maximized;
     bool fullscreen;
 
-    stream >> center_x;
-    stream >> center_y;
     stream >> rect_x;
     stream >> rect_y;
     stream >> rect_width;
@@ -1519,8 +1645,10 @@ bool QGoodWindow::restoreGeometry(const QByteArray &geometry)
 
     for (QScreen *screen : qApp->screens())
     {
-        QRect rect = screen->availableGeometry();
-
+        QRect rect = screen->geometry();
+        qreal pixel_ratio = screen->devicePixelRatio();
+        rect.setWidth(qFloor(rect.width() * pixel_ratio));
+        rect.setHeight(qFloor(rect.height() * pixel_ratio));
         screens += rect;
     }
 
@@ -1530,11 +1658,14 @@ bool QGoodWindow::restoreGeometry(const QByteArray &geometry)
     window_geom.setWidth(rect_width);
     window_geom.setHeight(rect_height);
 
-    if (!screens.contains(window_geom))
+    if (!screens.boundingRect().contains(window_geom))
     {
         QScreen *screen = qApp->primaryScreen();
 
         QRect rect = screen->availableGeometry();
+        qreal pixel_ratio = screen->devicePixelRatio();
+        rect.setWidth(qFloor(rect.width() * pixel_ratio));
+        rect.setHeight(qFloor(rect.height() * pixel_ratio));
 
         window_geom.moveCenter(rect.center());
         window_geom.setWidth(qMin(rect.width(), window_geom.width()));
@@ -1542,18 +1673,15 @@ bool QGoodWindow::restoreGeometry(const QByteArray &geometry)
     }
 
 #ifdef Q_OS_WIN
-    QPoint window_center_pos;
-    window_center_pos.setX(center_x);
-    window_center_pos.setY(center_y);
+    updateScreen(screenForPoint(window_geom.center()));
+#endif
 
-    QScreen *screen = screenForPoint(window_center_pos);
+    window_geom.moveTop(qFloor(window_geom.y() / m_pixel_ratio));
+    window_geom.moveLeft(qFloor(window_geom.x() / m_pixel_ratio));
+    window_geom.setWidth(qFloor(window_geom.width() / m_pixel_ratio));
+    window_geom.setHeight(qFloor(window_geom.height() / m_pixel_ratio));
 
-    if (!screen)
-        screen = screenForPoint(window_geom.center());
-
-    if (screen)
-        m_pixel_ratio = screen->devicePixelRatio();
-
+#ifdef Q_OS_WIN
     m_rect_normal = window_geom;
 #endif
 
@@ -1599,13 +1727,6 @@ bool QGoodWindow::event(QEvent *event)
 #ifdef Q_OS_WIN
     switch (event->type())
     {
-    case QEvent::ScreenChangeInternal:
-    {
-        if (!FIXED_SIZE(this))
-            updateWindowSize();
-
-        break;
-    }
     case QEvent::ChildPolished:
     {
         QChildEvent *child_event = static_cast<QChildEvent*>(event);
@@ -1614,6 +1735,18 @@ bool QGoodWindow::event(QEvent *event)
 
         if (!widget)
             break;
+
+//Catch QMenu show event to fix show bug.
+#if defined QT_VERSION_QT5 && QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+        for (QWidget *widget : widget->findChildren<QWidget*>())
+        {
+            if (widget->metaObject()->className() == QStringLiteral("QMenu") ||
+                widget->metaObject()->className() == QStringLiteral("QComboBoxPrivateContainer"))
+            {
+                widget->installEventFilter(this);
+            }
+        }
+#endif
 
         if (!widget->isWindow())
             break;
@@ -1655,20 +1788,7 @@ bool QGoodWindow::event(QEvent *event)
     }
     case QEvent::Resize:
     {
-        if (!windowState().testFlag(Qt::WindowNoState))
-            break;
-
-        if (!m_window_ready)
-            break;
-
-        if (m_self_generated_resize_event)
-            break;
-
-        const QSize current_size = size();
-        const QSize mw_size = m_main_window->size();
-
-        if (current_size != mw_size)
-            resize(mw_size);
+        internalWidgetResize();
 
         break;
     }
@@ -1697,25 +1817,40 @@ bool QGoodWindow::event(QEvent *event)
     case QEvent::Resize:
     case QEvent::Move:
     {
+        QRegion mask;
+
         if (isVisible() && windowState().testFlag(Qt::WindowNoState))
         {
-            setMask(rect());
+            const int radius = 8;
 
+            QBitmap bmp(size());
+            bmp.clear();
+
+            QPainter painter;
+            painter.begin(&bmp);
+            painter.setRenderHints(QPainter::Antialiasing);
+            painter.setPen(Qt::color1);
+            painter.setBrush(Qt::color1);
+            painter.drawRoundedRect(rect(), radius, radius, Qt::AbsoluteSize);
+            painter.end();
+
+            mask = bmp;
+        }
+
+        setMask(mask);
+
+        if (isVisible() && windowState().testFlag(Qt::WindowNoState))
+        {
             sizeMoveBorders();
 
-            m_top_shadow->showLater();
-            m_bottom_shadow->showLater();
-            m_left_shadow->showLater();
-            m_right_shadow->showLater();
+            if (isActiveWindow())
+            {
+                m_shadow->showLater();
+            }
         }
         else
         {
-            setMask(QRect());
-
-            m_top_shadow->hide();
-            m_bottom_shadow->hide();
-            m_left_shadow->hide();
-            m_right_shadow->hide();
+            m_shadow->hide();
         }
 
         break;
@@ -1728,10 +1863,7 @@ bool QGoodWindow::event(QEvent *event)
         if (!windowState().testFlag(Qt::WindowNoState))
             break;
 
-        m_top_shadow->hide();
-        m_bottom_shadow->hide();
-        m_left_shadow->hide();
-        m_right_shadow->hide();
+        m_shadow->hide();
 
         break;
     }
@@ -1745,10 +1877,7 @@ bool QGoodWindow::event(QEvent *event)
         if (!windowState().testFlag(Qt::WindowNoState))
             break;
 
-        m_top_shadow->show();
-        m_bottom_shadow->show();
-        m_left_shadow->show();
-        m_right_shadow->show();
+        m_shadow->show();
 
         break;
     }
@@ -1765,6 +1894,7 @@ bool QGoodWindow::event(QEvent *event)
             notification.unregisterNotification();
 
             notification.registerNotification("NSWindowWillEnterFullScreenNotification", winId());
+            notification.registerNotification("NSWindowWillExitFullScreenNotification", winId());
             notification.registerNotification("NSWindowDidExitFullScreenNotification", winId());
         });
 
@@ -1775,7 +1905,7 @@ bool QGoodWindow::event(QEvent *event)
         if (isFullScreen())
             break;
 
-        macOSNative::setStyle(long(winId()), macOSNative::StyleType::NoState);
+        setMacOSStyle(int(macOSNative::StyleType::NoState));
 
         break;
     }
@@ -1870,6 +2000,47 @@ bool QGoodWindow::eventFilter(QObject *watched, QEvent *event)
             break;
         }
     }
+#if defined QT_VERSION_QT5 && QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+    else if (watched->metaObject()->className() == QStringLiteral("QMenu") ||
+               watched->metaObject()->className() == QStringLiteral("QComboBoxPrivateContainer"))
+    {
+        QWidget *widget = qobject_cast<QWidget*>(watched);
+
+        if (widget)
+        {
+            switch (event->type())
+            {
+            case QEvent::Polish:
+            {
+                if (!widget->windowHandle())
+                    widget->createWinId();
+
+                break;
+            }
+            case QEvent::Show:
+            {
+                if (qobject_cast<QMenu*>(widget->parentWidget()))
+                    break;
+
+                QScreen *screen = windowHandle()->screen();
+                widget->windowHandle()->setScreen(screen);
+
+                int x = qFloor(screen->geometry().x() / m_pixel_ratio);
+                int y = qFloor(screen->geometry().y() / m_pixel_ratio);
+
+                x += widget->x();
+                y += widget->y();
+
+                widget->move(x, y);
+
+                break;
+            }
+            default:
+                break;
+            }
+        }
+    }
+#endif
     else if (QWidget *widget = qobject_cast<QWidget*>(watched))
     {
         if (widget->isWindow())
@@ -1887,6 +2058,9 @@ bool QGoodWindow::eventFilter(QObject *watched, QEvent *event)
             }
             case QEvent::Resize:
             {
+                if (!FIXED_SIZE(widget))
+                    break;
+
                 QTimer::singleShot(0, this, [=]{
                     moveCenterWindow(widget);
                 });
@@ -1912,10 +2086,7 @@ bool QGoodWindow::eventFilter(QObject *watched, QEvent *event)
 
     if (widget->window() != this
         #ifdef Q_OS_LINUX
-            && widget != m_top_shadow
-            && widget != m_bottom_shadow
-            && widget != m_left_shadow
-            && widget != m_right_shadow
+            && widget != m_shadow
         #endif
             )
         return QMainWindow::eventFilter(watched, event);
@@ -1938,7 +2109,7 @@ bool QGoodWindow::eventFilter(QObject *watched, QEvent *event)
         if (m_on_animate_event)
             break;
 
-        macOSNative::setStyle(long(winId()), macOSNative::StyleType::NoState);
+        setMacOSStyle(int(macOSNative::StyleType::NoState));
 
         break;
     }
@@ -2134,6 +2305,12 @@ bool QGoodWindow::eventFilter(QObject *watched, QEvent *event)
 
         break;
     }
+    case QEvent::Leave:
+    {
+        setCursorForCurrentPos();
+
+        break;
+    }
     case QEvent::Wheel:
     {
         switch (m_margin)
@@ -2316,7 +2493,9 @@ bool QGoodWindow::eventFilter(QObject *watched, QEvent *event)
         {
             QMouseEvent *mouse_event = static_cast<QMouseEvent*>(event);
 
-            if (!isFullScreen())
+            QWidget *widget = QApplication::widgetAt(cursor_pos);
+
+            if (widget && !isFullScreen())
             {
                 if (mouse_event->button() == Qt::LeftButton)
                     m_cursor_move_pos = QPoint();
@@ -2408,8 +2587,6 @@ bool QGoodWindow::nativeEvent(const QByteArray &eventType, void *message, qgoodi
 #ifdef Q_OS_WIN
 void QGoodWindow::initGW()
 {
-    QMainWindow::move(0, 0);
-
     setProperty("_q_embedded_native_parent_handle", WId(m_hwnd));
     QMainWindow::setWindowFlags(Qt::FramelessWindowHint);
 
@@ -2431,9 +2608,17 @@ void QGoodWindow::destroyGW()
 void QGoodWindow::closeGW()
 {
     if (m_shadow)
+    {
+        m_shadow->hide();
+
+        qApp->processEvents();
+
         delete m_shadow;
+    }
+
     if (m_helper_widget)
         delete m_helper_widget;
+
 #ifdef QT_VERSION_QT6
     if (m_helper_window)
         delete m_helper_window;
@@ -2926,35 +3111,48 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
 
         if (pwp->flags & SWP_SHOWWINDOW)
         {
-            if (gw->m_shadow)
+            if (!gw->m_main_window->isVisible())
             {
-                if (gw->windowState().testFlag(Qt::WindowNoState))
+                auto func_init = [=]
                 {
-                    //Show shadow if on "normal" state with delay.
-                    gw->m_shadow->showLater();
+                    gw->updateScreen(gw->screenForWindow(hwnd));
+                };
+
+                auto func_finish = [=]
+                {
+                    gw->internalWidgetResize();
+                    gw->m_window_ready_for_resize = true;
+                    gw->sizeMoveMainWindow();
+                };
+
+                auto func_show = [=]
+                {
+                    gw->m_main_window->show();
+                };
+
+                if (!gw->m_main_window->testAttribute(Qt::WA_NativeWindow))
+                {
+                    func_init();
+                    func_finish();
+                    func_show();
                 }
-            }
+                else
+                {
+                    QTimer::singleShot(0, gw, [=]{
+                        func_init();
+                        func_show();
+                        func_finish();
+                    });
+                }
 
-            SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
-                         SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_FRAMECHANGED);
-
-            QTimer::singleShot(0, gw, [=]{
                 gw->m_self_generated_show_event = true;
                 QShowEvent event;
                 QApplication::sendEvent(gw, &event);
                 gw->m_self_generated_show_event = false;
-            });
 
-            QTimer::singleShot(0, gw->m_main_window, [=]{
-                if (!gw->m_main_window->isVisible())
-                {
-                    gw->m_main_window->show();
-                    gw->updateScreen(gw->screenForWindow(hwnd));
-                    gw->m_main_window->resize(0, 0);
-                    gw->m_window_ready = true;
-                    gw->m_main_window->resize(gw->size());
-                }
-            });
+                if (gw->m_shadow && gw->windowState().testFlag(Qt::WindowNoState))
+                    gw->m_shadow->showLater();
+            }
 
 #ifdef QT_VERSION_QT6
             if (gw->m_helper_window)
@@ -3048,22 +3246,16 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
         gw->m_timer_move->stop();
 
         //Wait to refresh screen pixel ratio information.
-        QCoreApplication::processEvents();
+        qApp->processEvents();
 
         QScreen *screen = gw->screenForWindow(hwnd);
 
         if (!screen)
             break;
 
-        if (FIXED_SIZE(gw) && (gw->windowHandle()->screen() != screen))
-        {
-            gw->screenChangeMoveWindow(screen);
-        }
-        else
-        {
-            gw->updateScreen(screen);
-            gw->resize(gw->size());
-        }
+        gw->screenChangeMoveWindow(screen);
+        gw->updateScreen(screen);
+        gw->windowScaleChanged();
 
         break;
     }
@@ -3076,7 +3268,7 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
     }
     case WM_SETTINGCHANGE:
     {
-        if (QGoodWindowUtils::isWinXOrGreater(10, 0)) //Windows 10 or later.
+        if (QGoodWindowUtils::isWinXOrGreater(10, 0, 0)) //Windows 10 or later.
         {
             if (QString::fromWCharArray(LPCWSTR(lParam)) == "ImmersiveColorSet")
             {
@@ -3129,12 +3321,7 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
     msg.lParam = lParam;
     msg.wParam = wParam;
 
-#ifdef QT_VERSION_QT5
-    long result = 0;
-#endif
-#ifdef QT_VERSION_QT6
-    qintptr result = 0;
-#endif
+    qgoodintptr result = 0;
 
     bool return_value = gw->nativeEvent(QByteArray(), &msg, &result);
 
@@ -3211,6 +3398,16 @@ void QGoodWindow::disableCaption()
     SetWindowLongW(m_hwnd, GWL_STYLE, GetWindowLongW(m_hwnd, GWL_STYLE) & ~WS_CAPTION);
 }
 
+void QGoodWindow::disableMinimize()
+{
+    SetWindowLongW(m_hwnd, GWL_STYLE, GetWindowLongW(m_hwnd, GWL_STYLE) & ~WS_MINIMIZEBOX);
+}
+
+void QGoodWindow::disableMaximize()
+{
+    SetWindowLongW(m_hwnd, GWL_STYLE, GetWindowLongW(m_hwnd, GWL_STYLE) & ~WS_MAXIMIZEBOX);
+}
+
 void QGoodWindow::frameChanged()
 {
     SetWindowPos(m_hwnd, nullptr, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_FRAMECHANGED);
@@ -3228,9 +3425,60 @@ void QGoodWindow::sizeMoveWindow()
     setWindowMask();
 #endif
 
-    moveShadow();
+    sizeMoveMainWindow();
 
-    m_main_window->resize(size());
+    moveShadow();
+}
+
+void QGoodWindow::sizeMoveMainWindow()
+{
+    bool opengl_adjust = false;
+
+#if defined QT_VERSION_QT5 && QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+    QWidgetList list;
+    if (m_central_widget)
+    {
+        list.append(m_central_widget);
+        list.append(m_central_widget->findChildren<QWidget*>());
+    }
+
+    for (QWidget *widget : list)
+    {
+        QMetaObject *obj = const_cast<QMetaObject*>(widget->metaObject());
+
+        while (obj)
+        {
+            if (obj->className() == QStringLiteral("QOpenGLWidget"))
+            {
+                opengl_adjust = true;
+                break;
+            }
+            else if (obj->className() == QStringLiteral("QQuickWidget"))
+            {
+                opengl_adjust = true;
+                break;
+            }
+
+            obj = const_cast<QMetaObject*>(obj->superClass());
+        }
+
+        if (opengl_adjust)
+            break;
+    }
+#endif
+    //Move proxy widget.
+    int y = (opengl_adjust && (!qFuzzyCompare(m_pixel_ratio, qreal(1))) ? height() : 0);
+    m_proxy_widget->setGeometry(0, y, width(), height());
+
+    HWND hwnd = HWND(m_main_window->winId());
+
+    RECT win_rect;
+    GetClientRect(m_hwnd, &win_rect);
+    int w = win_rect.right - win_rect.left;
+    int h = win_rect.bottom - win_rect.top;
+
+    //Move main window widget inside native main window.
+    SetWindowPos(hwnd, nullptr, 0, 0, w, h, SWP_NOACTIVATE);
 }
 
 void QGoodWindow::setWindowMask()
@@ -3283,9 +3531,6 @@ void QGoodWindow::moveShadow()
 
 void QGoodWindow::screenChangeMoveWindow(QScreen *screen)
 {
-    if (!FIXED_SIZE(this))
-        return;
-
     if (!screen)
         return;
 
@@ -3306,10 +3551,10 @@ void QGoodWindow::screenChangeMoveWindow(QScreen *screen)
     QPoint center_pos = window_geom.center();
     int border_width = m_is_using_system_borders ? BORDERWIDTH() : 0;
 
-    QSize size = minimumSize();
-    size.setWidth(qFloor(size.width() * screen_pixel_ratio) + border_width * 2);
-    size.setHeight(qFloor(size.height() * screen_pixel_ratio) + border_width);
-    window_geom.setSize(size);
+    QSize window_size = size();
+    window_size.setWidth(qFloor(window_size.width() * screen_pixel_ratio) + border_width * 2);
+    window_size.setHeight(qFloor(window_size.height() * screen_pixel_ratio) + border_width);
+    window_geom.setSize(window_size);
 
     //Keep X position.
     center_pos.setY(window_geom.center().y());
@@ -3319,9 +3564,13 @@ void QGoodWindow::screenChangeMoveWindow(QScreen *screen)
     const int left_dist = qAbs(screen_geom.left() - center_pos.x());
     const int right_dist = qAbs(screen_geom.right() - center_pos.x());
 
-    const int margin = qCeil(screen_pixel_ratio);
+    const int margin = 10;
 
-    if (!screen_geom.contains(center_pos))
+    QRect center_rect;
+    center_rect.moveCenter(center_pos);
+    center_rect.adjust(-margin, -margin, margin, margin);
+
+    if (!screen_geom.contains(center_rect))
     {
         if (left_dist < right_dist)
         {
@@ -3357,11 +3606,10 @@ void QGoodWindow::screenChangeMoveWindow(QScreen *screen)
 
     window_geom.moveCenter(center_pos);
 
-    setCurrentScreen(screen);
-
     m_pixel_ratio = screen_pixel_ratio;
 
-    SetWindowPos(m_hwnd, nullptr, window_geom.x(), window_geom.y(), window_geom.width(), window_geom.height(), SWP_NOACTIVATE);
+    SetWindowPos(m_hwnd, nullptr, window_geom.x(), window_geom.y(),
+                 window_geom.width(), window_geom.height(), SWP_NOACTIVATE);
 
     moveShadow();
 }
@@ -3373,31 +3621,59 @@ void QGoodWindow::updateScreen(QScreen *screen)
 
     m_pixel_ratio = screen->devicePixelRatio();
     setCurrentScreen(screen);
-    moveShadow();
-
-    updateWindowSize();
 }
 
 void QGoodWindow::setCurrentScreen(QScreen *screen)
 {
     windowHandle()->setScreen(screen);
-#ifdef QT_VERSION_QT6
-    m_main_window->setScreen(screen);
+
+    m_main_window->windowHandle()->setScreen(screen);
+
     if (m_shadow)
-        m_shadow->setScreen(screen);
-#endif
+        m_shadow->windowHandle()->setScreen(screen);
 }
 
-void QGoodWindow::updateWindowSize()
+void QGoodWindow::windowScaleChanged()
 {
-    QTimer::singleShot(0, this, [=]{
-        const int border_width = BORDERWIDTH();
-        m_self_generated_resize_event = true;
-        m_main_window->resize(1, 1);
-        m_main_window->resize(width() + border_width, height() + border_width);
-        m_main_window->resize(size());
-        m_self_generated_resize_event = false;
-    });
+#ifdef QT_VERSION_QT6
+    internalWidgetResize();
+#endif
+
+    //Fix widget scale bug.
+    resize(width() + 1, height() + 1);
+    qApp->processEvents();
+    resize(width() - 1, height() - 1);
+    qApp->processEvents();
+
+    sizeMoveWindow();
+    moveShadow();
+}
+
+void QGoodWindow::internalWidgetResize()
+{
+    if (!windowState().testFlag(Qt::WindowNoState))
+        return;
+
+    if (!m_window_ready_for_resize)
+        return;
+
+    const QSize current_size = size();
+    QSize mw_size = m_main_window->size();
+
+#ifdef QT_VERSION_QT5
+    mw_size.setWidth(qFloor(mw_size.width() / m_pixel_ratio));
+    mw_size.setHeight(qFloor(mw_size.height() / m_pixel_ratio));
+#endif
+
+    if (current_size.width() < qFloor(mw_size.width() * m_pixel_ratio) ||
+        current_size.width() > qCeil(mw_size.width() * m_pixel_ratio))
+        return;
+
+    if (current_size.height() < qFloor(mw_size.height() * m_pixel_ratio) ||
+        current_size.height() > qCeil(mw_size.height() * m_pixel_ratio))
+        return;
+
+    resize(mw_size);
 }
 
 QScreen *QGoodWindow::screenForWindow(HWND hwnd)
@@ -3410,13 +3686,13 @@ QScreen *QGoodWindow::screenForWindow(HWND hwnd)
 
     GetMonitorInfoW(monitor, &monitor_info);
 
-    QPoint topleft;
-    topleft.setX(monitor_info.rcWork.left);
-    topleft.setY(monitor_info.rcWork.top);
+    QPoint top_left;
+    top_left.setX(monitor_info.rcMonitor.left);
+    top_left.setY(monitor_info.rcMonitor.top);
 
     for (QScreen *screen : qApp->screens())
     {
-        if (screen->geometry().topLeft() == topleft)
+        if (screen->geometry().topLeft() == top_left)
         {
             return screen;
         }
@@ -3449,13 +3725,13 @@ QScreen *QGoodWindow::screenForPoint(const QPoint &pos)
 
     GetMonitorInfoW(monitor, &monitor_info);
 
-    QPoint topleft;
-    topleft.setX(monitor_info.rcWork.left);
-    topleft.setY(monitor_info.rcWork.top);
+    QPoint top_left;
+    top_left.setX(monitor_info.rcMonitor.left);
+    top_left.setY(monitor_info.rcMonitor.top);
 
     for (QScreen *screen : qApp->screens())
     {
-        if (screen->geometry().topLeft() == topleft)
+        if (screen->geometry().topLeft() == top_left)
         {
             return screen;
         }
@@ -3677,8 +3953,11 @@ void QGoodWindow::setCursorForCurrentPos()
 
     QWidget *widget = QApplication::widgetAt(cursor_pos);
 
-    if (!widget)
+    if (!widget || (widget->window() != m_shadow && widget->window() != qApp->activeModalWidget()))
+    {
+        QApplication::restoreOverrideCursor();
         return;
+    }
 
     Display *dpy = QX11Info::display();
 
@@ -3922,75 +4201,52 @@ void QGoodWindow::sizeMoveBorders()
 
     QRegion visible_rgn;
 
-    for (const QScreen *screen : QApplication::screens())
+    for (const QScreen *screen : qApp->screens())
     {
         visible_rgn += screen->availableGeometry();
     }
 
-    QRect visible_geom = visible_rgn.boundingRect();
     QRect frame_geom = frameGeometry();
     frame_geom.adjust(-border_width, -border_width, border_width, border_width);
 
-    {
-        int x = frame_geom.left();
-        int y = frame_geom.top();
-        int w = frame_geom.width();
-        int h = border_width;
+    QRegion rgn = m_shadow->rect();
+    rgn = rgn.subtracted(mask().translated(border_width, border_width));
 
-        QRect top_rect = QRect(x, y, w, h).intersected(visible_geom);
+    rgn.translate(frame_geom.topLeft());
 
-        m_top_shadow->move(top_rect.topLeft());
-        m_top_shadow->setFixedSize(top_rect.size());
-    }
+    rgn = rgn.intersected(visible_rgn);
 
-    {
-        int x = frame_geom.left();
-        int y = frame_geom.bottom() - border_width;
-        int w = frame_geom.width();
-        int h = border_width;
+    rgn.translate(-rgn.boundingRect().topLeft());
 
-        QRect bottom_rect = QRect(x, y, w, h).intersected(visible_geom);
+    m_shadow->setMask(rgn);
 
-        m_bottom_shadow->move(bottom_rect.topLeft());
-        m_bottom_shadow->setFixedSize(bottom_rect.size());
-    }
-
-    {
-        int x = frame_geom.left();
-        int y = frame_geom.top() + border_width;
-        int w = border_width;
-        int h = frame_geom.height() - border_width * 2;
-
-        QRect left_rect = QRect(x, y, w, h).intersected(visible_geom);
-
-        m_left_shadow->move(left_rect.topLeft());
-        m_left_shadow->setFixedSize(left_rect.size());
-    }
-
-    {
-        int x = frame_geom.left() + frame_geom.width() - border_width;
-        int y = frame_geom.top() + border_width;
-        int w = border_width;
-        int h = frame_geom.height() - border_width * 2;
-
-        QRect right_rect = QRect(x, y, w, h).intersected(visible_geom);
-
-        m_right_shadow->move(right_rect.topLeft());
-        m_right_shadow->setFixedSize(right_rect.size());
-    }
+    m_shadow->setGeometry(frame_geom);
 }
 #endif
 #ifdef Q_OS_MAC
+void QGoodWindow::setMacOSStyle(int style_type)
+{
+    macOSNative::Style *style = static_cast<macOSNative::Style*>(style_ptr);
+    style->m_style = macOSNative::StyleType(style_type);
+    macOSNative::setStyle(long(winId()), style);
+}
+
 void QGoodWindow::notificationReceiver(const QByteArray &notification)
 {
     if (notification == "NSWindowWillEnterFullScreenNotification")
     {
         m_on_animate_event = true;
-        macOSNative::setStyle(long(winId()), macOSNative::StyleType::Fullscreen);
+
+        setMacOSStyle(int(macOSNative::StyleType::Fullscreen));
+    }
+    else if (notification == "NSWindowWillExitFullScreenNotification")
+    {
+        setMacOSStyle(int(macOSNative::StyleType::NoState));
     }
     else if (notification == "NSWindowDidExitFullScreenNotification")
     {
-        macOSNative::setStyle(long(winId()), macOSNative::StyleType::NoState);
+        setMacOSStyle(int(macOSNative::StyleType::NoState));
+
         m_on_animate_event = false;
     }
     else if (notification == "AppleInterfaceThemeChangedNotification")
@@ -4015,14 +4271,24 @@ qintptr QGoodWindow::ncHitTest(int pos_x, int pos_y)
     if (windowState().testFlag(Qt::WindowNoState))
     {
         if (m_is_using_system_borders)
-        {
-            if (!FIXED_SIZE(this))
-                border_width = qFloor(BORDERWIDTH() / m_pixel_ratio); //in pixels.
-        }
+            border_width = qFloor(BORDERWIDTH() / m_pixel_ratio); //in pixels.
         else
-        {
             border_width = qFloor(1 * m_pixel_ratio); //in pixels.
-        }
+    }
+#endif
+
+//Get the window rectangle.
+#ifndef Q_OS_MAC
+    QRect window_rect = frameGeometry();
+#else
+    //Get the correct window rectangle for macOS.
+    QRect window_rect;
+
+    if (isVisible())
+    {
+        int x, y, w, h;
+        macOSNative::frameGeometry(long(winId()), &x, &y, &w, &h);
+        window_rect = QRect(x, y, w, h);
     }
 #endif
 
@@ -4030,7 +4296,7 @@ qintptr QGoodWindow::ncHitTest(int pos_x, int pos_y)
     const QPoint cursor_pos = QPoint(qFloor(pos_x / m_pixel_ratio), qFloor(pos_y / m_pixel_ratio));
 
     //Get the mapped point coordinates for the hit test without border width.
-    const QPoint cursor_pos_map = QPoint(cursor_pos.x() - x() - border_width, cursor_pos.y() - y());
+    const QPoint cursor_pos_map = QPoint(cursor_pos.x() - window_rect.x() - border_width, cursor_pos.y() - window_rect.y());
 
 #ifdef Q_OS_WIN
     for (QSizeGrip *size_grip : findChildren<QSizeGrip*>())
@@ -4056,9 +4322,6 @@ qintptr QGoodWindow::ncHitTest(int pos_x, int pos_y)
 #ifdef Q_OS_WIN
     const int icon_width = iconWidth();
 #endif
-
-    //Get the window rectangle.
-    QRect window_rect = frameGeometry();
 
     //Determine if the hit test is for resizing. Default middle (1,1).
     int row = 1;
@@ -4251,6 +4514,7 @@ bool QGoodWindow::buttonRelease(qintptr button, bool valid_click)
 
         if (valid_click)
         {
+            buttonLeave(button);
             Q_EMIT captionButtonStateChanged(CaptionButtonState::MinimizeClicked);
             m_hover_timer->start();
         }
@@ -4263,6 +4527,7 @@ bool QGoodWindow::buttonRelease(qintptr button, bool valid_click)
 
         if (valid_click)
         {
+            buttonLeave(button);
             Q_EMIT captionButtonStateChanged(CaptionButtonState::MaximizeClicked);
             m_hover_timer->start();
         }
@@ -4275,6 +4540,7 @@ bool QGoodWindow::buttonRelease(qintptr button, bool valid_click)
 
         if (valid_click)
         {
+            buttonLeave(button);
             Q_EMIT captionButtonStateChanged(CaptionButtonState::CloseClicked);
             m_hover_timer->start();
         }

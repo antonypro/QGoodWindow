@@ -89,7 +89,7 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent, QColor("#303030"))
     setWindowTitle("Good Window - Press F to toggle fullscreen!");
 
     resize(640, 480);
-    move(QGuiApplication::primaryScreen()->availableGeometry().center() - rect().center());
+    move(qApp->primaryScreen()->availableGeometry().center() - rect().center());
 
 #ifdef Q_OS_WIN
 #ifdef QT_VERSION_QT5
@@ -290,31 +290,33 @@ bool MainWindow::event(QEvent *event)
         if (isFullScreen())
             break;
 
-        QRect rect = titleBarRect();
+        QTimer::singleShot(0, this, [=]{
+            QRect rect = titleBarRect();
 
-        QRegion min_mask = rect.adjusted(rect.width() - 30 * 3, -30 * 2, 0, 0);
-        QRegion max_mask = rect.adjusted(rect.width() - 30 * 2, -30, 0, 0);
-        QRegion cls_mask = rect.adjusted(rect.width() - 30, 0, 0, 0);
+            QRegion min_mask = rect.adjusted(rect.width() - 30 * 3, -30 * 2, 0, 0);
+            QRegion max_mask = rect.adjusted(rect.width() - 30 * 2, -30, 0, 0);
+            QRegion cls_mask = rect.adjusted(rect.width() - 30, 0, 0, 0);
 
-        QPainterPath path;
-        path.addRoundedRect(5, 5, 20, 20, 20, 20);
+            QPainterPath path;
+            path.addRoundedRect(5, 5, 20, 20, 20, 20);
 
-        {
-            QRegion mask = QRegion(path.toFillPolygon().toPolygon());
-            min_mask = mask.translated(min_mask.boundingRect().x(), 0);
-        }
-        {
-            QRegion mask = QRegion(path.toFillPolygon().toPolygon());
-            max_mask = mask.translated(max_mask.boundingRect().x(), 0);
-        }
-        {
-            QRegion mask = QRegion(path.toFillPolygon().toPolygon());
-            cls_mask = mask.translated(cls_mask.boundingRect().x(), 0);
-        }
+            {
+                QRegion mask = QRegion(path.toFillPolygon().toPolygon());
+                min_mask = mask.translated(min_mask.boundingRect().x(), 0);
+            }
+            {
+                QRegion mask = QRegion(path.toFillPolygon().toPolygon());
+                max_mask = mask.translated(max_mask.boundingRect().x(), 0);
+            }
+            {
+                QRegion mask = QRegion(path.toFillPolygon().toPolygon());
+                cls_mask = mask.translated(cls_mask.boundingRect().x(), 0);
+            }
 
-        setMinimizeMask(min_mask);
-        setMaximizeMask(max_mask);
-        setCloseMask(cls_mask);
+            setMinimizeMask(min_mask);
+            setMaximizeMask(max_mask);
+            setCloseMask(cls_mask);
+        });
 
         break;
     }

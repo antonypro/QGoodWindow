@@ -36,14 +36,12 @@ SOFTWARE.
 Shadow::Shadow(qintptr hwnd, QGoodWindow *gw, QWidget *parent) : QWidget(parent)
 {
 #ifdef Q_OS_WIN
-    setParent(nullptr);
-
     m_hwnd = HWND(hwnd);
     m_active = true;
     m_parent = gw;
 
-    setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::Tool |
-                   (m_parent ? Qt::WindowStaysOnTopHint : Qt::WindowType(0)));
+    setWindowFlags(Qt::Window | Qt::FramelessWindowHint |
+                   (!m_parent ? Qt::Tool : Qt::WindowFlags(0)));
 
     setAttribute(Qt::WA_NoSystemBackground);
     setAttribute(Qt::WA_TranslucentBackground);
@@ -98,11 +96,12 @@ void Shadow::show()
     if (GetForegroundWindow() != m_hwnd)
         return;
 
+    Q_EMIT showSignal();
+
     QWidget::show();
     QWidget::raise();
 
-    SetWindowPos(m_hwnd, !parentWidget() ? HWND_TOP : HWND_TOPMOST,
-                 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
+    SetWindowPos(m_hwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
 #endif
 #ifdef Q_OS_LINUX
     if (m_timer->isActive())
@@ -114,9 +113,10 @@ void Shadow::show()
     {
         if (!m_parent->isMinimized() && m_parent->isVisible())
         {
+            Q_EMIT showSignal();
+
             QWidget::show();
             QWidget::raise();
-            m_parent->sizeMoveBorders();
         }
     }
 #endif
@@ -127,7 +127,7 @@ void Shadow::hide()
 #ifdef Q_OS_WIN
     m_timer->stop();
 
-    if (m_parent && (m_parent->isMinimized() || !m_parent->isVisible()))
+    if (m_parent && m_parent->windowState().testFlag(Qt::WindowNoState))
         return;
 
     if (!isVisible())

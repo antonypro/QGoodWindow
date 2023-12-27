@@ -120,9 +120,6 @@ int QGoodDialog::exec()
             }
         }
     };
-
-    QTimer::singleShot(0, m_child_gw, func_center);
-    func_fixed_size();
 #endif
 
     if (!m_dialog->windowTitle().isNull())
@@ -138,7 +135,28 @@ int QGoodDialog::exec()
     if (m_parent_gw->isMinimized())
         m_parent_gw->showNormal();
 
-    QTimer::singleShot(0, m_child_gw, &QGoodWindow::show);
+#ifdef Q_OS_MAC
+    QTimer::singleShot(0, m_child_gw, [=]{
+        bool visible = m_child_gw->isNativeCaptionButtonsVisibleOnMac();
+        m_child_gw->setNativeCaptionButtonsVisibleOnMac(visible);
+        m_child_gw->show();
+        m_child_gw->setNativeCaptionButtonsVisibleOnMac(visible);
+    });
+#else
+    func_fixed_size();
+    func_center();
+
+    QShortcut *shortcut = new QShortcut(QKeySequence(Qt::Key_Escape), m_child_gw);
+    connect(shortcut, &QShortcut::activated, m_dialog, &QDialog::reject);
+
+    QTimer::singleShot(0, m_child_gw, [=]{
+        m_child_gw->show();
+#ifdef Q_OS_LINUX
+        func_fixed_size();
+        func_center();
+#endif
+    });
+#endif
 
     m_loop.exec();
 
@@ -206,7 +224,7 @@ bool QGoodDialog::eventFilter(QObject *watched, QEvent *event)
                 w->setModality(Qt::WindowModal);
             }
 
-            macOSNative::setStyle(long(m_parent_gw->winId()), macOSNative::StyleType::Disabled);
+            m_parent_gw->setMacOSStyle(int(macOSNative::StyleType::Disabled));
 #endif
             break;
         }
@@ -234,7 +252,7 @@ bool QGoodDialog::eventFilter(QObject *watched, QEvent *event)
             m_window_list.clear();
 
             QTimer::singleShot(500, this, [=]{
-                macOSNative::setStyle(long(m_parent_gw->winId()), macOSNative::StyleType::NoState);
+                m_parent_gw->setMacOSStyle(int(macOSNative::StyleType::NoState));
             });
 #endif
             break;

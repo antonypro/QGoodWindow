@@ -107,6 +107,22 @@ On handled caption buttons, this SIGNAL report the state of these buttons.
 
 Notify that the system has changed between light and dark mode.
 
+#### `{signal} public void captionButtonsVisibilityChangedOnMacOS()` 
+
+Notify that the visibility of caption buttons have changed on macOS.
+
+#### `{slot} public void setNativeCaptionButtonsVisibleOnMac(bool visible)` 
+
+Set native caption buttons on macOS visibility to *visible*.
+
+#### `{slot} public bool isNativeCaptionButtonsVisibleOnMac() const` 
+
+Returns if native caption buttons are visible on macOS.
+
+#### `{slot} public QRect titleBarButtonsRectOnMacOS() const` 
+
+Returns native caption buttons rect on macOS.
+
 #### `{slot} public void setTitleBarHeight(int height)` 
 
 Set title bar height for *QGoodWindow*.
@@ -158,6 +174,22 @@ Get the location and shape of handled maximize button, relative to title bar rec
 #### `{slot} public QRegion closeMask() const` 
 
 Get the location and shape of handled close button, relative to title bar rect.
+
+#### `{slot} public void setCentralWidget(QWidget * widget)` 
+
+Set central widget of *QGoodWindow* to *widget*.
+
+#### `{slot} public QWidget * centralWidget() const` 
+
+Returns the central widget of *QGoodWindow*.
+
+#### `{slot} public QSize sizeHint() const` 
+
+Get the size hint of *QGoodWindow*.
+
+#### `{slot} public QSize minimumSizeHint() const` 
+
+Get the minimum size hint of *QGoodWindow*.
 
 #### `{slot} public void setFixedSize(int w, int h)` 
 
@@ -373,11 +405,11 @@ Sets the icon of the *QGoodWindow* to *icon*.
 
 #### `{slot} public QByteArray saveGeometry() const` 
 
-Returns a copy of the window state to restore it later.
+Returns a copy of the *QGoodWindow* geometry to restore it later.
 
 #### `{slot} public bool restoreGeometry(const QByteArray & geometry)` 
 
-Restore window to previous state *geometry*.
+Restore *QGoodWindow* to previous geometry *geometry*.
 
 #### `enum CaptionButtonState` 
 

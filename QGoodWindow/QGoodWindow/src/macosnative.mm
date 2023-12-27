@@ -25,28 +25,37 @@ SOFTWARE.
 #include "macosnative.h"
 #include <Cocoa/Cocoa.h>
 
-void macOSNative::setStyle(long winid, StyleType type)
+void macOSNative::setStyle(long winid, Style *style)
 {
     NSView *nativeView = reinterpret_cast<NSView*>(winid);
     NSWindow *nativeWindow = [nativeView window];
 
-    switch (type)
+    switch (style->m_style)
     {
     case StyleType::NoState:
     {
-        [nativeWindow setStyleMask:NSWindowStyleMaskResizable |
-                                   NSWindowStyleMaskMiniaturizable |
-                                   NSWindowStyleMaskClosable |
-                                   NSWindowStyleMaskTitled |
-                                   NSWindowStyleMaskFullSizeContentView];
+        if (!style->m_is_dialog)
+        {
+            [nativeWindow setStyleMask:NSWindowStyleMaskResizable |
+                                       NSWindowStyleMaskMiniaturizable |
+                                       NSWindowStyleMaskClosable |
+                                       NSWindowStyleMaskTitled |
+                                       NSWindowStyleMaskFullSizeContentView];
+        }
+        else
+        {
+            [nativeWindow setStyleMask:NSWindowStyleMaskClosable |
+                                       NSWindowStyleMaskTitled |
+                                       NSWindowStyleMaskFullSizeContentView];
+        }
         [nativeWindow setMovableByWindowBackground:NO];
         [nativeWindow setMovable:NO];
         [nativeWindow setTitlebarAppearsTransparent:YES];
         [nativeWindow setShowsToolbarButton:NO];
         [nativeWindow setTitleVisibility:NSWindowTitleHidden];
-        [nativeWindow standardWindowButton:NSWindowMiniaturizeButton].hidden = YES;
-        [nativeWindow standardWindowButton:NSWindowCloseButton].hidden = YES;
-        [nativeWindow standardWindowButton:NSWindowZoomButton].hidden = YES;
+        [nativeWindow standardWindowButton:NSWindowMiniaturizeButton].hidden = !style->m_is_native_caption_buttons_visible;
+        [nativeWindow standardWindowButton:NSWindowZoomButton].hidden = !style->m_is_native_caption_buttons_visible;
+        [nativeWindow standardWindowButton:NSWindowCloseButton].hidden = !style->m_is_native_caption_buttons_visible;
         [nativeWindow makeKeyWindow];
 
         break;
@@ -59,16 +68,16 @@ void macOSNative::setStyle(long winid, StyleType type)
         [nativeWindow setTitlebarAppearsTransparent:YES];
         [nativeWindow setShowsToolbarButton:NO];
         [nativeWindow setTitleVisibility:NSWindowTitleHidden];
-        [nativeWindow standardWindowButton:NSWindowMiniaturizeButton].hidden = YES;
-        [nativeWindow standardWindowButton:NSWindowCloseButton].hidden = YES;
-        [nativeWindow standardWindowButton:NSWindowZoomButton].hidden = YES;
+        [nativeWindow standardWindowButton:NSWindowMiniaturizeButton].hidden = !style->m_is_native_caption_buttons_visible;
+        [nativeWindow standardWindowButton:NSWindowZoomButton].hidden = !style->m_is_native_caption_buttons_visible;
+        [nativeWindow standardWindowButton:NSWindowCloseButton].hidden = !style->m_is_native_caption_buttons_visible;
         [nativeWindow makeKeyWindow];
 
         break;
     }
     case StyleType::Fullscreen:
     {
-        [nativeWindow setStyleMask:0];
+        [nativeWindow setStyleMask:NSWindowStyleMaskFullScreen];
 
         break;
     }
@@ -106,7 +115,7 @@ void macOSNative::unregisterNotification()
 
 //\cond HIDDEN_SYMBOLS
 @implementation Handler
-+ (void)load
++(void)load
 {
     m_handler = static_cast<Handler*>(self);
 }
@@ -137,7 +146,7 @@ ThemeChangeHandler *m_theme_change_handler;
 
 //\cond HIDDEN_SYMBOLS
 @implementation ThemeChangeHandler
-+ (void)load
++(void)load
 {
     m_theme_change_handler = static_cast<ThemeChangeHandler*>(self);
 }
@@ -167,4 +176,38 @@ const char *macOSNative::themeName()
     NSString *str = [[NSUserDefaults standardUserDefaults] stringForKey:@"AppleInterfaceStyle"];
     const char *cstr = [str cStringUsingEncoding:NSUTF8StringEncoding];
     return cstr;
+}
+
+void macOSNative::frameGeometry(long wid, int *x, int *y, int *w, int *h)
+{
+    NSRect nsScreenRect = [[[NSScreen screens] firstObject] frame];
+
+    NSView *nativeView = reinterpret_cast<NSView*>(wid);
+    NSWindow *nativeWindow = [nativeView window];
+    NSRect nsWindowRect = [nativeWindow frame];
+
+    int pos_x = nsWindowRect.origin.x;
+    int pos_y = nsScreenRect.size.height - nsWindowRect.size.height - nsWindowRect.origin.y;
+
+    *x = pos_x;
+    *y = pos_y;
+    *w = nsWindowRect.size.width;
+    *h = nsWindowRect.size.height;
+}
+
+void macOSNative::titleBarButtonsRect(long wid, int *x, int *y, int *w, int *h)
+{
+    NSView *nativeView = reinterpret_cast<NSView*>(wid);
+    NSWindow *nativeWindow = [nativeView window];
+
+    NSButton *closeButton = [nativeWindow standardWindowButton:NSWindowCloseButton];
+    NSButton *minimizeButton = [nativeWindow standardWindowButton:NSWindowMiniaturizeButton];
+    NSButton *zoomButton = [nativeWindow standardWindowButton:NSWindowZoomButton];
+
+    NSRect rect = NSUnionRect(NSUnionRect([closeButton frame], [minimizeButton frame]), [zoomButton frame]);
+
+    *x = rect.origin.x;
+    *y = rect.origin.y;
+    *w = rect.size.width;
+    *h = rect.size.height;
 }

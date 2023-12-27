@@ -126,29 +126,43 @@ bool MainWindow::event(QEvent *event)
 
 void MainWindow::show()
 {
+    //Wait to get correct window geometry information.
     QTimer::singleShot(0, this, [=]{
-        //Restore window geometry
+        //Restore window geometry.
         if (!restoreGeometry(m_settings->value("geometry").toByteArray()))
         {
-            //If there is no saved geometry, use a default geometry
-            if (QWidget *central_widget = m_good_central_widget->centralWidget())
+            //If there is no saved geometry, use a default geometry.
+            if (m_good_central_widget)
             {
-                resize(qMax(central_widget->minimumSizeHint().width(), 500),
-                       qMax(central_widget->minimumSizeHint().height(), 200));
+                resize(qMax(m_good_central_widget->minimumSizeHint().width(), 500),
+                       qMax(m_good_central_widget->minimumSizeHint().height(), 200));
             }
 
-            move(QGuiApplication::primaryScreen()->availableGeometry().center() - rect().center());
+            move(qApp->primaryScreen()->availableGeometry().center() - rect().center());
         }
 
-        //Call parent show
+        //Call parent show.
         QGoodWindow::show();
     });
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
-    Q_UNUSED(event)
+    QMessageBox msgbox(this);
+    msgbox.setIcon(QMessageBox::Question);
+    msgbox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+    msgbox.setDefaultButton(QMessageBox::No);
+    msgbox.setText("Are you sure to close?");
+
+    int result = QGoodCentralWidget::execDialogWithWindow(&msgbox, this, m_good_central_widget);
+
+    if (result != QMessageBox::Yes)
+    {
+        event->ignore();
+        return;
+    }
 
     //Save geometry for next open
     m_settings->setValue("geometry", saveGeometry());
+    m_settings->setValue("state", saveState());
 }

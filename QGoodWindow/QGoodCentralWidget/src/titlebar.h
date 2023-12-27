@@ -72,7 +72,12 @@ public Q_SLOTS:
     void captionButtonStateChanged(const QGoodWindow::CaptionButtonState &state);
 
 private:
+    //Functions
+    bool event(QEvent *event);
+
+    //Variable
     QPointer<QGoodWindow> m_gw;
+    QWidget *m_left_margin_widget_place_holder;
     IconWidget *m_icon_widget;
     TitleWidget *m_title_widget;
     QWidget *m_caption_buttons;
@@ -89,7 +94,7 @@ private:
     QSpacerItem *m_center_spacer_item_left;
     QSpacerItem *m_center_spacer_item_right;
     int m_layout_spacing;
-    QString style;
+    QString m_style;
     bool m_active;
     bool m_is_maximized;
     QColor m_title_bar_color;

@@ -24,7 +24,7 @@ SOFTWARE.
 
 #include "mainwindow.h"
 
-MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent, QColor("#002640"))
+MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent, QColor(0, 38, 64))
 {
     m_good_central_widget = new QGoodCentralWidget(this);
 
@@ -61,7 +61,7 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent, QColor("#002640"))
     setWindowTitle("Good Window - Press F to toggle fullscreen!");
 
     resize(640, 480);
-    move(QGuiApplication::primaryScreen()->availableGeometry().center() - rect().center());
+    move(qApp->primaryScreen()->availableGeometry().center() - rect().center());
 
 #ifdef Q_OS_WIN
 #ifdef QT_VERSION_QT5
@@ -99,7 +99,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
     msgbox.setDefaultButton(QMessageBox::No);
     msgbox.setText("Are you sure to close?");
 
-    int result = QGoodCentralWidget::execDialogWithWindow(&msgbox, this, m_good_central_widget);
+    int result = QGoodCentralWidget::execDialogWithWindow(&msgbox, this);
 
     if (result != QMessageBox::Yes)
         event->ignore();

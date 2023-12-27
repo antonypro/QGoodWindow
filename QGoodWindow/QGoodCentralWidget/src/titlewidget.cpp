@@ -89,6 +89,8 @@ void TitleWidget::paintEvent(QPaintEvent *event)
     QRect right_rect;
     QRect center_rect;
 
+    if (m_title_bar->m_left_margin_widget_place_holder->isVisible())
+        left_rect = left_rect.united(m_title_bar->m_left_margin_widget_place_holder->geometry());
     if (m_title_bar->m_icon_widget->isVisible())
         left_rect = left_rect.united(m_title_bar->m_icon_widget->geometry());
     if (m_title_bar->m_left_widget_place_holder->isVisible())
@@ -107,11 +109,10 @@ void TitleWidget::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.setRenderHints(QPainter::Antialiasing);
 
-    QFont font = this->font();
+    QFont font = qApp->font();
+    font.setPixelSize(12);
 #ifdef Q_OS_WIN
     font.setFamily("Segoe UI");
-#else
-    font.setFamily(qApp->font().family());
 #endif
 
     painter.setFont(font);

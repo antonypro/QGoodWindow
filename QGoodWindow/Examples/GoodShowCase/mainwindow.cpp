@@ -119,7 +119,7 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent)
     setWindowTitle("Good Window - CTRL+S toggle theme - CTRL+T toggle title bar!");
 
     resize(800, 600);
-    move(QGuiApplication::primaryScreen()->availableGeometry().center() - rect().center());
+    move(qApp->primaryScreen()->availableGeometry().center() - rect().center());
 
 #ifdef QGOODWINDOW
     m_good_central_widget->setTitleAlignment(Qt::AlignCenter);

@@ -2,9 +2,19 @@
 
 *Border less window implementation for Qt 5 and Qt 6 on Windows, Linux and macOS.*
 
-Version 2.4.1-1
+Version 2.4.2
 
-#### *QGoodWindow* in dark mode on Windows 11: ![](img/qgoodwindow.png)
+#### *QGoodWindow* in dark mode on Windows 11:
+
+<img src="img/qgoodwindow-win.png" title="" alt="" data-align="center">
+
+#### *QGoodWindow* in dark mode on Ubuntu Linux:
+
+<img src="img/qgoodwindow-linux.png" title="" alt="" data-align="center">
+
+#### *QGoodWindow* in dark mode on macOS:
+
+<img src="img/qgoodwindow-mac.png" title="" alt="" data-align="center">
 
 **QGoodWindow** gives to your application full control of the window while keeps native OS window behavior, like minimize effect.
 

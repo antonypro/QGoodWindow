@@ -171,6 +171,9 @@ Q_SIGNALS:
     /** Notify that the system has changed between light and dark mode. */
     void systemThemeChanged();
 
+    /** Notify that the visibility of caption buttons have changed on macOS. */
+    void captionButtonsVisibilityChangedOnMacOS();
+
     /*** QGOODWINDOW FUNCTIONS BEGIN ***/
 
 public:
@@ -239,6 +242,15 @@ public:
     {Q_ASSERT(false); return QRect();}
 
 public Q_SLOTS:
+    /** Set native caption buttons on macOS visibility to \e visible. **/
+    void setNativeCaptionButtonsVisibleOnMac(bool visible);
+
+    /** Returns if native caption buttons are visible on macOS. **/
+    bool isNativeCaptionButtonsVisibleOnMac() const;
+
+    /** Returns native caption buttons rect on macOS. **/
+    QRect titleBarButtonsRectOnMacOS() const;
+
     /** Set title bar height for *QGoodWindow*. */
     void setTitleBarHeight(int height);
 
@@ -279,6 +291,18 @@ public Q_SLOTS:
     QRegion closeMask() const;
 
     /*** QGOODWINDOW FUNCTIONS END ***/
+
+    /** Set central widget of *QGoodWindow* to \e widget. */
+    void setCentralWidget(QWidget *widget);
+
+    /** Returns the central widget of *QGoodWindow*. */
+    QWidget *centralWidget() const;
+
+    /** Get the size hint of *QGoodWindow*. */
+    QSize sizeHint() const override;
+
+    /** Get the minimum size hint of *QGoodWindow*. */
+    QSize minimumSizeHint() const override;
 
     /** Set fixed size for *QGoodWindow* to width \e w and height \e h. */
     void setFixedSize(int w, int h);
@@ -439,10 +463,10 @@ public Q_SLOTS:
     /** Sets the icon of the *QGoodWindow* to \e icon. */
     void setWindowIcon(const QIcon &icon);
 
-    /** Returns a copy of the window state to restore it later. */
+    /** Returns a copy of the *QGoodWindow* geometry to restore it later. */
     QByteArray saveGeometry() const;
 
-    /** Restore window to previous state \e geometry. */
+    /** Restore *QGoodWindow* to previous geometry \e geometry. */
     bool restoreGeometry(const QByteArray &geometry);
 
 protected:
@@ -468,14 +492,18 @@ private:
     void setWidgetFocus();
     void enableCaption();
     void disableCaption();
+    void disableMinimize();
+    void disableMaximize();
     void frameChanged();
     void sizeMoveWindow();
+    void sizeMoveMainWindow();
     void setWindowMask();
     void moveShadow();
     void screenChangeMoveWindow(QScreen *screen);
     void updateScreen(QScreen *screen);
     void setCurrentScreen(QScreen *screen);
-    void updateWindowSize();
+    void windowScaleChanged();
+    void internalWidgetResize();
     QPoint screenAdjustedPos();
     QScreen *screenForWindow(HWND hwnd);
     QScreen *screenForPoint(const QPoint &pos);
@@ -490,6 +518,8 @@ private:
     HWND m_hwnd;
     bool m_is_win_11_or_greater;
     QPointer<QMainWindow> m_main_window;
+    QPointer<QWidget> m_proxy_widget;
+    QPointer<QWidget> m_central_widget;
     QPointer<Shadow> m_shadow;
     QPointer<QWidget> m_helper_widget;
 #ifdef QT_VERSION_QT6
@@ -500,7 +530,7 @@ private:
 
     QPointer<QWidget> m_focus_widget;
 
-    bool m_window_ready;
+    bool m_window_ready_for_resize;
     bool m_closed;
     bool m_visible;
     bool m_self_generated_close_event;
@@ -517,7 +547,6 @@ private:
 
     Qt::WindowState m_last_state;
     bool m_self_generated_show_event;
-    bool m_self_generated_resize_event;
 
     QColor m_clear_color;
 
@@ -532,28 +561,28 @@ private:
     void sizeMoveBorders();
 
     //Variables
-    QPointer<Shadow> m_top_shadow;
-    QPointer<Shadow> m_bottom_shadow;
-    QPointer<Shadow> m_left_shadow;
-    QPointer<Shadow> m_right_shadow;
+    QPointer<Shadow> m_shadow;
 
     int m_margin;
     QPoint m_cursor_pos;
     bool m_resize_move;
     bool m_resize_move_started;
     Qt::WindowFlags m_window_flags;
-
-    friend class Shadow;
 #endif
 #ifdef Q_OS_MAC
     //Functions
     void notificationReceiver(const QByteArray &notification);
+    void setMacOSStyle(int style_type);
 
     //Variables
+    bool m_is_native_caption_buttons_visible_on_mac;
     QPoint m_cursor_move_pos;
     bool m_mouse_button_pressed;
     bool m_on_animate_event;
+    void *style_ptr;
 
+    friend class QGoodCentralWidget;
+    friend class QGoodDialog;
     friend class Notification;
 #endif
 #if defined Q_OS_LINUX || defined Q_OS_MAC

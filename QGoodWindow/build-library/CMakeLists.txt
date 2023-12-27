@@ -114,8 +114,16 @@ else()
 endif()
 
 if(with_central_widget)
-    set(HEADER_FILES
-        ${CMAKE_CURRENT_SOURCE_DIR}/../QGoodCentralWidget/src/qgoodcentralwidget.h
+    install(FILES
+            ${CMAKE_CURRENT_SOURCE_DIR}/../QGoodCentralWidget/src/qgoodcentralwidget.h
+            DESTINATION include/src
+            COMPONENT Headers
+    )
+
+    install(FILES
+            ${CMAKE_CURRENT_SOURCE_DIR}/../QGoodCentralWidget/lib-helper/qgoodcentralwidget_helper.h
+            DESTINATION include/src
+            COMPONENT Headers
     )
 
     install(FILES

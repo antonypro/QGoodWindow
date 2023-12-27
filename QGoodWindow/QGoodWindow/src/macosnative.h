@@ -39,18 +39,28 @@ enum class StyleType
     Fullscreen
 };
 
-    void registerThemeChangeNotification();
-    void registerNotification(const char *notification_name, long wid);
-    void unregisterNotification();
+class Style
+{
+public:
+    StyleType m_style = StyleType::NoState;
+    bool m_is_native_caption_buttons_visible = true;
+    bool m_is_dialog = false;
+};
 
-    inline void handleNotification(const char *notification_name, long wid)
-    {
-        notification.notification(notification_name, wid);
-    }
+void registerThemeChangeNotification();
+void registerNotification(const char *notification_name, long wid);
+void unregisterNotification();
 
-    void setStyle(long winid, StyleType type);
+inline void handleNotification(const char *notification_name, long wid)
+{
+    notification.notification(notification_name, wid);
+}
 
-    const char *themeName();
+void setStyle(long winid, Style *style);
+
+const char *themeName();
+void frameGeometry(long wid, int *x, int *y, int *w, int *h);
+void titleBarButtonsRect(long wid, int *x, int *y, int *w, int *h);
 }
 //\endcond
 

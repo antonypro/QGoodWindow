@@ -39,9 +39,10 @@ class Shadow : public QWidget
 {
     Q_OBJECT
 public:
-#if defined Q_OS_WIN || defined Q_OS_LINUX
     explicit Shadow(qintptr hwnd, QGoodWindow *gw, QWidget *parent);
-#endif
+
+Q_SIGNALS:
+    void showSignal();
 
 public Q_SLOTS:
     void showLater();

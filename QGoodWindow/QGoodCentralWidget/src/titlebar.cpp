@@ -52,11 +52,14 @@ TitleBar::TitleBar(QGoodWindow *gw, QWidget *parent) : QFrame(parent)
 
     m_gw = gw;
 
-    style = QString("TitleBar {background-color: %0; border: none;}");
+    m_style = QString("TitleBar {background-color: %0;}");
 
     connect(qGoodStateHolder, &QGoodStateHolder::currentThemeChanged, this, &TitleBar::setTheme);
 
     setFixedHeight(29);
+
+    m_left_margin_widget_place_holder = new QWidget(this);
+    m_left_margin_widget_place_holder->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
 
     m_icon_widget = new IconWidget(this);
     m_icon_widget->setFixedWidth(29);
@@ -120,6 +123,7 @@ TitleBar::TitleBar(QGoodWindow *gw, QWidget *parent) : QFrame(parent)
     m_center_spacer_item_left = new QSpacerItem(0, 0);
     m_center_spacer_item_right = new QSpacerItem(0, 0);
 
+    layout->addWidget(m_left_margin_widget_place_holder);
     layout->addWidget(m_icon_widget);
     layout->addWidget(m_left_widget_place_holder);
     layout->addStretch();
@@ -219,11 +223,11 @@ void TitleBar::setTheme()
             if (m_title_bar_color == QColor(Qt::transparent))
                 setAttribute(Qt::WA_TranslucentBackground, true);
             else if (m_title_bar_color.isValid())
-                setStyleSheet(style.arg(m_title_bar_color.name()));
+                setStyleSheet(m_style.arg(m_title_bar_color.name()));
             else if (qApp->style()->objectName().startsWith("fusion"))
-                setStyleSheet(style.arg(qApp->palette().base().color().name()));
+                setStyleSheet(m_style.arg(qApp->palette().base().color().name()));
             else
-                setStyleSheet(style.arg("#000000"));
+                setStyleSheet(m_style.arg("#000000"));
         });
 
         //Light mode to contrast
@@ -242,11 +246,11 @@ void TitleBar::setTheme()
             if (m_title_bar_color == QColor(Qt::transparent))
                 setAttribute(Qt::WA_TranslucentBackground, true);
             else if (m_title_bar_color.isValid())
-                setStyleSheet(style.arg(m_title_bar_color.name()));
+                setStyleSheet(m_style.arg(m_title_bar_color.name()));
             else if (qApp->style()->objectName().startsWith("fusion"))
-                setStyleSheet(style.arg(qApp->palette().base().color().name()));
+                setStyleSheet(m_style.arg(qApp->palette().base().color().name()));
             else
-                setStyleSheet(style.arg("#FFFFFF"));
+                setStyleSheet(m_style.arg("#FFFFFF"));
         });
 
         //Dark mode to contrast
@@ -574,4 +578,50 @@ void TitleBar::captionButtonStateChanged(const QGoodWindow::CaptionButtonState &
     default:
         break;
     }
+}
+
+bool TitleBar::event(QEvent *event)
+{
+#ifdef QGOODWINDOW
+#ifdef Q_OS_LINUX
+    switch (event->type())
+    {
+    case QEvent::Resize:
+    {
+        QRegion mask;
+
+        if (m_gw->windowState().testFlag(Qt::WindowNoState))
+        {
+            const int radius = 8;
+
+            QBitmap bmp(size());
+            bmp.clear();
+
+            QPainter painter;
+            painter.begin(&bmp);
+            painter.setRenderHints(QPainter::Antialiasing);
+            painter.setPen(Qt::color1);
+            painter.setBrush(Qt::color1);
+            QPainterPath path;
+            path.setFillRule(Qt::WindingFill);
+            path.addRoundedRect(rect(), radius, radius);
+            path.addRect(rect().adjusted(0, height() - radius, radius, radius));
+            path.addRect(rect().adjusted(width() - radius, height() - radius, radius, radius));
+            painter.drawPath(path.simplified());
+            painter.end();
+
+            mask = bmp;
+        }
+
+        setMask(mask);
+
+        break;
+    }
+    default:
+        break;
+    }
+#endif
+#endif
+
+    return QWidget::event(event);
 }
