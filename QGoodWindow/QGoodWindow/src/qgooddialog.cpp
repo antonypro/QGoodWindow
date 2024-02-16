@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2022-2023 Antonio Dias (https://github.com/antonypro)
+Copyright © 2018-2024 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +25,10 @@ SOFTWARE.
 #include "qgooddialog.h"
 #include "qgoodwindow.h"
 
+#ifdef Q_OS_WIN
+#include "shadow.h"
+#endif
+
 #ifdef Q_OS_MAC
 #include "macosnative.h"
 #endif
@@ -41,6 +45,10 @@ QGoodDialog::QGoodDialog(QDialog *dialog, QGoodWindow *child_gw, QGoodWindow *pa
     m_child_gw = child_gw;
 
     m_parent_gw = parent_gw;
+
+#ifdef Q_OS_MAC
+    m_child_gw_visible = false;
+#endif
 }
 
 int QGoodDialog::exec()
@@ -70,10 +78,9 @@ int QGoodDialog::exec()
     m_child_gw->setWindowModality(Qt::ApplicationModal);
 #endif
 #ifdef Q_OS_MAC
-    m_child_gw->setWindowModality(Qt::WindowModal);
+    m_child_gw->setWindowModality(Qt::ApplicationModal);
 #endif
 
-#if defined Q_OS_WIN || defined Q_OS_LINUX
     bool is_message_box = qobject_cast<QMessageBox*>(m_dialog);
     bool is_input_dialog = qobject_cast<QInputDialog*>(m_dialog);
 
@@ -120,7 +127,6 @@ int QGoodDialog::exec()
             }
         }
     };
-#endif
 
     if (!m_dialog->windowTitle().isNull())
         m_child_gw->setWindowTitle(m_dialog->windowTitle());
@@ -137,21 +143,46 @@ int QGoodDialog::exec()
 
 #ifdef Q_OS_MAC
     QTimer::singleShot(0, m_child_gw, [=]{
+        QWidget *widget = m_child_gw->centralWidget();
+
+        widget->setWindowFlags(Qt::Window);
+        widget->show();
+        widget->adjustSize();
+        widget->setWindowFlags(Qt::Widget);
+
+        QSize size = m_child_gw->sizeHint();
+
+        m_child_gw_visible = true;
+
         bool visible = m_child_gw->isNativeCaptionButtonsVisibleOnMac();
         m_child_gw->setNativeCaptionButtonsVisibleOnMac(visible);
+        m_child_gw->resize(size);
+        func_fixed_size();
+        func_center();
         m_child_gw->show();
         m_child_gw->setNativeCaptionButtonsVisibleOnMac(visible);
     });
 #else
-    func_fixed_size();
-    func_center();
-
     QShortcut *shortcut = new QShortcut(QKeySequence(Qt::Key_Escape), m_child_gw);
     connect(shortcut, &QShortcut::activated, m_dialog, &QDialog::reject);
 
     QTimer::singleShot(0, m_child_gw, [=]{
+#ifdef Q_OS_WIN
+        if (m_child_gw->m_shadow)
+            m_child_gw->m_shadow->showLater();
+        m_child_gw->m_main_window->show();
+
+        func_fixed_size();
+        func_center();
         m_child_gw->show();
+        qApp->processEvents();
+        func_fixed_size();
+        func_center();
+#endif
 #ifdef Q_OS_LINUX
+        func_fixed_size();
+        func_center();
+        m_child_gw->show();
         func_fixed_size();
         func_center();
 #endif
@@ -257,6 +288,15 @@ bool QGoodDialog::eventFilter(QObject *watched, QEvent *event)
 #endif
             break;
         }
+        case QEvent::UpdateRequest:
+        {
+            if (m_child_gw->size() == m_child_gw->sizeHint())
+                break;
+
+            m_child_gw->setFixedSize(m_child_gw->sizeHint());
+
+            break;
+        }
         default:
             break;
         }
@@ -267,6 +307,10 @@ bool QGoodDialog::eventFilter(QObject *watched, QEvent *event)
         {
         case QEvent::Show:
         {
+#ifdef Q_OS_MAC
+            if (!m_child_gw_visible)
+                break;
+#endif
             if (m_dialog)
                 m_dialog->activateWindow();
 
@@ -274,6 +318,10 @@ bool QGoodDialog::eventFilter(QObject *watched, QEvent *event)
         }
         case QEvent::Hide:
         {
+#ifdef Q_OS_MAC
+            if (!m_child_gw_visible)
+                break;
+#endif
             if (m_child_gw)
                 m_child_gw->close();
 

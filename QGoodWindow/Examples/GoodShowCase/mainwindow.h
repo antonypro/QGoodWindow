@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2022-2023 Antonio Dias (https://github.com/antonypro)
+Copyright © 2018-2024 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -56,9 +56,6 @@ class MainWindow : public QGoodWindow
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
-
-private Q_SLOTS:
-    void themeChange();
 
 private:
     //Functions

@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2023 Antonio Dias (https://github.com/antonypro)
+Copyright © 2018-2024 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -44,9 +44,12 @@ public Q_SLOTS:
     void setTitleAlignment(const Qt::Alignment &alignment);
     void setTitleColor(const QColor &active_color, const QColor &inactive_color);
     Qt::Alignment titleAlignment();
+    int leftPos();
 
 private:
     //Functions
+    QFont titleFont();
+    QRect titleRect(QString *title_elided_ptr = nullptr);
     void paintEvent(QPaintEvent *event);
 
     //Variables

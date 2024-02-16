@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2022-2023 Antonio Dias (https://github.com/antonypro)
+Copyright © 2018-2024 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -44,9 +44,15 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent)
     //React to state holder theme change and apply our dark or light theme to the whole app
     connect(qGoodStateHolder, &QGoodStateHolder::currentThemeChanged, this, [=]{
         if (qGoodStateHolder->isCurrentThemeDark())
+        {
             QGoodWindow::setAppDarkTheme();
+            setNativeDarkModeEnabledOnWindows(true);
+        }
         else
+        {
             QGoodWindow::setAppLightTheme();
+            setNativeDarkModeEnabledOnWindows(false);
+        }
     });
 
     //React to system theme change

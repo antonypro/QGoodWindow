@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2023 Antonio Dias (https://github.com/antonypro)
+Copyright © 2018-2024 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@ SOFTWARE.
 #include <QtGui>
 #include <QtWidgets>
 #include <QGoodWindow>
+#include <QGoodCentralWidget>
 #include "iconwidget.h"
 #include "titlewidget.h"
 #include "captionbutton.h"
@@ -38,7 +39,7 @@ class TitleBar : public QFrame
 {
     Q_OBJECT
 public:
-    explicit TitleBar(QGoodWindow *gw, QWidget *parent = nullptr);
+    explicit TitleBar(QGoodWindow *gw, QGoodCentralWidget *gcw, QWidget *parent = nullptr);
 
 Q_SIGNALS:
     void showMinimized();
@@ -68,15 +69,14 @@ public Q_SLOTS:
     QRect minimizeButtonRect();
     QRect maximizeButtonRect();
     QRect closeButtonRect();
+    void updateIconState();
     void updateWindow();
     void captionButtonStateChanged(const QGoodWindow::CaptionButtonState &state);
 
 private:
-    //Functions
-    bool event(QEvent *event);
-
-    //Variable
+    //Variables
     QPointer<QGoodWindow> m_gw;
+    QPointer<QGoodCentralWidget> m_gcw;
     QWidget *m_left_margin_widget_place_holder;
     IconWidget *m_icon_widget;
     TitleWidget *m_title_widget;
@@ -88,6 +88,7 @@ private:
     QPointer<QWidget> m_left_widget;
     QPointer<QWidget> m_right_widget;
     QPointer<QWidget> m_center_widget;
+    QPointer<QWidget> m_icon_widget_place_holder;
     QPointer<QWidget> m_left_widget_place_holder;
     QPointer<QWidget> m_right_widget_place_holder;
     QPointer<QWidget> m_center_widget_place_holder;

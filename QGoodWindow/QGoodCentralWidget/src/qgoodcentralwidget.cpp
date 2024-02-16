@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2022-2023 Antonio Dias (https://github.com/antonypro)
+Copyright © 2018-2024 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +38,11 @@ QGoodCentralWidget::QGoodCentralWidget(QGoodWindow *gw) : QWidget(gw)
     m_central_widget_place_holder = new QWidget(this);
 
 #ifdef QGOODWINDOW
+    m_update_later_timer = new QTimer(this);
+    connect(m_update_later_timer, &QTimer::timeout, this, &QGoodCentralWidget::updateWindowLater);
+    m_update_later_timer->setSingleShot(true);
+    m_update_later_timer->setInterval(0);
+
     m_left_widget_transparent_for_mouse = false;
     m_right_widget_transparent_for_mouse = false;
     m_center_widget_transparent_for_mouse = false;
@@ -48,7 +53,7 @@ QGoodCentralWidget::QGoodCentralWidget(QGoodWindow *gw) : QWidget(gw)
 
     m_caption_button_width = 36;
 
-    m_title_bar = new TitleBar(m_gw, this);
+    m_title_bar = new TitleBar(m_gw, this, this);
     m_title_bar->setCaptionButtonWidth(m_caption_button_width);
 
     m_title_bar->installEventFilter(this);
@@ -75,36 +80,20 @@ QGoodCentralWidget::QGoodCentralWidget(QGoodWindow *gw) : QWidget(gw)
     m_draw_borders = !QGoodWindow::shouldBordersBeDrawnBySystem();
 
 #ifdef Q_OS_MAC
-    auto caption_buttons_visibility_changed_func = [=]{
-        if (m_gw->isNativeCaptionButtonsVisibleOnMac())
-        {
-            setCaptionButtonsVisible(false);
-            setIconVisible(false);
-
-            QRect rect = m_gw->titleBarButtonsRectOnMacOS();
-            m_title_bar->m_left_margin_widget_place_holder->setFixedSize(rect.x() * 2 + rect.width(), rect.y() + rect.height());
-            m_title_bar->m_left_widget_place_holder->setVisible(true);
-        }
-        else
-        {
-            setCaptionButtonsVisible(true);
-            setIconVisible(true);
-
-            m_title_bar->m_left_margin_widget_place_holder->setFixedSize(0, 0);
-            m_title_bar->m_left_widget_place_holder->setVisible(false);
-        }
-    };
-
-    connect(m_gw, &QGoodWindow::captionButtonsVisibilityChangedOnMacOS, this, caption_buttons_visibility_changed_func);
-
-    caption_buttons_visibility_changed_func();
+    connect(m_gw, &QGoodWindow::captionButtonsVisibilityChangedOnMacOS,
+            this, &QGoodCentralWidget::updateCaptionButtonsState);
 #endif
 
     m_title_bar_visible = true;
     m_caption_buttons_visible = true;
     m_title_visible = true;
-    m_icon_visible = true;
-    m_icon_width = 0;
+    m_icon_visibility_type = IconVisibilityType::IconOnLeftOfWindow;
+
+#ifdef Q_OS_MAC
+    m_caption_buttons_type = CaptionButtonsType::Native;
+#else
+    m_caption_buttons_type = CaptionButtonsType::CentralWidget;
+#endif
 
     m_frame = new QFrame(this);
     m_frame->setObjectName("GoodFrame");
@@ -141,10 +130,6 @@ int QGoodCentralWidget::execDialogWithWindow(QDialog *dialog, QGoodWindow *paren
     gw->resize(dialog->size());
     gw->setAttribute(Qt::WA_DeleteOnClose);
 
-#ifdef Q_OS_MAC
-    gw->setNativeCaptionButtonsVisibleOnMac(parent_gw->isNativeCaptionButtonsVisibleOnMac());
-#endif
-
     QGoodCentralWidget *gcw = new QGoodCentralWidget(gw);
     gcw->setCentralWidget(dialog);
 
@@ -153,6 +138,9 @@ int QGoodCentralWidget::execDialogWithWindow(QDialog *dialog, QGoodWindow *paren
 
     if (base_gcw)
     {
+#ifdef Q_OS_MAC
+        gcw->setCaptionButtonsType(base_gcw->captionButtonsType());
+#endif
         if (base_gcw->titleBarColor() != QColor(Qt::transparent))
             gcw->setTitleBarColor(base_gcw->titleBarColor());
         gcw->setActiveBorderColor(base_gcw->activeBorderColor());
@@ -160,7 +148,19 @@ int QGoodCentralWidget::execDialogWithWindow(QDialog *dialog, QGoodWindow *paren
     }
 
     gcw->setTitleVisible(title_visible);
-    gcw->setIconVisible(icon_visible);
+
+    if (icon_visible)
+    {
+#ifndef Q_OS_MAC
+        gcw->setIconVisibility(IconVisibilityType::IconOnLeftOfWindow);
+#else
+        gcw->setIconVisibility(IconVisibilityType::IconOnLeftOfTitle);
+#endif
+    }
+    else
+    {
+        gcw->setIconVisibility(IconVisibilityType::IconHidden);
+    }
 
     gw->setCentralWidget(gcw);
 
@@ -173,6 +173,16 @@ int QGoodCentralWidget::execDialogWithWindow(QDialog *dialog, QGoodWindow *paren
     Q_UNUSED(title_visible)
     Q_UNUSED(icon_visible)
     return dialog->exec();
+#endif
+}
+
+void QGoodCentralWidget::setCaptionButtonsType(const CaptionButtonsType &type)
+{
+#ifdef QGOODWINDOW
+    m_caption_buttons_type = type;
+    updateCaptionButtonsState();
+#else
+    Q_UNUSED(type)
 #endif
 }
 
@@ -340,11 +350,7 @@ void QGoodCentralWidget::setTitleBarVisible(bool visible)
 {
 #ifdef QGOODWINDOW
     m_title_bar_visible = visible;
-    m_title_bar->setVisible(m_title_bar_visible);
-    m_title_bar->setEnabled(m_title_bar_visible);
-#ifdef Q_OS_MAC
-    m_gw->setNativeCaptionButtonsVisibleOnMac(visible);
-#endif
+    updateCaptionButtonsState();
     updateWindow();
 #else
     Q_UNUSED(visible)
@@ -355,9 +361,7 @@ void QGoodCentralWidget::setCaptionButtonsVisible(bool visible)
 {
 #ifdef QGOODWINDOW
     m_caption_buttons_visible = visible;
-
-    m_title_bar->m_caption_buttons->setVisible(m_caption_buttons_visible);
-    m_title_bar->m_caption_buttons->setEnabled(m_caption_buttons_visible);
+    updateCaptionButtonsState();
 
     if (!m_caption_buttons_visible)
     {
@@ -372,6 +376,18 @@ void QGoodCentralWidget::setCaptionButtonsVisible(bool visible)
 #endif
 }
 
+void QGoodCentralWidget::setIconVisibility(const IconVisibilityType &type)
+{
+#ifdef QGOODWINDOW
+    m_icon_visibility_type = type;
+
+    updateWindow();
+#else
+    Q_UNUSED(visible)
+#endif
+}
+
+//DEPRECATED
 void QGoodCentralWidget::setTitleVisible(bool visible)
 {
 #ifdef QGOODWINDOW
@@ -383,28 +399,30 @@ void QGoodCentralWidget::setTitleVisible(bool visible)
     Q_UNUSED(visible)
 #endif
 }
+//DEPRECATED
 
+//DEPRECATED
 void QGoodCentralWidget::setIconVisible(bool visible)
 {
 #ifdef QGOODWINDOW
-    m_icon_visible = visible;
-    m_title_bar->m_icon_widget->setVisible(m_icon_visible);
-    m_title_bar->m_icon_widget->setEnabled(m_icon_visible);
-    updateWindow();
+    setIconVisibility(visible ? IconVisibilityType::IconOnLeftOfWindow : IconVisibilityType::IconHidden);
 #else
     Q_UNUSED(visible)
 #endif
 }
+//DEPRECATED
 
+//DEPRECATED
 void QGoodCentralWidget::setIconWidth(int width)
 {
 #ifdef QGOODWINDOW
-    m_icon_width = width;
+    m_gw->setIconWidth(width);
     updateWindow();
 #else
     Q_UNUSED(width)
 #endif
 }
+//DEPRECATED
 
 void QGoodCentralWidget::setTitleBarHeight(int height)
 {
@@ -425,6 +443,15 @@ void QGoodCentralWidget::setCaptionButtonWidth(int width)
     updateWindow();
 #else
     Q_UNUSED(width)
+#endif
+}
+
+QGoodCentralWidget::CaptionButtonsType QGoodCentralWidget::captionButtonsType() const
+{
+#ifdef QGOODWINDOW
+    return m_caption_buttons_type;
+#else
+    return CaptionButtonsType::Invalid;
 #endif
 }
 
@@ -523,23 +550,37 @@ bool QGoodCentralWidget::isTitleVisible() const
 #endif
 }
 
+QGoodCentralWidget::IconVisibilityType QGoodCentralWidget::iconVisibility() const
+{
+#ifdef QGOODWINDOW
+    return m_icon_visibility_type;
+#else
+    return IconVisibilityType::IconHidden;
+#endif
+}
+
+//DEPRECATED
 bool QGoodCentralWidget::isIconVisible() const
 {
 #ifdef QGOODWINDOW
-    return m_icon_visible;
+    return (m_icon_visibility_type == IconVisibilityType::IconOnLeftOfWindow ||
+            m_icon_visibility_type == IconVisibilityType::IconOnLeftOfTitle);
 #else
     return true;
 #endif
 }
+//DEPRECATED
 
+//DEPRECATED
 int QGoodCentralWidget::iconWidth() const
 {
 #ifdef QGOODWINDOW
-    return m_icon_width;
+    return m_gw->iconWidth();
 #else
     return 0;
 #endif
 }
+//DEPRECATED
 
 int QGoodCentralWidget::titleBarHeight() const
 {
@@ -562,7 +603,49 @@ int QGoodCentralWidget::captionButtonWidth() const
 void QGoodCentralWidget::updateWindow()
 {
 #ifdef QGOODWINDOW
-    QTimer::singleShot(0, this, &QGoodCentralWidget::updateWindowLater);
+    updateWindowNow();
+    m_update_later_timer->start();
+#endif
+}
+
+void QGoodCentralWidget::updateWindowNow()
+{
+#ifdef QGOODWINDOW
+#if defined Q_OS_WIN || defined Q_OS_LINUX
+    bool window_no_state = m_gw->windowState().testFlag(Qt::WindowNoState);
+    bool draw_borders = m_draw_borders;
+
+    if (m_title_bar)
+    {
+        QRegion mask;
+
+        if (draw_borders && window_no_state)
+        {
+#ifdef Q_OS_WIN
+            const int radius = 0;
+#else
+            const int radius = 8;
+#endif
+
+            QBitmap bmp(m_title_bar->size());
+            bmp.clear();
+
+            QPainter painter;
+            if (!bmp.isNull() && painter.begin(&bmp))
+            {
+                painter.setRenderHints(QPainter::Antialiasing);
+                painter.setBrush(Qt::color1);
+                painter.drawRoundedRect(m_title_bar->rect(), radius, radius);
+                painter.fillRect(m_title_bar->rect().adjusted(0, m_title_bar->height() - radius, radius, radius), Qt::color1);
+                painter.end();
+            }
+
+            mask = bmp;
+        }
+
+        m_title_bar->setMask(mask);
+    }
+#endif
 #endif
 }
 
@@ -580,23 +663,30 @@ void QGoodCentralWidget::updateWindowLater()
     bool draw_borders = m_draw_borders;
     bool is_maximized = m_gw->isMaximized();
     bool is_full_screen = m_gw->isFullScreen();
-    int title_bar_width = m_title_bar->width();
-    int title_bar_height = m_title_bar->height();
+    int icon_width = m_gw->iconWidth();
 
-    int icon_width = m_icon_width;
-
-    if (m_icon_visible)
+    if (is_full_screen)
+        icon_width = 0;
+    else if (m_icon_visibility_type == IconVisibilityType::IconHidden)
+        icon_width = 0;
+    else if (m_icon_visibility_type == IconVisibilityType::IconOnLeftOfWindow)
         icon_width = m_title_bar->m_icon_widget->width();
 
     QString border_str = "none;";
 
     if (draw_borders && window_no_state)
     {
-        if (window_active)
-            border_str = QString("border: 1px solid %0;").arg(m_active_border_color.name());
-        else
-            border_str = "border: 1px solid #AAAAAA;";
+        border_str = "border: 1px solid #00000000;";
     }
+#ifdef Q_OS_WIN
+    else
+    {
+        if (window_active)
+            m_gw->setNativeBorderColorOnWindows(m_active_border_color);
+        else
+            m_gw->setNativeBorderColorOnWindows(QColor("#AAAAAA"));
+    }
+#endif
 
 #ifdef Q_OS_LINUX
     border_str.append("border-radius: 8px;");
@@ -608,11 +698,32 @@ void QGoodCentralWidget::updateWindowLater()
 
     m_title_bar->setVisible(m_title_bar_visible && !is_full_screen);
 
+    m_title_bar->setActive(window_active);
+
+    m_gw->setIconWidth(icon_width);
+
+    m_title_bar->updateWindow();
+
+    QTimer::singleShot(100, this, &QGoodCentralWidget::updateWindowMask);
+#endif
+}
+
+void QGoodCentralWidget::updateWindowMask()
+{
+#ifdef QGOODWINDOW
+    if (!m_gw)
+        return;
+
+    if (!m_gw->isVisible() || m_gw->isMinimized())
+        return;
+
+    bool is_full_screen = m_gw->isFullScreen();
+    int title_bar_width = m_title_bar->width();
+    int title_bar_height = m_title_bar->height();
+
     if (!is_full_screen)
     {
         m_gw->setTitleBarHeight(m_title_bar_visible ? title_bar_height : 0);
-
-        m_gw->setIconWidth(icon_width);
 
         QRegion left_mask;
         QRegion right_mask;
@@ -736,10 +847,64 @@ void QGoodCentralWidget::updateWindowLater()
             m_gw->setCloseMask(cls_rect);
         }
     }
+#endif
+}
 
-    m_title_bar->setActive(window_active);
+void QGoodCentralWidget::paintEvent(QPaintEvent *event)
+{
+    QWidget::paintEvent(event);
 
-    m_title_bar->updateWindow();
+#ifdef QGOODWINDOW
+#if defined Q_OS_WIN || defined Q_OS_LINUX
+    bool window_active = m_gw->isActiveWindow();
+    bool window_no_state = m_gw->windowState().testFlag(Qt::WindowNoState);
+    bool draw_borders = m_draw_borders;
+
+    if (draw_borders)
+    {
+        QColor color = QColor(0, 0, 0, 0);
+
+        if (window_no_state)
+        {
+            color = window_active ? m_active_border_color : QColor("#AAAAAA");
+        }
+
+        QRegion mask;
+
+        if (window_no_state)
+        {
+#ifdef Q_OS_WIN
+            const int radius = 0;
+#else
+            const int radius = 8;
+#endif
+
+            QBitmap bmp(size());
+            bmp.clear();
+
+            QPainter painter;
+            if (!bmp.isNull() && painter.begin(&bmp))
+            {
+                painter.setRenderHints(QPainter::Antialiasing);
+                painter.setBrush(Qt::color1);
+                painter.drawRoundedRect(rect().adjusted(1, 1, -2, -2), radius, radius);
+                painter.end();
+            }
+
+            mask = bmp;
+        }
+
+        QPainter painter;
+        if (painter.begin(this))
+        {
+            QPainterPath path;
+            path.addRect(rect());
+            path.addRegion(mask);
+            painter.fillPath(path, color);
+            painter.end();
+        }
+    }
+#endif
 #endif
 }
 
@@ -768,6 +933,7 @@ bool QGoodCentralWidget::eventFilter(QObject *watched, QEvent *event)
         switch (event->type())
         {
         case QEvent::Show:
+        case QEvent::Resize:
         {
             updateWindow();
             break;
@@ -806,13 +972,13 @@ bool QGoodCentralWidget::event(QEvent *event)
                 bmp.clear();
 
                 QPainter painter;
-                painter.begin(&bmp);
-                painter.setRenderHints(QPainter::Antialiasing);
-                painter.setPen(Qt::color1);
-                painter.setBrush(Qt::color1);
-                painter.drawRoundedRect(m_central_widget_place_holder->rect().adjusted(1, 1, -1, -1),
-                                        radius, radius, Qt::AbsoluteSize);
-                painter.end();
+                if (!bmp.isNull() && painter.begin(&bmp))
+                {
+                    painter.setRenderHints(QPainter::Antialiasing);
+                    painter.setBrush(Qt::color1);
+                    painter.drawRoundedRect(m_central_widget_place_holder->rect().adjusted(1, 1, -1, -1), radius, radius);
+                    painter.end();
+                }
 
                 mask = bmp;
             }
@@ -826,7 +992,89 @@ bool QGoodCentralWidget::event(QEvent *event)
         break;
     }
 #endif
+#ifdef Q_OS_MAC
+    switch (event->type())
+    {
+    case QEvent::Show:
+    {
+        updateCaptionButtonsState();
+        break;
+    }
+    default:
+        break;
+    }
+#endif
 #endif
 
     return QWidget::event(event);
+}
+
+void QGoodCentralWidget::updateCaptionButtonsState()
+{
+#ifdef QGOODWINDOW
+#ifdef Q_OS_MAC
+    if (!m_title_bar_visible)
+    {
+        m_title_bar->m_caption_buttons->setVisible(false);
+        m_title_bar->m_caption_buttons->setEnabled(false);
+
+        if (m_gw->isNativeCaptionButtonsVisibleOnMac())
+            m_gw->setNativeCaptionButtonsVisibleOnMac(false);
+
+        return;
+    }
+
+    switch (m_caption_buttons_type)
+    {
+    case CaptionButtonsType::Custom:
+    {
+        m_title_bar->m_caption_buttons->setVisible(false);
+        m_title_bar->m_caption_buttons->setEnabled(false);
+
+        if (m_gw->isNativeCaptionButtonsVisibleOnMac())
+            m_gw->setNativeCaptionButtonsVisibleOnMac(false);
+
+        break;
+    }
+    case CaptionButtonsType::CentralWidget:
+    {
+        m_title_bar->m_caption_buttons->setVisible(true);
+        m_title_bar->m_caption_buttons->setEnabled(true);
+
+        if (m_gw->isNativeCaptionButtonsVisibleOnMac())
+            m_gw->setNativeCaptionButtonsVisibleOnMac(false);
+
+        break;
+    }
+    case CaptionButtonsType::Native:
+    {
+        m_title_bar->m_caption_buttons->setVisible(false);
+        m_title_bar->m_caption_buttons->setEnabled(false);
+
+        if (!m_gw->isNativeCaptionButtonsVisibleOnMac())
+            m_gw->setNativeCaptionButtonsVisibleOnMac(true);
+
+        break;
+    }
+    default:
+        break;
+    }
+
+    if (m_gw->isNativeCaptionButtonsVisibleOnMac())
+    {
+        QRect rect = m_gw->titleBarButtonsRectOnMacOS();
+        m_title_bar->m_left_margin_widget_place_holder->setFixedSize(
+                    rect.x() * 2 + rect.width(), rect.y() + rect.height());
+        setIconVisibility(IconVisibilityType::IconOnLeftOfTitle);
+    }
+    else
+    {
+        m_title_bar->m_left_margin_widget_place_holder->setFixedSize(0, 0);
+        setIconVisibility(IconVisibilityType::IconOnLeftOfWindow);
+    }
+#else
+    m_title_bar->m_caption_buttons->setVisible(m_caption_buttons_visible);
+    m_title_bar->m_caption_buttons->setEnabled(m_caption_buttons_visible);
+#endif
+#endif
 }

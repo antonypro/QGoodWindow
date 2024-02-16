@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2023 Antonio Dias (https://github.com/antonypro)
+Copyright © 2018-2024 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -34,6 +34,9 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent)
     m_label = new QLabel("Hello world!", this);
     m_label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
     m_label->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+    m_label->installEventFilter(this);
+
+    m_painting_label = false;
 
     //Function that sets the state holder theme
     auto func_theme = [=]{
@@ -43,9 +46,15 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent)
     //React to state holder theme change and apply our dark or light theme to the whole app
     connect(qGoodStateHolder, &QGoodStateHolder::currentThemeChanged, this, [=]{
         if (qGoodStateHolder->isCurrentThemeDark())
+        {
             QGoodWindow::setAppDarkTheme();
+            setNativeDarkModeEnabledOnWindows(true);
+        }
         else
+        {
             QGoodWindow::setAppLightTheme();
+            setNativeDarkModeEnabledOnWindows(false);
+        }
     });
 
     //React to system theme change
@@ -107,21 +116,36 @@ void MainWindow::adjustSizeLabel()
     m_label->setFont(font);
 }
 
-bool MainWindow::event(QEvent *event)
+bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 {
-    switch (event->type())
+    if (watched == m_label)
     {
-    case QEvent::Show:
-    case QEvent::Resize:
-    {
-        QTimer::singleShot(0, this, &MainWindow::adjustSizeLabel);
-        break;
-    }
-    default:
-        break;
+        switch (event->type())
+        {
+        case QEvent::Resize:
+        {
+            m_painting_label = true;
+            m_label->update();
+
+            break;
+        }
+        case QEvent::Paint:
+        {
+            if (m_painting_label)
+                QTimer::singleShot(0, this, &MainWindow::adjustSizeLabel);
+
+            QTimer::singleShot(1, this, [this]{
+                m_painting_label = false;
+            });
+
+            break;
+        }
+        default:
+            break;
+        }
     }
 
-    return QGoodWindow::event(event);
+    return QGoodWindow::eventFilter(watched, event);
 }
 
 void MainWindow::show()

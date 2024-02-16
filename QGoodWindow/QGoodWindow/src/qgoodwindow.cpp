@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2023 Antonio Dias (https://github.com/antonypro)
+Copyright © 2018-2024 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -48,6 +48,10 @@ SOFTWARE.
 #define FIXED_WIDTH(widget) (widget->minimumWidth() >= widget->maximumWidth())
 #define FIXED_HEIGHT(widget) (widget->minimumHeight() >= widget->maximumHeight())
 #define FIXED_SIZE(widget) (FIXED_WIDTH(widget) && FIXED_HEIGHT(widget))
+#endif
+
+#ifdef QGOODCENTRALWIDGET
+#include <QGoodCentralWidget>
 #endif
 
 #ifdef Q_OS_WIN
@@ -297,6 +301,7 @@ QGoodWindow::QGoodWindow(QWidget *parent, const QColor &clear_color) : QMainWind
     Q_UNUSED(clear_color)
 #endif
 #ifdef Q_OS_WIN
+    m_win_dark_mode = false;
     m_minimum_width = 0;
     m_minimum_height = 0;
     m_maximum_width = 0;
@@ -573,12 +578,33 @@ WId QGoodWindow::winId() const
 #endif
 }
 
-void QGoodWindow::setWindowFlags(Qt::WindowFlags type)
+void QGoodWindow::setWindowFlags(Qt::WindowFlags flags)
 {
 #ifdef QGOODWINDOW
-    Q_UNUSED(type)
+#ifdef Q_OS_WIN
+    if (flags & Qt::WindowStaysOnTopHint)
+    {
+        SetWindowPos(m_hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
+        if (m_shadow)
+            SetWindowPos(HWND(m_shadow->winId()), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
+    }
+    else
+    {
+        SetWindowPos(m_hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
+        if (m_shadow)
+            SetWindowPos(HWND(m_shadow->winId()), HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
+    }
+#elif defined Q_OS_LINUX || defined Q_OS_MAC
+    if (flags == windowFlags() || flags == (windowFlags() | Qt::WindowStaysOnTopHint))
+    {
+#ifdef Q_OS_LINUX
+        m_window_flags = flags;
+#endif
+        QMainWindow::setWindowFlags(flags);
+    }
+#endif
 #else
-    QMainWindow::setWindowFlags(type);
+    QMainWindow::setWindowFlags(flags);
 #endif
 }
 
@@ -598,6 +624,9 @@ Qt::WindowFlags QGoodWindow::windowFlags() const
     if (GetWindowLongW(hwnd, GWL_STYLE) & WS_MAXIMIZEBOX)
         flags |= Qt::WindowMaximizeButtonHint;
 
+    if (GetWindowLongW(hwnd, GWL_EXSTYLE) & WS_EX_TOPMOST)
+        flags |= Qt::WindowStaysOnTopHint;
+
     flags |= Qt::WindowCloseButtonHint;
 
     return flags;
@@ -613,6 +642,43 @@ Qt::WindowFlags QGoodWindow::windowFlags() const
 QString QGoodWindow::version()
 {
     return QStringLiteral(QGOODWINDOW_VERSION);
+}
+
+void QGoodWindow::aboutQGoodWindow(QGoodWindow *parent, const QString &title)
+{
+    const QString gw_version = QGoodWindow::version();
+
+    const QString gw_license = QString::fromUtf8(QString(QStringLiteral(QGOODWINDOW_LICENSE)).toUtf8());
+
+    const QString gw_text = QStringLiteral("QGoodWindow version: %0<br><br>"
+                                           "QGoodWindow Project on GitHub:<br>"
+                                           "<a href='https://github.com/antonypro/QGoodWindow'>"
+                                           "https://github.com/antonypro/QGoodWindow</a><br><br>"
+                                           "QGoodWindow is a library that gives to Qt developers "
+                                           "possibilities for customization of the title bar.<br><br>"
+                                           "QGoodWindow enables full title bar customization "
+                                           "like buttons on the title bar or combine the title bar "
+                                           "with the client area of the window.<br><br>"
+                                           "QGoodWindow license: MIT. See details for complete license.");
+
+    const QString text = gw_text.arg(gw_version);
+
+    QMessageBox msgbox(parent);
+    msgbox.setIcon(QMessageBox::Information);
+    msgbox.setStandardButtons(QMessageBox::Ok);
+    msgbox.setDefaultButton(QMessageBox::Ok);
+    msgbox.setTextFormat(Qt::RichText);
+    msgbox.setWindowTitle(!title.isEmpty() ? title : QStringLiteral("About QGoodWindow"));
+    msgbox.setDetailedText(gw_license);
+    msgbox.setText(text);
+
+#if defined QGOODWINDOW && defined QGOODCENTRALWIDGET
+    QGoodCentralWidget gcw(parent);
+    gcw.setTitleAlignment(Qt::AlignCenter);
+    QGoodCentralWidget::execDialogWithWindow(&msgbox, parent, &gcw);
+#else
+    msgbox.exec();
+#endif
 }
 
 void QGoodWindow::setup()
@@ -635,31 +701,30 @@ void QGoodWindow::setup()
 
 #ifndef Q_OS_MAC
 
-#ifdef Q_OS_WIN
-#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+#if defined Q_OS_WIN && QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
     if (QGoodWindowUtils::isWinXOrGreater(10, 0, 15063)) //Windows 10 version 1703 or later.
     {
-        static const qintptr vDPI_AWARENESS_CONTEXT = 0;
-        static const qintptr vDPI_AWARENESS_CONTEXT_UNAWARE = ((vDPI_AWARENESS_CONTEXT)-1);
-        static const qintptr vDPI_AWARENESS_CONTEXT_SYSTEM_AWARE = ((vDPI_AWARENESS_CONTEXT)-2);
-        static const qintptr vDPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE = ((vDPI_AWARENESS_CONTEXT)-3);
-        static const qintptr vDPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = ((vDPI_AWARENESS_CONTEXT)-4);
-        static const qintptr vDPI_AWARENESS_CONTEXT_UNAWARE_GDISCALED = ((vDPI_AWARENESS_CONTEXT)-5);
+        const qintptr AWARENESS_CONTEXT_DPI_AWARENESS_CONTEXT = 0;
+        const qintptr AWARENESS_CONTEXT_DPI_AWARENESS_CONTEXT_UNAWARE = -1;
+        const qintptr AWARENESS_CONTEXT_DPI_AWARENESS_CONTEXT_SYSTEM_AWARE = -2;
+        const qintptr AWARENESS_CONTEXT_DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE = -3;
+        const qintptr AWARENESS_CONTEXT_DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = -4;
+        const qintptr AWARENESS_CONTEXT_DPI_AWARENESS_CONTEXT_UNAWARE_GDISCALED = -5;
 
-        Q_UNUSED(vDPI_AWARENESS_CONTEXT_UNAWARE)
-        Q_UNUSED(vDPI_AWARENESS_CONTEXT_SYSTEM_AWARE)
-        Q_UNUSED(vDPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE)
-        Q_UNUSED(vDPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2)
-        Q_UNUSED(vDPI_AWARENESS_CONTEXT_UNAWARE_GDISCALED)
+        Q_UNUSED(AWARENESS_CONTEXT_DPI_AWARENESS_CONTEXT)
+        Q_UNUSED(AWARENESS_CONTEXT_DPI_AWARENESS_CONTEXT_UNAWARE)
+        Q_UNUSED(AWARENESS_CONTEXT_DPI_AWARENESS_CONTEXT_SYSTEM_AWARE)
+        Q_UNUSED(AWARENESS_CONTEXT_DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE)
+        Q_UNUSED(AWARENESS_CONTEXT_DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2)
+        Q_UNUSED(AWARENESS_CONTEXT_DPI_AWARENESS_CONTEXT_UNAWARE_GDISCALED)
 
         typedef BOOL(*tSetProcessDpiAwarenessContext)(HANDLE);
         tSetProcessDpiAwarenessContext pSetProcessDpiAwarenessContext =
                 tSetProcessDpiAwarenessContext(QLibrary::resolve("user32", "SetProcessDpiAwarenessContext"));
 
         if (pSetProcessDpiAwarenessContext)
-            pSetProcessDpiAwarenessContext(HANDLE(vDPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2));
+            pSetProcessDpiAwarenessContext(HANDLE(AWARENESS_CONTEXT_DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2));
     }
-#endif
 #endif
 
 #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
@@ -744,6 +809,76 @@ void QGoodWindow::setAppLightTheme()
 QGoodStateHolder *QGoodWindow::qGoodStateHolderInstance()
 {
     return QGoodStateHolder::instance();
+}
+
+void QGoodWindow::setNativeDarkModeEnabledOnWindows(bool dark)
+{
+#ifdef Q_OS_WIN
+    if (QGoodWindowUtils::isWin11OrGreater())
+    {
+        const DWORD DWMWINDOWATTRIBUTE_DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+        BOOL ENABLE = BOOL(dark);
+        typedef HRESULT(WINAPI *tDwmSetWindowAttribute)(HWND, DWORD, LPCVOID, DWORD);
+        tDwmSetWindowAttribute pDwmSetWindowAttribute =
+            tDwmSetWindowAttribute(QLibrary::resolve("dwmapi", "DwmSetWindowAttribute"));
+        if (pDwmSetWindowAttribute)
+            pDwmSetWindowAttribute(m_hwnd, DWMWINDOWATTRIBUTE_DWMWA_USE_IMMERSIVE_DARK_MODE, &ENABLE, sizeof(ENABLE));
+
+        enum class PreferredAppMode
+        {
+            Default,
+            AllowDark,
+            ForceDark,
+            ForceLight,
+            Max
+        };
+
+        typedef VOID(WINAPI *tPreferredAppMode)(PreferredAppMode);
+        tPreferredAppMode pPreferredAppMode = tPreferredAppMode(QLibrary::resolve("uxtheme", MAKEINTRESOURCEA(135)));
+        if (pPreferredAppMode)
+            pPreferredAppMode(dark ? PreferredAppMode::ForceDark : PreferredAppMode::ForceLight);
+
+        typedef VOID(WINAPI *tFlushMenuThemes)();
+        tFlushMenuThemes pFlushMenuThemes = tFlushMenuThemes(QLibrary::resolve("uxtheme", MAKEINTRESOURCEA(136)));
+        if (pFlushMenuThemes)
+            pFlushMenuThemes();
+
+        m_win_dark_mode = dark;
+    }
+    else
+    {
+        m_win_dark_mode = false;
+    }
+#else
+    Q_UNUSED(dark)
+#endif
+}
+
+bool QGoodWindow::isNativeDarkModeEnabledOnWindows() const
+{
+#ifdef Q_OS_WIN
+    return m_win_dark_mode;
+#else
+    return false;
+#endif
+}
+
+void QGoodWindow::setNativeBorderColorOnWindows(const QColor &color)
+{
+#ifdef Q_OS_WIN
+    if (QGoodWindowUtils::isWin11OrGreater())
+    {
+        const DWORD DWMWINDOWATTRIBUTE_DWMWA_BORDER_COLOR = 34;
+        COLORREF COLOR = RGB(color.red(), color.green(), color.blue());
+        typedef HRESULT(WINAPI *tDwmSetWindowAttribute)(HWND, DWORD, LPCVOID, DWORD);
+        tDwmSetWindowAttribute pDwmSetWindowAttribute =
+            tDwmSetWindowAttribute(QLibrary::resolve("dwmapi", "DwmSetWindowAttribute"));
+        if (pDwmSetWindowAttribute)
+            pDwmSetWindowAttribute(m_hwnd, DWMWINDOWATTRIBUTE_DWMWA_BORDER_COLOR, &COLOR, sizeof(COLOR));
+    }
+#else
+    Q_UNUSED(color)
+#endif
 }
 
 void QGoodWindow::setNativeCaptionButtonsVisibleOnMac(bool visible)
@@ -1736,7 +1871,7 @@ bool QGoodWindow::event(QEvent *event)
         if (!widget)
             break;
 
-//Catch QMenu show event to fix show bug.
+//Catch QMenu show event to fix show bug on high DPI.
 #if defined QT_VERSION_QT5 && QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
         for (QWidget *widget : widget->findChildren<QWidget*>())
         {
@@ -1756,7 +1891,6 @@ bool QGoodWindow::event(QEvent *event)
 
         bool is_file_dialog = bool(qobject_cast<QFileDialog*>(widget));
 
-        widget->adjustSize();
         widget->installEventFilter(this);
         widget->setParent(bestParentForModalWindow(),
                           (!is_file_dialog ? widget->windowFlags() : Qt::WindowFlags(0)));
@@ -1810,6 +1944,23 @@ bool QGoodWindow::event(QEvent *event)
     switch (event->type())
     {
     case QEvent::Show:
+    {
+        setMaskLinux();
+        break;
+    }
+    case QEvent::WindowStateChange:
+    case QEvent::Resize:
+    {
+        setMaskLinux();
+        break;
+    }
+    default:
+        break;
+    }
+
+    switch (event->type())
+    {
+    case QEvent::Show:
     case QEvent::Hide:
     case QEvent::WindowActivate:
     case QEvent::WindowDeactivate:
@@ -1817,28 +1968,6 @@ bool QGoodWindow::event(QEvent *event)
     case QEvent::Resize:
     case QEvent::Move:
     {
-        QRegion mask;
-
-        if (isVisible() && windowState().testFlag(Qt::WindowNoState))
-        {
-            const int radius = 8;
-
-            QBitmap bmp(size());
-            bmp.clear();
-
-            QPainter painter;
-            painter.begin(&bmp);
-            painter.setRenderHints(QPainter::Antialiasing);
-            painter.setPen(Qt::color1);
-            painter.setBrush(Qt::color1);
-            painter.drawRoundedRect(rect(), radius, radius, Qt::AbsoluteSize);
-            painter.end();
-
-            mask = bmp;
-        }
-
-        setMask(mask);
-
         if (isVisible() && windowState().testFlag(Qt::WindowNoState))
         {
             sizeMoveBorders();
@@ -1906,6 +2035,25 @@ bool QGoodWindow::event(QEvent *event)
             break;
 
         setMacOSStyle(int(macOSNative::StyleType::NoState));
+
+        break;
+    }
+    case QEvent::ChildPolished:
+    {
+        QChildEvent *child_event = static_cast<QChildEvent*>(event);
+
+        QWidget *widget = qobject_cast<QWidget*>(child_event->child());
+
+        if (!widget)
+            break;
+
+        if (!widget->isWindow())
+            break;
+
+        if (!qobject_cast<QMessageBox*>(widget) && !qobject_cast<QInputDialog*>(widget))
+            break;
+
+        widget->installEventFilter(this);
 
         break;
     }
@@ -2004,9 +2152,11 @@ bool QGoodWindow::eventFilter(QObject *watched, QEvent *event)
     else if (watched->metaObject()->className() == QStringLiteral("QMenu") ||
                watched->metaObject()->className() == QStringLiteral("QComboBoxPrivateContainer"))
     {
+        bool high_dpi = (windowHandle()->devicePixelRatio() > qreal(1));
+
         QWidget *widget = qobject_cast<QWidget*>(watched);
 
-        if (widget)
+        if (high_dpi && widget)
         {
             switch (event->type())
             {
@@ -2071,6 +2221,30 @@ bool QGoodWindow::eventFilter(QObject *watched, QEvent *event)
                 break;
             }
         }
+    }
+#endif
+#ifdef Q_OS_MAC
+    if (qobject_cast<QMessageBox*>(watched) || qobject_cast<QInputDialog*>(watched))
+    {
+        switch (event->type())
+        {
+        case QEvent::Show:
+        {
+            QWidget *widget = qobject_cast<QWidget*>(watched);
+            widget->setWindowModality(Qt::ApplicationModal);
+            setMacOSStyle(int(macOSNative::StyleType::Disabled));
+            break;
+        }
+        case QEvent::Hide:
+        {
+            activateWindow();
+            break;
+        }
+        default:
+            break;
+        }
+
+        return QMainWindow::eventFilter(watched, event);
     }
 #endif
 #if defined Q_OS_LINUX || defined Q_OS_MAC
@@ -3118,6 +3292,11 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
                     gw->updateScreen(gw->screenForWindow(hwnd));
                 };
 
+                auto func_show = [=]
+                {
+                    gw->m_main_window->show();
+                };
+
                 auto func_finish = [=]
                 {
                     gw->internalWidgetResize();
@@ -3125,25 +3304,11 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
                     gw->sizeMoveMainWindow();
                 };
 
-                auto func_show = [=]
-                {
-                    gw->m_main_window->show();
-                };
-
-                if (!gw->m_main_window->testAttribute(Qt::WA_NativeWindow))
-                {
+                QTimer::singleShot(0, gw, [=]{
                     func_init();
-                    func_finish();
                     func_show();
-                }
-                else
-                {
-                    QTimer::singleShot(0, gw, [=]{
-                        func_init();
-                        func_show();
-                        func_finish();
-                    });
-                }
+                    func_finish();
+                });
 
                 gw->m_self_generated_show_event = true;
                 QShowEvent event;
@@ -3236,8 +3401,7 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
     }
     case WM_EXITSIZEMOVE:
     {
-        if (gw->windowHandle()->screen() != gw->screenForWindow(hwnd))
-            gw->m_timer_move->start();
+        gw->m_timer_move->start();
 
         break;
     }
@@ -3253,9 +3417,11 @@ LRESULT QGoodWindow::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
         if (!screen)
             break;
 
-        gw->screenChangeMoveWindow(screen);
-        gw->updateScreen(screen);
-        gw->windowScaleChanged();
+        QTimer::singleShot(0, gw, [=]{
+            gw->screenChangeMoveWindow(screen);
+            gw->updateScreen(screen);
+            gw->windowScaleChanged();
+        });
 
         break;
     }
@@ -4222,6 +4388,32 @@ void QGoodWindow::sizeMoveBorders()
 
     m_shadow->setGeometry(frame_geom);
 }
+
+void QGoodWindow::setMaskLinux()
+{
+    QRegion mask = rect();
+
+    if (isVisible() && windowState().testFlag(Qt::WindowNoState))
+    {
+        const int radius = 8;
+
+        QBitmap bmp(size());
+        bmp.clear();
+
+        QPainter painter;
+        if (!bmp.isNull() && painter.begin(&bmp))
+        {
+            painter.setRenderHints(QPainter::Antialiasing);
+            painter.setBrush(Qt::color1);
+            painter.drawRoundedRect(rect(), radius, radius);
+            painter.end();
+        }
+
+        mask = bmp;
+    }
+
+    setMask(mask);
+}
 #endif
 #ifdef Q_OS_MAC
 void QGoodWindow::setMacOSStyle(int style_type)
@@ -4357,7 +4549,7 @@ qintptr QGoodWindow::ncHitTest(int pos_x, int pos_y)
         else if (m_min_mask.contains(cursor_pos_map))
             return HTMINBUTTON; //title bar minimize button.
 #ifdef Q_OS_WIN
-        else if (cursor_pos_map.x() <= icon_width)
+        else if (cursor_pos_map.x() < icon_width)
             return HTSYSMENU; //title bar icon.
 #endif
         else if (m_title_bar_mask.contains(cursor_pos_map))

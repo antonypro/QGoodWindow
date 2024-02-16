@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2022-2023 Antonio Dias (https://github.com/antonypro)
+Copyright © 2018-2024 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -54,7 +54,58 @@ public:
                                     QWidget *right_title_bar_widget = nullptr,
                                     bool title_visible = true, bool icon_visible = true);
 
+    /** Types of QGoodCentralWidget caption buttons. */
+    enum class CaptionButtonsType
+    {
+        /** Invalid state of caption buttons. */
+        Invalid,
+
+        /** Hide all ready-to-use captions buttons and use your customs caption buttons. */
+        Custom,
+
+        /** Use QGoodCentralWidget caption buttons. */
+        CentralWidget,
+
+        /** Use OS native caption buttons. */
+        Native
+    };
+
+    /** Types for the icon visibility of the window. */
+    enum class IconVisibilityType
+    {
+        /** Invalid state of visibility. */
+        Invalid,
+
+        /** Do not show icon, but accepts mouse input to show system menu on Windows. */
+        IconHiddenAcceptMouseInput,
+
+        /** Do not show any icon. */
+        IconHidden,
+
+        /** Show window icon at the left of the window as Windows style. */
+        IconOnLeftOfWindow,
+
+        /** Show window icon at the left side of the title as macOS style. */
+        IconOnLeftOfTitle
+    };
+
+public:
+    /** Deprecated function, call QGoodWindow *setIconWidth* directly. */
+    Q_DECL_DEPRECATED void setIconWidth(int width);
+
+    /** Deprecated function, call QGoodWindow *iconWidth* directly. */
+    Q_DECL_DEPRECATED int iconWidth() const;
+
+    /** Deprecated function, call *setIconVisibility*. */
+    Q_DECL_DEPRECATED void setIconVisible(bool visible);
+
+    /** Deprecated function, call *iconVisibility*. */
+    Q_DECL_DEPRECATED bool isIconVisible() const;
+
 public Q_SLOTS:
+    /** Set the caption buttons type. */
+    void setCaptionButtonsType(const CaptionButtonsType &type);
+
     /** Set the title bar and the central widget unified. */
     void setUnifiedTitleBarAndCentralWidget(bool unified);
 
@@ -97,18 +148,16 @@ public Q_SLOTS:
     void setTitleVisible(bool visible);
 
     /** Change the visibility of *QGoodCentralWidget* title bar icon. */
-    void setIconVisible(bool visible);
-
-    /** Change the width of *QGoodCentralWidget* title bar icon,
-     * width higher than 0 will hide the *QGoodCentralWidget* provided icon,
-     * this is useful when showing own icons. */
-    void setIconWidth(int width);
+    void setIconVisibility(const IconVisibilityType &type);
 
     /** Change the title bar height to \e height multiplied to current pixel ratio. */
     void setTitleBarHeight(int height);
 
     /** Change the caption button width to \e width multiplied to current pixel ratio. */
     void setCaptionButtonWidth(int width);
+
+    /** Returns the caption buttons type. */
+    CaptionButtonsType captionButtonsType() const;
 
     /** Returns if the title bar and the central widget are unified. */
     bool isUnifiedTitleBarAndCentralWidget() const;
@@ -143,11 +192,8 @@ public Q_SLOTS:
     /** Returns if the *QGoodCentralWidget* title bar title is visible or not. */
     bool isTitleVisible() const;
 
-    /** Returns if the *QGoodCentralWidget* title bar icon is visible or not. */
-    bool isIconVisible() const;
-
-    /** Returns the customized icon width. */
-    int iconWidth() const;
+    /** Returns the visibility of the *QGoodCentralWidget* title bar icon. */
+    IconVisibilityType iconVisibility() const;
 
     /** Returns the *QGoodCentralWidget* title bar height. */
     int titleBarHeight() const;
@@ -163,6 +209,7 @@ public Q_SLOTS:
 protected:
     //\cond HIDDEN_SYMBOLS
     //Functions
+    void paintEvent(QPaintEvent *event);
     bool eventFilter(QObject *watched, QEvent *event);
     bool event(QEvent *event);
     //\endcond
@@ -170,13 +217,17 @@ protected:
 private:
     //\cond HIDDEN_SYMBOLS
     //Functions
+    void updateWindowNow();
     void updateWindowLater();
+    void updateWindowMask();
+    void updateCaptionButtonsState();
 
     //Variables
     QPointer<QGoodWindow> m_gw;
     QPointer<QWidget> m_central_widget_place_holder;
     QPointer<QWidget> m_central_widget;
 #ifdef QGOODWINDOW
+    QPointer<QTimer> m_update_later_timer;
     bool m_unified_title_bar_and_central_widget;
     QRegion m_title_bar_mask;
     bool m_left_widget_transparent_for_mouse;
@@ -195,8 +246,8 @@ private:
     bool m_title_bar_visible;
     bool m_caption_buttons_visible;
     bool m_title_visible;
-    bool m_icon_visible;
-    int m_icon_width;
+    IconVisibilityType m_icon_visibility_type;
+    CaptionButtonsType m_caption_buttons_type;
 #endif
     //\endcond
 };

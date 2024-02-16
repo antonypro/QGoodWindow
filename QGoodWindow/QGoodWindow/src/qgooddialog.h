@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2022-2023 Antonio Dias (https://github.com/antonypro)
+Copyright © 2018-2024 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -53,6 +53,9 @@ private:
     QPointer<QGoodWindow> m_parent_gw;
 #if defined Q_OS_WIN || defined Q_OS_MAC
     QWindowList m_window_list;
+#endif
+#ifdef Q_OS_MAC
+    bool m_child_gw_visible;
 #endif
 };
 //\endcond

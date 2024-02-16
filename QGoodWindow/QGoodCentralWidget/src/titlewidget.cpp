@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2023 Antonio Dias (https://github.com/antonypro)
+Copyright © 2018-2024 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -79,20 +79,33 @@ Qt::Alignment TitleWidget::titleAlignment()
     return m_alignment;
 }
 
-void TitleWidget::paintEvent(QPaintEvent *event)
+int TitleWidget::leftPos()
 {
-    Q_UNUSED(event)
+    return titleRect().left();
+}
 
+QFont TitleWidget::titleFont()
+{
+    QFont font = qApp->font();
+    font.setPixelSize(12);
+#ifdef Q_OS_WIN
+    font.setFamily("Segoe UI");
+#endif
+    return font;
+}
+
+QRect TitleWidget::titleRect(QString *title_elided_ptr)
+{
     const int spacing = m_title_bar->layoutSpacing();
 
     QRect left_rect;
     QRect right_rect;
     QRect center_rect;
 
+    left_rect = left_rect.united(QRect(m_title_bar->m_gw->iconWidth(), 0, 1, height()));
+
     if (m_title_bar->m_left_margin_widget_place_holder->isVisible())
         left_rect = left_rect.united(m_title_bar->m_left_margin_widget_place_holder->geometry());
-    if (m_title_bar->m_icon_widget->isVisible())
-        left_rect = left_rect.united(m_title_bar->m_icon_widget->geometry());
     if (m_title_bar->m_left_widget_place_holder->isVisible())
         left_rect = left_rect.united(m_title_bar->m_left_widget_place_holder->geometry());
 
@@ -106,22 +119,6 @@ void TitleWidget::paintEvent(QPaintEvent *event)
     if (m_title_bar->m_center_widget_place_holder->isVisible())
         center_rect = center_rect.united(m_title_bar->m_center_widget_place_holder->geometry());
 
-    QPainter painter(this);
-    painter.setRenderHints(QPainter::Antialiasing);
-
-    QFont font = qApp->font();
-    font.setPixelSize(12);
-#ifdef Q_OS_WIN
-    font.setFamily("Segoe UI");
-#endif
-
-    painter.setFont(font);
-
-    QPen pen;
-    pen.setColor(m_active ? m_active_color : m_inactive_color);
-
-    painter.setPen(pen);
-
     bool center_widget_visible = m_title_bar->m_center_widget_place_holder->isVisible();
 
     Qt::Alignment alignment = m_alignment;
@@ -129,7 +126,7 @@ void TitleWidget::paintEvent(QPaintEvent *event)
     if (center_widget_visible && alignment == Qt::AlignCenter)
         alignment = Qt::AlignLeft;
 
-    QFontMetrics metrics(painter.font());
+    QFontMetrics metrics(titleFont());
 
     int title_space_width;
 
@@ -145,7 +142,38 @@ void TitleWidget::paintEvent(QPaintEvent *event)
         title_space_width = right_rect.left() - left_rect.right();
     }
 
-    QString title_elided = metrics.elidedText(m_title, Qt::ElideRight, title_space_width - spacing);
+    IconWidget *icon = nullptr;
+
+    bool icon_on_left_of_title = false;
+
+    switch (m_title_bar->m_gcw->iconVisibility())
+    {
+    case QGoodCentralWidget::IconVisibilityType::IconOnLeftOfWindow:
+    {
+        icon = m_title_bar->m_icon_widget;
+
+        QRect icon_rect = icon->geometry();
+        icon_rect.moveLeft(0);
+        icon->setGeometry(icon_rect);
+
+        break;
+    }
+    case QGoodCentralWidget::IconVisibilityType::IconOnLeftOfTitle:
+    {
+        icon = m_title_bar->m_icon_widget;
+        icon->move(icon->x(), ((height() - icon->height()) / 2) - 1);
+
+        icon_on_left_of_title = true;
+
+        break;
+    }
+    default:
+        break;
+    }
+
+    int title_width_minus_icon = title_space_width - spacing - (icon_on_left_of_title ? icon->width() : 0);
+
+    QString title_elided = metrics.elidedText(m_title, Qt::ElideRight, title_width_minus_icon);
 
     QSize title_size = metrics.size(0, title_elided);
 
@@ -162,8 +190,20 @@ void TitleWidget::paintEvent(QPaintEvent *event)
 
         title_rect.setHeight(title_height);
 
-        title_rect.setLeft(left_rect.right());
-        title_rect.setRight(left_rect.right() + title_width);
+        title_rect.setLeft(left_rect.right() + (icon_on_left_of_title ? icon->width() : 0));
+        title_rect.setRight(left_rect.right() + title_width + (icon_on_left_of_title ? icon->width() : 0));
+
+        if (icon && icon_on_left_of_title)
+        {
+            QRect icon_rect = icon->geometry();
+
+            icon_rect.moveLeft(qMax(title_rect.left() - icon_rect.width(), left_rect.right()));
+
+            icon->setGeometry(icon_rect);
+
+            icon->setVisible(title_space_width >= icon_rect.width());
+            icon->setEnabled(icon->isVisible());
+        }
 
         break;
     }
@@ -176,6 +216,18 @@ void TitleWidget::paintEvent(QPaintEvent *event)
         title_rect.setLeft(right_rect.left() - title_width - spacing);
         title_rect.setRight(right_rect.left());
 
+        if (icon && icon_on_left_of_title)
+        {
+            QRect icon_rect = icon->geometry();
+
+            icon_rect.moveLeft(qMax(title_rect.left() - icon_rect.width(), center_rect.right()));
+
+            icon->setGeometry(icon_rect);
+
+            icon->setVisible(title_space_width >= icon_rect.width());
+            icon->setEnabled(icon->isVisible());
+        }
+
         break;
     }
     case Qt::AlignCenter:
@@ -186,17 +238,29 @@ void TitleWidget::paintEvent(QPaintEvent *event)
         title_rect.moveTop((height() - title_height) / 2);
         title_rect.moveLeft((width() - title_width) / 2);
 
-        bool left_collide = (title_rect.left() < left_rect.right());
+        bool left_collide = (title_rect.left() < left_rect.right() + (icon_on_left_of_title ? icon->width() : 0));
 
         bool right_collide = (title_rect.right() > right_rect.left());
 
         if (left_collide || (m_title != title_elided))
         {
-            title_rect.moveLeft(left_rect.right());
+            title_rect.moveLeft(left_rect.right() + (icon_on_left_of_title ? icon->width() : 0));
         }
         else if (right_collide)
         {
             title_rect.moveRight(right_rect.left());
+        }
+
+        if (icon && icon_on_left_of_title)
+        {
+            QRect icon_rect = icon->geometry();
+
+            icon_rect.moveLeft(qMax(title_rect.left() - icon_rect.width(), left_rect.right()));
+
+            icon->setGeometry(icon_rect);
+
+            icon->setVisible(title_space_width >= icon_rect.width());
+            icon->setEnabled(icon->isVisible());
         }
 
         break;
@@ -205,5 +269,28 @@ void TitleWidget::paintEvent(QPaintEvent *event)
         break;
     }
 
-    painter.drawText(title_rect, title_elided);
+    if (title_elided_ptr)
+        *title_elided_ptr = title_elided;
+
+    return title_rect;
+}
+
+void TitleWidget::paintEvent(QPaintEvent *event)
+{
+    Q_UNUSED(event)
+
+    QPainter painter(this);
+    painter.setRenderHints(QPainter::Antialiasing);
+
+    painter.setFont(titleFont());
+
+    QPen pen;
+    pen.setColor(m_active ? m_active_color : m_inactive_color);
+
+    painter.setPen(pen);
+
+    QString title_elided;
+    QRect rect = titleRect(&title_elided);
+
+    painter.drawText(rect, title_elided);
 }

@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2023 Antonio Dias (https://github.com/antonypro)
+Copyright © 2018-2024 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,7 +24,7 @@ SOFTWARE.
 
 #include "titlebar.h"
 
-TitleBar::TitleBar(QGoodWindow *gw, QWidget *parent) : QFrame(parent)
+TitleBar::TitleBar(QGoodWindow *gw, QGoodCentralWidget *gcw, QWidget *parent) : QFrame(parent)
 {
     m_layout_spacing = 0;
 
@@ -52,6 +52,8 @@ TitleBar::TitleBar(QGoodWindow *gw, QWidget *parent) : QFrame(parent)
 
     m_gw = gw;
 
+    m_gcw = gcw;
+
     m_style = QString("TitleBar {background-color: %0;}");
 
     connect(qGoodStateHolder, &QGoodStateHolder::currentThemeChanged, this, &TitleBar::setTheme);
@@ -63,6 +65,8 @@ TitleBar::TitleBar(QGoodWindow *gw, QWidget *parent) : QFrame(parent)
 
     m_icon_widget = new IconWidget(this);
     m_icon_widget->setFixedWidth(29);
+    m_icon_widget->setVisible(false);
+    m_icon_widget->setEnabled(false);
 
     m_title_widget = new TitleWidget(this, this);
 
@@ -105,6 +109,11 @@ TitleBar::TitleBar(QGoodWindow *gw, QWidget *parent) : QFrame(parent)
     stacked_layout->addWidget(widget);
     stacked_layout->addWidget(m_title_widget);
 
+    m_icon_widget_place_holder = new QWidget(this);
+    m_icon_widget_place_holder->setFixedWidth(29);
+    m_icon_widget_place_holder->setVisible(false);
+    m_icon_widget_place_holder->setEnabled(false);
+
     m_left_widget_place_holder = new QWidget(this);
     m_left_widget_place_holder->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
     m_left_widget_place_holder->setVisible(false);
@@ -124,7 +133,7 @@ TitleBar::TitleBar(QGoodWindow *gw, QWidget *parent) : QFrame(parent)
     m_center_spacer_item_right = new QSpacerItem(0, 0);
 
     layout->addWidget(m_left_margin_widget_place_holder);
-    layout->addWidget(m_icon_widget);
+    layout->addWidget(m_icon_widget_place_holder);
     layout->addWidget(m_left_widget_place_holder);
     layout->addStretch();
     layout->addSpacerItem(m_center_spacer_item_left);
@@ -359,26 +368,35 @@ int TitleBar::captionButtonsWidth()
 
 int TitleBar::leftWidth()
 {
-    QRect rect;
+    int left_width = 0;
 
-    rect = rect.united(m_icon_widget->geometry());
+#ifdef Q_OS_MAC
+    if (m_gw->isNativeCaptionButtonsVisibleOnMac())
+        left_width += m_gw->titleBarButtonsRectOnMacOS().width();
+#endif
 
-    rect = rect.united(m_left_widget_place_holder->geometry());
+    if (m_icon_widget->isVisible())
+        left_width += m_icon_widget->width();
 
-    return rect.width();
+    if (m_left_widget_place_holder)
+        left_width += m_left_widget_place_holder->width();
+
+    return left_width;
 }
 
 int TitleBar::rightWidth()
 {
-    QRect rect;
+    int right_width = 0;
 
-    rect = rect.united(m_caption_buttons->geometry());
+    if (m_caption_buttons->isVisible())
+        right_width += m_caption_buttons->width();
 
-    rect = rect.united(m_right_widget_place_holder->geometry());
+    if (m_right_widget_place_holder->isVisible())
+        right_width += m_right_widget_place_holder->width();
 
-    int width = rect.width() + layoutSpacing();
+    right_width += layoutSpacing();
 
-    return width;
+    return right_width;
 }
 
 int TitleBar::layoutSpacing()
@@ -436,6 +454,44 @@ QRect TitleBar::closeButtonRect()
     return QRect();
 }
 
+void TitleBar::updateIconState()
+{
+    const QGoodCentralWidget::IconVisibilityType icon_visibility_type = m_gcw->iconVisibility();
+
+    switch (icon_visibility_type)
+    {
+    case QGoodCentralWidget::IconVisibilityType::IconOnLeftOfWindow:
+    {
+        m_icon_widget_place_holder->setVisible(true);
+        m_icon_widget_place_holder->setEnabled(true);
+        m_icon_widget->setVisible(true);
+        m_icon_widget->setEnabled(true);
+
+        break;
+    }
+    case QGoodCentralWidget::IconVisibilityType::IconOnLeftOfTitle:
+    {
+        m_icon_widget_place_holder->setVisible(false);
+        m_icon_widget_place_holder->setEnabled(false);
+        m_icon_widget->setVisible(m_gcw->isTitleVisible());
+        m_icon_widget->setEnabled(m_gcw->isTitleVisible());
+
+        break;
+    }
+    case QGoodCentralWidget::IconVisibilityType::IconHidden:
+    {
+        m_icon_widget_place_holder->setVisible(false);
+        m_icon_widget_place_holder->setEnabled(false);
+        m_icon_widget->setVisible(false);
+        m_icon_widget->setEnabled(false);
+
+        break;
+    }
+    default:
+        break;
+    }
+}
+
 void TitleBar::updateWindow()
 {
     int left_width = leftWidth();
@@ -456,6 +512,8 @@ void TitleBar::updateWindow()
     m_center_spacer_item_left->changeSize(left_distance, 0, QSizePolicy::Preferred, QSizePolicy::Expanding);
 
     m_center_spacer_item_right->changeSize(right_distance, 0, QSizePolicy::Preferred, QSizePolicy::Expanding);
+
+    updateIconState();
 }
 
 void TitleBar::captionButtonStateChanged(const QGoodWindow::CaptionButtonState &state)
@@ -578,50 +636,4 @@ void TitleBar::captionButtonStateChanged(const QGoodWindow::CaptionButtonState &
     default:
         break;
     }
-}
-
-bool TitleBar::event(QEvent *event)
-{
-#ifdef QGOODWINDOW
-#ifdef Q_OS_LINUX
-    switch (event->type())
-    {
-    case QEvent::Resize:
-    {
-        QRegion mask;
-
-        if (m_gw->windowState().testFlag(Qt::WindowNoState))
-        {
-            const int radius = 8;
-
-            QBitmap bmp(size());
-            bmp.clear();
-
-            QPainter painter;
-            painter.begin(&bmp);
-            painter.setRenderHints(QPainter::Antialiasing);
-            painter.setPen(Qt::color1);
-            painter.setBrush(Qt::color1);
-            QPainterPath path;
-            path.setFillRule(Qt::WindingFill);
-            path.addRoundedRect(rect(), radius, radius);
-            path.addRect(rect().adjusted(0, height() - radius, radius, radius));
-            path.addRect(rect().adjusted(width() - radius, height() - radius, radius, radius));
-            painter.drawPath(path.simplified());
-            painter.end();
-
-            mask = bmp;
-        }
-
-        setMask(mask);
-
-        break;
-    }
-    default:
-        break;
-    }
-#endif
-#endif
-
-    return QWidget::event(event);
 }

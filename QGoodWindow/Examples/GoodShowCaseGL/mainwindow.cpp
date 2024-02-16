@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2023 Antonio Dias (https://github.com/antonypro)
+Copyright © 2018-2024 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -36,10 +36,12 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent, QColor(0, 38, 64))
 
 #ifdef QGOODWINDOW
     m_good_central_widget->setUnifiedTitleBarAndCentralWidget(true);
+    m_good_central_widget->setIconVisibility(QGoodCentralWidget::IconVisibilityType::IconOnLeftOfTitle);
 
     qGoodStateHolder->setCurrentThemeDark(true);
 
     QGoodWindow::setAppDarkTheme();
+    setNativeDarkModeEnabledOnWindows(true);
 #endif
 
     QShortcut *shortcut1 = new QShortcut(QKeySequence(Qt::Key_F), this);

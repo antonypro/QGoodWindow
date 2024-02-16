@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2022-2023 Antonio Dias (https://github.com/antonypro)
+Copyright © 2018-2024 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -44,12 +44,11 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent)
 
     m_good_central_widget = new QGoodCentralWidget(this);
 
-#ifdef QGOODWINDOW
-
-    //macOS uses global menu bar
-#ifndef Q_OS_MAC
     QMenuBar *menu_bar = m_central_widget->menuBar();
 
+#ifdef QGOODWINDOW
+    //macOS uses global menu bar
+#ifndef Q_OS_MAC
     //Set font of menu bar
     QFont font = menu_bar->font();
     font.setPixelSize(12);
@@ -78,7 +77,20 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent)
 
     connect(button, &QPushButton::clicked, this, [=]{
         m_good_central_widget->setTitleVisible(!m_good_central_widget->isTitleVisible());
-        m_good_central_widget->setIconVisible(!m_good_central_widget->isIconVisible());
+
+        if (m_good_central_widget->iconVisibility() == QGoodCentralWidget::IconVisibilityType::IconHidden)
+        {
+#ifndef Q_OS_MAC
+            m_good_central_widget->setIconVisibility(QGoodCentralWidget::IconVisibilityType::IconOnLeftOfWindow);
+#else
+            m_good_central_widget->setIconVisibility(QGoodCentralWidget::IconVisibilityType::IconOnLeftOfTitle);
+#endif
+        }
+        else
+        {
+            m_good_central_widget->setIconVisibility(QGoodCentralWidget::IconVisibilityType::IconHidden);
+        }
+
         m_good_central_widget->setTitleBarColor(!m_good_central_widget->isTitleVisible() ? Qt::red : QColor());
         m_good_central_widget->setActiveBorderColor(!m_good_central_widget->isTitleVisible() ? Qt::red : QColor());
     });
@@ -92,7 +104,27 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent)
     m_good_central_widget->setRightTitleBarWidget(widget, true);
 #endif
 
-    connect(qGoodStateHolder, &QGoodStateHolder::currentThemeChanged, this, &MainWindow::themeChange);
+    QMenu *about_menu = new QMenu("About", menu_bar);
+    QAction *action_about_qt = about_menu->addAction("About Qt");
+    QAction *action_about_qgoodwindow = about_menu->addAction("About QGoodWindow");
+
+    connect(action_about_qt, &QAction::triggered, this, [=]{QMessageBox::aboutQt(this);});
+    connect(action_about_qgoodwindow, &QAction::triggered, this, [=]{QGoodWindow::aboutQGoodWindow(this);});
+
+    menu_bar->addMenu(about_menu);
+
+    connect(qGoodStateHolder, &QGoodStateHolder::currentThemeChanged, this, [=]{
+        if (qGoodStateHolder->isCurrentThemeDark())
+        {
+            QGoodWindow::setAppDarkTheme();
+            setNativeDarkModeEnabledOnWindows(true);
+        }
+        else
+        {
+            QGoodWindow::setAppLightTheme();
+            setNativeDarkModeEnabledOnWindows(false);
+        }
+    });
 
     connect(this, &QGoodWindow::systemThemeChanged, this, [=]{
         qGoodStateHolder->setCurrentThemeDark(QGoodWindow::isSystemThemeDark());
@@ -129,14 +161,6 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent)
 MainWindow::~MainWindow()
 {
 
-}
-
-void MainWindow::themeChange()
-{
-    if (qGoodStateHolder->isCurrentThemeDark())
-        QGoodWindow::setAppDarkTheme();
-    else
-        QGoodWindow::setAppLightTheme();
 }
 
 bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, qgoodintptr *result)

@@ -1,3 +1,23 @@
+## *Version 2.4.3:*
+
+- Some function related to icon visibility are deprecated.
+- Now is possible to position the window icon at the left of the window title.
+- Functions deprecated in version 2.4 are now removed from the source code.
+- Added possibility to set QGoodWindow icon to be at the left side of window title.
+- Added possibility to set QGoodWindow the always on top window on Windows. [#50](https://github.com/antonypro/QGoodWindow/issues/50)
+- Added possibility to set QGoodWindow border color also on Windows 11.
+- Added possibility to set QGoodWindow dark context menu on Windows 11.
+- Added function "aboutQGoodWindow" to show information about QGoodWindow in a QMessageBox.
+- Fixed border colorization on rounded corners on Linux.
+- Fixed bug that not resize correctly QMessageBox opened with "GoodCentralWidget::execDialogWithWindow" function.
+- Fixed bug that resizes non fixed Dialogs on Windows, ignoring previous resize set. [#48](https://github.com/antonypro/QGoodWindow/issues/48)
+- Fixed bug that makes QGoodWindow window unstable when maximized on Linux. [#49](https://github.com/antonypro/QGoodWindow/issues/49)
+- Fixed bugs related to native caption buttons on macOS and library caption buttons be shown at the same time.
+- Fixed bug related to title bar widgets alignment when one or more of the title bar widgets are hidden.
+- Fixed bugs related to QMessageBox resize to fit contents on Windows, Linux and macOS.
+- Fixed bug that show menus on wrong position on Windows. [#51](https://github.com/antonypro/QGoodWindow/issues/51)
+- Other bug fixes.
+
 ## *Version 2.4.2:*
 
 - Fixed CMake bugs when installing library headers.

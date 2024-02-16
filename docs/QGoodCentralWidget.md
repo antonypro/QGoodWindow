@@ -17,6 +17,26 @@ Constructor of *QGoodCentralWidget*, is mandatory pass a valid instance of the p
 
 Destructor of *QGoodCentralWidget*.
 
+#### `public Q_DECL_DEPRECATED void setIconWidth(int width)` 
+
+Deprecated function, call QGoodWindow *setIconWidth* directly.
+
+#### `public Q_DECL_DEPRECATED int iconWidth() const` 
+
+Deprecated function, call QGoodWindow *iconWidth* directly.
+
+#### `public Q_DECL_DEPRECATED void setIconVisible(bool visible)` 
+
+Deprecated function, call *setIconVisibility*.
+
+#### `public Q_DECL_DEPRECATED bool isIconVisible() const` 
+
+Deprecated function, call *iconVisibility*.
+
+#### `{slot} public void setCaptionButtonsType(const CaptionButtonsType & type)` 
+
+Set the caption buttons type.
+
 #### `{slot} public void setUnifiedTitleBarAndCentralWidget(bool unified)` 
 
 Set the title bar and the central widget unified.
@@ -65,13 +85,9 @@ Change the visibility of *QGoodCentralWidget* caption buttons.
 
 Change the visibility of *QGoodCentralWidget* title bar title.
 
-#### `{slot} public void setIconVisible(bool visible)` 
+#### `{slot} public void setIconVisibility(const IconVisibilityType & type)` 
 
 Change the visibility of *QGoodCentralWidget* title bar icon.
-
-#### `{slot} public void setIconWidth(int width)` 
-
-Change the width of *QGoodCentralWidget* title bar icon, width higher than 0 will hide the *QGoodCentralWidget* provided icon, this is useful when showing own icons.
 
 #### `{slot} public void setTitleBarHeight(int height)` 
 
@@ -80,6 +96,10 @@ Change the title bar height to *height* multiplied to current pixel ratio.
 #### `{slot} public void setCaptionButtonWidth(int width)` 
 
 Change the caption button width to *width* multiplied to current pixel ratio.
+
+#### `{slot} public CaptionButtonsType captionButtonsType() const` 
+
+Returns the caption buttons type.
 
 #### `{slot} public bool isUnifiedTitleBarAndCentralWidget() const` 
 
@@ -125,13 +145,9 @@ Returns if the *QGoodCentralWidget* caption buttons are visible or not.
 
 Returns if the *QGoodCentralWidget* title bar title is visible or not.
 
-#### `{slot} public bool isIconVisible() const` 
+#### `{slot} public IconVisibilityType iconVisibility() const` 
 
-Returns if the *QGoodCentralWidget* title bar icon is visible or not.
-
-#### `{slot} public int iconWidth() const` 
-
-Returns the customized icon width.
+Returns the visibility of the *QGoodCentralWidget* title bar icon.
 
 #### `{slot} public int titleBarHeight() const` 
 
@@ -144,6 +160,29 @@ Returns the *QGoodCentralWidget* title bar caption button width.
 #### `{slot} public void updateWindow()` 
 
 Update the *QGoodCentralWidget* state, it's called internally and must be called if changing *QGoodCentralWidget* metrics like hide or show a title bar widget.
+
+#### `enum CaptionButtonsType` 
+
+ Values                         | Descriptions                                
+--------------------------------|---------------------------------------------
+Invalid            | Invalid state of caption buttons.
+Custom            | Hide all ready-to-use captions buttons and use your customs caption buttons.
+CentralWidget            | Use QGoodCentralWidget caption buttons.
+Native            | Use OS native caption buttons.
+
+Types of QGoodCentralWidget caption buttons.
+
+#### `enum IconVisibilityType` 
+
+ Values                         | Descriptions                                
+--------------------------------|---------------------------------------------
+Invalid            | Invalid state of visibility.
+IconHiddenAcceptMouseInput            | Do not show icon, but accepts mouse input to show system menu on Windows.
+IconHidden            | Do not show any icon.
+IconOnLeftOfWindow            | Show window icon at the left of the window as Windows style.
+IconOnLeftOfTitle            | Show window icon at the left side of the title as macOS style.
+
+Types for the icon visibility of the window.
 
 #### `public static int execDialogWithWindow(QDialog * dialog, QGoodWindow * parent_gw, QGoodCentralWidget * base_gcw, QWidget * left_title_bar_widget, QWidget * right_title_bar_widget, bool title_visible, bool icon_visible)` 
 

@@ -27,77 +27,13 @@ Destructor of *QGoodWindow*.
 
 Returns the window id of the *QGoodWindow*.
 
-#### `public void setWindowFlags(Qt::WindowFlags type)` 
+#### `public void setWindowFlags(Qt::WindowFlags flags)` 
 
-*QGoodWindow* handles flags internally, use this function only when *QGoodWindow* is not enabled.
+*QGoodWindow* handles flags internally, but this function could be used to create a always on top window.
 
 #### `public Qt::WindowFlags windowFlags() const` 
 
 Returns the window flags of the *QGoodWindow*.
-
-#### `public inline Q_DECL_DEPRECATED void setLeftMargin(int width)` 
-
-Deprecated function scheduled for removal in some future version, don’t use it.
-
-#### `public inline Q_DECL_DEPRECATED void setRightMargin(int width)` 
-
-Deprecated function scheduled for removal in some future version, don’t use it.
-
-#### `public inline Q_DECL_DEPRECATED int leftMargin() const` 
-
-Deprecated function scheduled for removal in some future version, don’t use it.
-
-#### `public inline Q_DECL_DEPRECATED int rightMargin() const` 
-
-Deprecated function scheduled for removal in some future version, don’t use it.
-
-#### `public inline Q_DECL_DEPRECATED void setMargins(int title_bar_height, int icon_width, int left, int right)` 
-
-Deprecated function scheduled for removal in some future version, don’t use it.
-
-#### `public inline Q_DECL_DEPRECATED void setLeftMask(const QRegion & mask)` 
-
-Deprecated function scheduled for removal in some future version, don’t use it.
-
-#### `public inline Q_DECL_DEPRECATED void setRightMask(const QRegion & mask)` 
-
-Deprecated function scheduled for removal in some future version, don’t use it.
-
-#### `public inline Q_DECL_DEPRECATED void setCenterMask(const QRegion & mask)` 
-
-Deprecated function scheduled for removal in some future version, don’t use it.
-
-#### `public inline Q_DECL_DEPRECATED void setCaptionButtonsHandled(bool handled, const Qt::Corner & corner)` 
-
-Deprecated function scheduled for removal in some future version, don’t use it.
-
-#### `public inline Q_DECL_DEPRECATED QRegion leftMask() const` 
-
-Deprecated function scheduled for removal in some future version, don’t use it.
-
-#### `public inline Q_DECL_DEPRECATED QRegion rightMask() const` 
-
-Deprecated function scheduled for removal in some future version, don’t use it.
-
-#### `public inline Q_DECL_DEPRECATED QRegion centerMask() const` 
-
-Deprecated function scheduled for removal in some future version, don’t use it.
-
-#### `public inline Q_DECL_DEPRECATED QSize leftMaskSize() const` 
-
-Deprecated function scheduled for removal in some future version, don’t use it.
-
-#### `public inline Q_DECL_DEPRECATED QSize rightMaskSize() const` 
-
-Deprecated function scheduled for removal in some future version, don’t use it.
-
-#### `public inline Q_DECL_DEPRECATED QRect leftCaptionButtonsRect() const` 
-
-Deprecated function scheduled for removal in some future version, don’t use it.
-
-#### `public inline Q_DECL_DEPRECATED QRect rightCaptionButtonsRect() const` 
-
-Deprecated function scheduled for removal in some future version, don’t use it.
 
 #### `{signal} public void captionButtonStateChanged(const QGoodWindow::CaptionButtonState & state)` 
 
@@ -110,6 +46,18 @@ Notify that the system has changed between light and dark mode.
 #### `{signal} public void captionButtonsVisibilityChangedOnMacOS()` 
 
 Notify that the visibility of caption buttons have changed on macOS.
+
+#### `{slot} public void setNativeDarkModeEnabledOnWindows(bool dark)` 
+
+Set native dark mode on Windows to *dark*.
+
+#### `{slot} public bool isNativeDarkModeEnabledOnWindows() const` 
+
+Returns if native dark mode is enabled on Windows.
+
+#### `{slot} public void setNativeBorderColorOnWindows(const QColor & color)` 
+
+Set native border color on Windows to *color*.
 
 #### `{slot} public void setNativeCaptionButtonsVisibleOnMac(bool visible)` 
 
@@ -436,6 +384,10 @@ Enum that contains caption buttons states when it's states are handled by *QGood
 #### `public static QString version()` 
 
 Returns the *QGoodWindow* version.
+
+#### `public static void aboutQGoodWindow(QGoodWindow * parent, const QString & title)` 
+
+Shows a message box about *QGoodWindow*, with it's version and license.
 
 #### `public static void setup()` 
 

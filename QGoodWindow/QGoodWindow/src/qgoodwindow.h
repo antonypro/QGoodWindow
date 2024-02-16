@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2023 Antonio Dias (https://github.com/antonypro)
+Copyright © 2018-2024 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -131,8 +131,8 @@ public:
     /** Returns the window id of the *QGoodWindow*. */
     WId winId() const;
 
-    /** *QGoodWindow* handles flags internally, use this function only when *QGoodWindow* is not enabled. */
-    void setWindowFlags(Qt::WindowFlags type);
+    /** *QGoodWindow* handles flags internally, but this function could be used to create a always on top window. */
+    void setWindowFlags(Qt::WindowFlags flags);
 
     /** Returns the window flags of the *QGoodWindow*. */
     Qt::WindowFlags windowFlags() const;
@@ -141,6 +141,9 @@ public:
 
     /** Returns the *QGoodWindow* version. */
     static QString version();
+
+    /** Shows a message box about *QGoodWindow*, with it's version and license. */
+    static void aboutQGoodWindow(QGoodWindow *parent, const QString &title = QString());
 
     /** Call this function to setup *QApplication* for *QGoodWindow* usage. */
     static void setup();
@@ -175,73 +178,16 @@ Q_SIGNALS:
     void captionButtonsVisibilityChangedOnMacOS();
 
     /*** QGOODWINDOW FUNCTIONS BEGIN ***/
-
-public:
-    /** Deprecated function scheduled for removal in some future version, don’t use it. */
-    Q_DECL_DEPRECATED void setLeftMargin(int width)
-    {Q_UNUSED(width); Q_ASSERT(false);}
-
-    /** Deprecated function scheduled for removal in some future version, don’t use it. */
-    Q_DECL_DEPRECATED void setRightMargin(int width)
-    {Q_UNUSED(width); Q_ASSERT(false);}
-
-    /** Deprecated function scheduled for removal in some future version, don’t use it. */
-    Q_DECL_DEPRECATED int leftMargin() const
-    {Q_ASSERT(false); return 0;}
-
-    /** Deprecated function scheduled for removal in some future version, don’t use it. */
-    Q_DECL_DEPRECATED int rightMargin() const
-    {Q_ASSERT(false); return 0;}
-
-    /** Deprecated function scheduled for removal in some future version, don’t use it. */
-    Q_DECL_DEPRECATED void setMargins(int title_bar_height, int icon_width, int left, int right)
-    {Q_UNUSED(title_bar_height); Q_UNUSED(icon_width); Q_UNUSED(left); Q_UNUSED(right); Q_ASSERT(false);}
-
-    /** Deprecated function scheduled for removal in some future version, don’t use it. */
-    Q_DECL_DEPRECATED void setLeftMask(const QRegion &mask)
-    {Q_UNUSED(mask); Q_ASSERT(false);}
-
-    /** Deprecated function scheduled for removal in some future version, don’t use it. */
-    Q_DECL_DEPRECATED void setRightMask(const QRegion &mask)
-    {Q_UNUSED(mask); Q_ASSERT(false);}
-
-    /** Deprecated function scheduled for removal in some future version, don’t use it. */
-    Q_DECL_DEPRECATED void setCenterMask(const QRegion &mask)
-    {Q_UNUSED(mask); Q_ASSERT(false);}
-
-    /** Deprecated function scheduled for removal in some future version, don’t use it. */
-    Q_DECL_DEPRECATED void setCaptionButtonsHandled(bool handled, const Qt::Corner &corner = Qt::TopRightCorner)
-    {Q_UNUSED(handled); Q_UNUSED(corner); Q_ASSERT(false);}
-
-    /** Deprecated function scheduled for removal in some future version, don’t use it. */
-    Q_DECL_DEPRECATED QRegion leftMask() const
-    {Q_ASSERT(false); return QRegion();}
-
-    /** Deprecated function scheduled for removal in some future version, don’t use it. */
-    Q_DECL_DEPRECATED QRegion rightMask() const
-    {Q_ASSERT(false); return QRegion();}
-
-    /** Deprecated function scheduled for removal in some future version, don’t use it. */
-    Q_DECL_DEPRECATED QRegion centerMask() const
-    {Q_ASSERT(false); return QRegion();}
-
-    /** Deprecated function scheduled for removal in some future version, don’t use it. */
-    Q_DECL_DEPRECATED QSize leftMaskSize() const
-    {Q_ASSERT(false); return QSize();}
-
-    /** Deprecated function scheduled for removal in some future version, don’t use it. */
-    Q_DECL_DEPRECATED QSize rightMaskSize() const
-    {Q_ASSERT(false); return QSize();}
-
-    /** Deprecated function scheduled for removal in some future version, don’t use it. */
-    Q_DECL_DEPRECATED QRect leftCaptionButtonsRect() const
-    {Q_ASSERT(false); return QRect();}
-
-    /** Deprecated function scheduled for removal in some future version, don’t use it. */
-    Q_DECL_DEPRECATED QRect rightCaptionButtonsRect() const
-    {Q_ASSERT(false); return QRect();}
-
 public Q_SLOTS:
+    /** Set native dark mode on Windows to \e dark. **/
+    void setNativeDarkModeEnabledOnWindows(bool dark);
+
+    /** Returns if native dark mode is enabled on Windows. **/
+    bool isNativeDarkModeEnabledOnWindows() const;
+
+    /** Set native border color on Windows to \e color. **/
+    void setNativeBorderColorOnWindows(const QColor &color);
+
     /** Set native caption buttons on macOS visibility to \e visible. **/
     void setNativeCaptionButtonsVisibleOnMac(bool visible);
 
@@ -559,6 +505,7 @@ private:
     void startSystemMoveResize();
     void sizeMove();
     void sizeMoveBorders();
+    void setMaskLinux();
 
     //Variables
     QPointer<Shadow> m_shadow;
@@ -589,6 +536,7 @@ private:
     int m_last_move_button;
 #endif
 #ifdef Q_OS_WIN
+    bool m_win_dark_mode;
     int m_minimum_width;
     int m_minimum_height;
     int m_maximum_width;

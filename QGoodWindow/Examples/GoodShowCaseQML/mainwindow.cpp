@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright © 2018-2023 Antonio Dias (https://github.com/antonypro)
+Copyright © 2018-2024 Antonio Dias (https://github.com/antonypro)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -36,11 +36,13 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent, QColor("#303030"))
 #ifdef QGOODWINDOW
     m_good_central_widget->setUnifiedTitleBarAndCentralWidget(true);
 
-    m_good_central_widget->setIconVisible(false);
+    m_good_central_widget->setIconVisibility(QGoodCentralWidget::IconVisibilityType::IconHiddenAcceptMouseInput);
     m_good_central_widget->setTitleVisible(false);
     m_good_central_widget->setCaptionButtonsVisible(false);
     m_good_central_widget->setTitleBarHeight(30);
-    m_good_central_widget->setIconWidth(30);
+    setIconWidth(30);
+
+    m_good_central_widget->setCaptionButtonsType(QGoodCentralWidget::CaptionButtonsType::Custom);
 
     connect(this, &QGoodWindow::windowTitleChanged, this, [=](const QString &title){
         if (!m_quick_widget)
@@ -68,6 +70,7 @@ MainWindow::MainWindow(QWidget *parent) : QGoodWindow(parent, QColor("#303030"))
     qGoodStateHolder->setCurrentThemeDark(true);
 
     QGoodWindow::setAppDarkTheme();
+    setNativeDarkModeEnabledOnWindows(true);
 #endif
 
     QShortcut *shortcut1 = new QShortcut(QKeySequence(Qt::Key_F), this);

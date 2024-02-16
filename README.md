@@ -2,7 +2,7 @@
 
 *Border less window implementation for Qt 5 and Qt 6 on Windows, Linux and macOS.*
 
-Version 2.4.2
+Version 2.4.3
 
 #### *QGoodWindow* in dark mode on Windows 11:
 
@@ -16,11 +16,9 @@ Version 2.4.2
 
 <img src="img/qgoodwindow-mac.png" title="" alt="" data-align="center">
 
-**QGoodWindow** gives to your application full control of the window while keeps native OS window behavior, like minimize effect.
+*QGoodWindow* is a library that gives to Qt developers possibilities for customization of the title bar.
 
-**QGoodWindow** project is separated in two modules, the  **QGoodWindow** and **QGoodCentralWidget**.
-
-**QGoodWindow** provides the core of the project and can be used without **QGoodCentralWidget**, however **QGoodCentralWidget** offers a ready to use window with icon, title, caption buttons and a easy way to add widgets to the title bar.
+*QGoodWindow* enables full title bar customization like buttons on the title bar or combine the title bar with the client area of the window.
 
 ### **Requirements:**
 
