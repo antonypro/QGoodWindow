@@ -1,4 +1,4 @@
-# Test branch
+# QGoodWindow Test Branch
 
 This branch is for test and very subject to changes.
 
