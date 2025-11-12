@@ -1,6 +1,6 @@
-# QGoodWindow
+### QGoodWindow
 
-*Border less window implementation for Qt 5 and Qt 6 on Windows, Linux and macOS.*
+# Edit: This project is outdated and should no longer be used.
 
 Version 2.4.3
 
@@ -32,23 +32,3 @@ To see instructions on how to build, use, and `API` information, please see [the
 
 - The dark theme present on GoodShowCase example and the example itself is based on this awesome work: https://github.com/Jorgen-VikingGod/Qt-Frameless-Window-DarkStyle, and the light theme was inspired on this dark theme.
 - The GoodShowCaseGL example is based on the OpenGL textures example provided by [Qt](https://doc.qt.io/qt-5/qtopengl-textures-example.html).
-
-### **Contributing:**
-
-You can contribute with suggestions, writing issues on [Issues](https://github.com/antonypro/QGoodWindow/issues) or filling pull requests.
-
-Also, if you see value in my project, consider become a sponsor:
-
-GitHub Sponsors:
-
-https://github.com/sponsors/antonypro
-
-Bitcoin:
-
-![img/bitcoin-qrcode.png](img/bitcoin-qrcode.png)
-
-Address: bc1qfk849eam7hsdna55lf2za9neq57re667c0eh54
-
-### **Changes:**
-
-To see what has changed between versions, please see the [CHANGELOG](CHANGELOG.md).
